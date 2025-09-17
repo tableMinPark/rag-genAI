@@ -5,9 +5,11 @@ import com.genai.client.vo.SortVo;
 import com.genai.client.vo.TraceInfoVo;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
 
 import java.util.List;
 
+@ToString
 @Getter
 @AllArgsConstructor
 public class KeywordSearchRequest {

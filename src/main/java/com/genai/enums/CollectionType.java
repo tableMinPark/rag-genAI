@@ -1,4 +1,4 @@
-package com.genai.entity;
+package com.genai.enums;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum CollectionType {
 
-    LAW("law")
+    LAW("nhis_proto")
     ;
 
     private final String collectionName;

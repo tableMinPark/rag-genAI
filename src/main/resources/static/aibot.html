@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Chat with Sidebar</title>
     <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/aibot.css" />
 </head>
 <body>
 
 <div id="sidebar" class="hidden">
     <div class="sidebar-header">📡 Rag Gen AI</div>
-    <div id="home" class="sidebar-tab select" >HOME</div>
-    <div id="aiBot" class="sidebar-tab">AI BOT</div>
+    <div id="home" class="sidebar-tab" >HOME</div>
+    <div id="aiBot" class="sidebar-tab select">AI BOT</div>
 </div>
 
 <div id="container">
@@ -20,8 +21,19 @@
         <span id="header-title">📡 테스트 페이지</span>
     </header>
 
-    <div id="content">HOME</div>
+    <div id="content"></div>
+
+    <div id="inputArea">
+        <label for="userInput"></label>
+        <input id="userInput" type="text" placeholder="질문을 입력하세요."/>
+        <button id="sendBtn">전송</button>
+    </div>
 </div>
+
 <script src="js/main.js"></script>
+<script src="js/aibot.js"></script>
+
+<script>
+</script>
 </body>
 </html>

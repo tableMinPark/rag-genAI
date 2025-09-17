@@ -8,6 +8,9 @@ import com.genai.client.vo.DocumentVo;
 import com.genai.constant.ChatConst;
 import com.genai.constant.SearchConst;
 import com.genai.entity.LawEntity;
+import com.genai.entity.PromptEntity;
+import com.genai.exception.NotFoundException;
+import com.genai.repository.PromptRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,8 @@ public class ChatService {
     private final SearchClient searchClient;
 
     private final ModelClient modelClient;
+
+    private final PromptRepository promptRepository;
 
     /**
      * 사용자 질의 후 실시간 답변 스트림 생성
@@ -51,12 +56,13 @@ public class ChatService {
                 .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
                 .forEach(document -> contextBuilder.append(document.getFields().getContext()).append("\n"));
 
-        log.info("\n[ Context 토큰 수: {} ]\n{}", contextBuilder.length(), contextBuilder.toString().trim());
+        log.info("\n[ Context ({}) ]\n{}", contextBuilder.length(), contextBuilder.toString().trim());
 
-        // TODO: 프롬 프트 조회 기능 구현 필요 (DB)
-        String prompt = "사실인 내용만 답변";
+        // 프롬 프트 조회
+        PromptEntity promptEntity = promptRepository.findByPromptCode("PROM-001")
+                .orElseThrow(() -> new NotFoundException("PROMPT"));
 
-        modelClient.generateStreamAnswer(query, contextBuilder.toString().trim(), prompt, sessionId)
+        modelClient.generateStreamAnswer(query, contextBuilder.toString().trim(), promptEntity.getContext(), sessionId)
                 .subscribe(
                         answerResponse -> answerResponse.getData().forEach(answerVo -> callback.accept(answerVo.getContent())),
                         error -> callback.accept(ChatConst.STREAM_OVER_PREFIX),

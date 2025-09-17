@@ -8,6 +8,7 @@ import com.genai.client.response.RerankResponse;
 import com.genai.client.vo.DocumentVo;
 import com.genai.constant.ModelConst;
 import com.genai.entity.LawEntity;
+import com.genai.exception.ModelErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +35,9 @@ public class ModelClientImpl implements ModelClient {
     @Value("${engine.reranker.url}")
     private String RERANKER_URL;
 
+    @Value("${engine.reranker.model-name}")
+    private String RERANKER_MODEL_NAME;
+
     @Value("${engine.llm.url}")
     private String LLM_URL;
 
@@ -57,7 +61,7 @@ public class ModelClientImpl implements ModelClient {
         RerankRequest<LawEntity> requestBody = new RerankRequest<>(query, documents);
 
         RerankResponse<LawEntity> responseBody = webClient.post()
-                .uri(RERANKER_URL)
+                .uri(RERANKER_URL + "/" + RERANKER_MODEL_NAME)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
@@ -67,7 +71,7 @@ public class ModelClientImpl implements ModelClient {
                 .block();
 
         if (responseBody == null) {
-            throw new RuntimeException();
+            throw new ModelErrorException("RERANKER(" + RERANKER_MODEL_NAME + ")");
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getData().forEach(document ->
@@ -105,7 +109,7 @@ public class ModelClientImpl implements ModelClient {
                 .block();
 
         if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException();
+            throw new ModelErrorException("LLM(" + LLM_MODEL_NAME + ")");
         }
 
         return responseBody.getBody();
@@ -158,10 +162,10 @@ public class ModelClientImpl implements ModelClient {
                 })
                 .concatWith(Mono.defer(() -> {
                     String remaining = jsonBuffer.toString().trim();
-                    if (remaining.endsWith("}")) {
+                    if (remaining.endsWith(ModelConst.LLM_RESPONSE_END_MARKER.trim())) {
                         return Mono.just(remaining);
                     } else {
-                        log.warn("split json string detected: {}", remaining);
+                        log.warn("Split json string detected: {}", remaining);
                     }
                     return Mono.empty();
                 }))

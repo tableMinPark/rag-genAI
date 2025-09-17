@@ -3,7 +3,9 @@ package com.genai.client.request;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.ToString;
 
+@ToString
 @Getter
 @AllArgsConstructor
 public class AnswerRequest {
@@ -45,7 +47,7 @@ public class AnswerRequest {
         this.userInput = userInput;
         this.temperature = 0.01;
         this.topP = 0.9;
-        this.maxTokens = 32768;
+        this.maxTokens = 4096;
         this.multiTurn = false;
         this.stream = stream;
         this.context = context;

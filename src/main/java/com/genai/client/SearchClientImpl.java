@@ -3,8 +3,9 @@ package com.genai.client;
 import com.genai.client.request.KeywordSearchRequest;
 import com.genai.client.request.VectorSearchRequest;
 import com.genai.client.response.SearchResponse;
-import com.genai.entity.CollectionType;
+import com.genai.enums.CollectionType;
 import com.genai.entity.LawEntity;
+import com.genai.exception.SearchErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,7 +47,7 @@ public class SearchClientImpl implements SearchClient {
                 .block();
 
         if (responseBody == null) {
-            throw new RuntimeException();
+            throw new SearchErrorException("키워드/법령");
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getDocument().forEach(document ->
@@ -82,7 +83,7 @@ public class SearchClientImpl implements SearchClient {
                 .block();
 
         if (responseBody == null) {
-            throw new RuntimeException();
+            throw new SearchErrorException("벡터/법령");
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getDocument().forEach(document ->

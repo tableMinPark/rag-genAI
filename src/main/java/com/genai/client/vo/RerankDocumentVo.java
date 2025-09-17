@@ -1,7 +1,9 @@
 package com.genai.client.vo;
 
 import lombok.Getter;
+import lombok.ToString;
 
+@ToString
 @Getter
 public class RerankDocumentVo<T> extends DocumentVo<T> {
 
