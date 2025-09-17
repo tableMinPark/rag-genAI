@@ -38,6 +38,8 @@ const sendQuery = async () => {
     else if (!sendBtnEnable) return;
     else disableInput();
 
+    console.log(`📡 질의 요청 : ${userInput.value}`);
+
     fetch(`/${SERVICE_NAME}/chat`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
@@ -64,6 +66,14 @@ const sendQuery = async () => {
 window.onload = () => {
     eventSource = new EventSource(`/${SERVICE_NAME}/stream/${TAB_ID}`);
 
+    eventSource.addEventListener("open", () => {
+        console.log("📡 SSE 연결 열림");
+    });
+
+    eventSource.addEventListener("error", (event) => {
+        console.log(`❌ 에러 또는 연결 끊김 발생: ${event.type}`);
+    });
+
     // 질의 SSE 수신 이벤트
     eventSource.addEventListener(QUERY_EVENT_NAME, (event) => {
         const msgDiv = document.createElement("div");
@@ -76,6 +86,7 @@ window.onload = () => {
     // 답변 SSE 수신 이벤트
     eventSource.addEventListener(ANSWER_EVENT_NAME, (event) => {
         if (event.data === ANSWER_START_PREFIX) {
+            console.log("📋 답변 시작");
             currentLlmMsg = document.createElement("div");
             currentLlmMsg.className = "message answer";
             content.appendChild(currentLlmMsg);
@@ -83,6 +94,7 @@ window.onload = () => {
             return;
         }
         if (event.data === ANSWER_END_PREFIX) {
+            console.log("❌ 답변 끝");
             currentLlmMsg = null;
             enableInput();
             return;

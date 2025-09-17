@@ -37,7 +37,7 @@ public class AibotController {
         String sessionId = session.getId();
         String emitterKey = String.format("/%s/%s/%s", SERVICE_NAME, sessionId, tabId);
 
-        log.info("사용자 세션 요청({}/{})", sessionId, tabId);
+        log.info("사용자 스트림 요청({}/{})", sessionId, tabId);
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(emitterKey, emitter);
@@ -50,7 +50,7 @@ public class AibotController {
     }
 
     /**
-     * 질의
+     * AI BOT 질의 요청
      *
      * @param chatAibotRequestDto 질의 정보
      * @param session             세션
@@ -84,7 +84,6 @@ public class AibotController {
                     } else {
                         emitter.send(SseEmitter.event().name(answerEventName).data(answer));
                     }
-
                 } catch (IOException e) {
                     emitter.completeWithError(e);
                 }
