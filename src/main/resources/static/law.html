@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rag Gen AI</title>
     <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/chat.css" />
 </head>
 <body>
 
 <div id="sidebar">
     <div class="sidebar-header">📡 Rag Gen AI</div>
-    <div id="home" class="sidebar-tab select" >홈</div>
-    <div id="law" class="sidebar-tab">법령</div>
+    <div id="home" class="sidebar-tab" >홈</div>
+    <div id="law" class="sidebar-tab select">법령</div>
     <div id="llm" class="sidebar-tab">LLM 테스트</div>
 </div>
 
@@ -21,8 +22,19 @@
         <span id="header-title">📡 테스트 페이지</span>
     </header>
 
-    <div id="content">HOME</div>
+    <div id="content"></div>
+
+    <div id="inputArea">
+        <label for="userInput"></label>
+        <input id="userInput" type="text" placeholder="질문을 입력하세요."/>
+        <button id="sendBtn">전송</button>
+    </div>
 </div>
+
 <script type="module" src="js/main.js"></script>
+<script type="module" src="js/law.js"></script>
+
+<script>
+</script>
 </body>
 </html>

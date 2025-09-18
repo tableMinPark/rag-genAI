@@ -2,7 +2,8 @@
 const sidebar    = document.getElementById('sidebar');
 const menuToggle = document.getElementById('menu-toggle');
 const homeTab = document.getElementById('home');
-const aiBotTab = document.getElementById('aiBot');
+const lawTab = document.getElementById('law');
+const llmTab = document.getElementById('llm');
 
 // 사이드 바 토글 버튼 클릭 이벤트
 menuToggle.addEventListener('click', () => {
@@ -14,7 +15,12 @@ homeTab.addEventListener('click', () => {
     location.href = '/';
 });
 
-// AIBOT 탭 클릭 이벤트
-aiBotTab.addEventListener('click', () => {
-    location.href = '/aibot.html';
+// LAW 탭 클릭 이벤트
+lawTab.addEventListener('click', () => {
+    location.href = '/law.html';
+});
+
+// LLM 탭 클릭 이벤트
+llmTab.addEventListener('click', () => {
+    location.href = '/llm.html';
 });
