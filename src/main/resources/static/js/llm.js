@@ -38,9 +38,18 @@ const enableInput = () => {
 
 // 질의 전송 요청
 const sendQuery = () => {
-    if (userInput.value.trim() === "") return;
-    if (contextInput.value.trim() === "") return;
-    if (promptInput.value.trim() === "") return;
+    if (userInput.value.trim() === "")  {
+        alert("유저 프롬프트 입력 필요!");
+        return;
+    }
+    if (contextInput.value.trim() === "") {
+        alert("컨텍스트 입력 필요!");
+        return;
+    }
+    if (promptInput.value.trim() === "")  {
+        alert("시스템 프롬프트 입력 필요!");
+        return;
+    }
     else if (!sendBtnEnable) return;
     else disableInput();
 
@@ -57,11 +66,7 @@ const sendQuery = () => {
         })
     })
         .then(response=> {
-            if (response.ok) {
-                userInput.value = "";
-                contextInput.value = "";
-                promptInput.value = "";
-            } else {
+            if (!response.ok) {
                 alert(`[${response.status}] 서버 통신 오류`);
                 enableInput();
             }
@@ -119,6 +124,13 @@ window.onload = () => {
 
     // 전송 버튼 클릭 이벤트
     sendBtn.addEventListener("click", (_) => sendQuery());
+
+    // 초기화 버튼 클릭 이벤트
+    resetBtn.addEventListener("click", () => {
+        userInput.value = "";
+        contextInput.value = "";
+        promptInput.value = "";
+    });
 
     // 질의문 입력 키 다운 이벤트
     userInput.addEventListener("keydown", (event) => {

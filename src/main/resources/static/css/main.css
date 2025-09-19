@@ -177,7 +177,7 @@ header {
     white-space: pre-line;
 }
 
-#sendBtn {
+.btn {
     background-color: #C64F4FFF;
     color: #fff;
     border: none;
@@ -186,6 +186,6 @@ header {
     cursor: pointer;
 }
 
-#sendBtn:hover {
+.btn:hover {
     background-color: #a54242ff;
 }

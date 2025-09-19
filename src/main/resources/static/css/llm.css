@@ -62,6 +62,10 @@
     resize: none;
 }
 
-#sendBtn {
+.btn {
     min-height: 40px;
+}
+
+#sendBtn {
+    margin-bottom: 10px;
 }
