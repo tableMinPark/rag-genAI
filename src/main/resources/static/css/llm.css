@@ -32,6 +32,11 @@
     box-sizing: border-box;
 }
 
+#userInputLabel, #contextInputLabel, #promptInputLabel {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
 #userInput {
     padding: 10px;
     border: 1px solid #ddd;
@@ -39,17 +44,12 @@
     outline: none;
 }
 
-#userInput:disabled {
-    background-color: #c3c3c3;
-}
-
-#userInputLabel, #contextInputLabel, #promptInputLabel {
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
 #userInput, #contextInput, #promptInput {
     margin-bottom: 20px;
+}
+
+#userInput:disabled, #contextInput:disabled, #promptInput:disabled {
+    background-color: #c3c3c3;
 }
 
 #contextInput, #promptInput {
