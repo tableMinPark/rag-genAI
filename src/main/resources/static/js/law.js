@@ -12,28 +12,30 @@ const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
 const userInput    = document.getElementById("userInput");
 
-let sendBtnEnable = true;
+let btnEnable = true;
 let currentLlmMsg = null;
 let eventSource = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
-    sendBtnEnable = false;
+    btnEnable = false;
     sendBtn.hidden = true;
     userInput.disabled = true;
 };
 
 // 입력 단 활성화
 const enableInput = () => {
-    sendBtnEnable = true;
+    btnEnable = true;
     sendBtn.hidden = false;
     userInput.disabled = false;
 };
 
 // 질의 전송 요청
 const sendQuery = () => {
-    if (userInput.value.trim() === "") return;
-    else if (!sendBtnEnable) return;
+    if (userInput.value.trim() === "") {
+        alert("유저 프롬프트 입력 필요!");
+        return;
+    } else if (!btnEnable) return;
     else disableInput();
 
     console.log(`📡 질의 요청 : ${userInput.value}`);
@@ -46,18 +48,23 @@ const sendQuery = () => {
             query: userInput.value,
         })
     })
-        .then(response=> {
-            if (response.ok) {
-                userInput.value = "";
-            } else {
-                alert(`[${response.status}] 서버 통신 오류`);
-                enableInput();
-            }
-        })
-        .catch(reason => {
-            alert(reason);
+    .then(response => {
+        if (response.status === 200) {
+            response.json().then(body => console.log(`📡 ${body.message}`));
+            userInput.value = "";
+        } else if (response.status === 202) {
+            response.json().then(body => console.error(`❌ ${body.message}`));
+            alert(`새로 고침 필요`);
             enableInput();
-        });
+        }  else {
+            alert(`서버 통신 오류`);
+            enableInput();
+        }
+    })
+    .catch(reason => {
+        console.error(reason);
+        enableInput();
+    });
 };
 
 // 첫 화면

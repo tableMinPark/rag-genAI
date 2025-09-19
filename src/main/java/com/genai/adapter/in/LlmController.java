@@ -8,6 +8,7 @@ import com.genai.constant.ChatConst;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -73,9 +74,9 @@ public class LlmController {
         String context = llmChatRequestDto.getContext();
         String promptContext = llmChatRequestDto.getPrompt();
 
-        log.info("LLM 테스트 질문 요청({} | {}) | {}\n{}\n{}", sessionId, tabId, query, context, promptContext);
-
         if (emitter != null) {
+            log.info("LLM 테스트 질문 요청({} | {}) | {}\n{}\n{}", sessionId, tabId, query, context, promptContext);
+
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
                 emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_START_PREFIX));
@@ -110,7 +111,9 @@ public class LlmController {
                                     .build())
                             .build());
         } else {
-            return ResponseEntity.badRequest()
+            log.error("LLM 테스트 스트림 없음({} | {})", sessionId, tabId);
+
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(ResponseDto.<ChatResponseDto>builder()
                             .status("ERROR")
                             .message("답변 스트림이 열리지 않음")

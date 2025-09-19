@@ -10,14 +10,14 @@ const ANSWER_END_PREFIX   = "[ANSWER_END]";
 
 const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
-const resetBtn      = document.getElementById("resetBtn");
+const resetBtn     = document.getElementById("resetBtn");
 const userInput    = document.getElementById("userInput");
-const contextInput    = document.getElementById("contextInput");
-const promptInput    = document.getElementById("promptInput");
+const contextInput = document.getElementById("contextInput");
+const promptInput  = document.getElementById("promptInput");
 
 let btnEnable = true;
 let currentLlmMsg = null;
-let eventSource = null;
+let eventSource   = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
@@ -39,21 +39,18 @@ const enableInput = () => {
     promptInput.disabled = false;
 };
 
-// 질의 전송 요청
+// 질의 전송
 const sendQuery = () => {
-    if (userInput.value.trim() === "")  {
+    if (userInput.value.trim() === "") {
         alert("유저 프롬프트 입력 필요!");
         return;
-    }
-    if (contextInput.value.trim() === "") {
+    } else if (contextInput.value.trim() === "") {
         alert("컨텍스트 입력 필요!");
         return;
-    }
-    if (promptInput.value.trim() === "")  {
+    } else if (promptInput.value.trim() === "") {
         alert("시스템 프롬프트 입력 필요!");
         return;
-    }
-    else if (!btnEnable) return;
+    } else if (!btnEnable) return;
     else disableInput();
 
     console.log(`📡 질의 요청 : ${userInput.value}`);
@@ -68,16 +65,22 @@ const sendQuery = () => {
             prompt: promptInput.value,
         })
     })
-        .then(response=> {
-            if (!response.ok) {
-                alert(`[${response.status}] 서버 통신 오류`);
-                enableInput();
-            }
-        })
-        .catch(reason => {
-            alert(reason);
+    .then(response => {
+        if (response.status === 200) {
+            response.json().then(body => console.log(`📡 ${body.message}`));
+        } else if (response.status === 202) {
+            response.json().then(body => console.error(`❌ ${body.message}`));
+            alert(`새로 고침 필요`);
             enableInput();
-        });
+        }  else {
+            alert(`서버 통신 오류`);
+            enableInput();
+        }
+    })
+    .catch(reason => {
+        console.error(reason);
+        enableInput();
+    });
 };
 
 // 첫 화면
