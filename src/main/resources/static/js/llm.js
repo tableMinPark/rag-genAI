@@ -10,18 +10,20 @@ const ANSWER_END_PREFIX   = "[ANSWER_END]";
 
 const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
+const resetBtn      = document.getElementById("resetBtn");
 const userInput    = document.getElementById("userInput");
 const contextInput    = document.getElementById("contextInput");
 const promptInput    = document.getElementById("promptInput");
 
-let sendBtnEnable = true;
+let btnEnable = true;
 let currentLlmMsg = null;
 let eventSource = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
-    sendBtnEnable = false;
+    btnEnable = false;
     sendBtn.hidden = true;
+    resetBtn.hidden = true
     userInput.disabled = true;
     contextInput.disabled = true;
     promptInput.disabled = true;
@@ -29,8 +31,9 @@ const disableInput = () => {
 
 // 입력 단 활성화
 const enableInput = () => {
-    sendBtnEnable = true;
+    btnEnable = true;
     sendBtn.hidden = false;
+    resetBtn.hidden = false
     userInput.disabled = false;
     contextInput.disabled = false;
     promptInput.disabled = false;
@@ -50,7 +53,7 @@ const sendQuery = () => {
         alert("시스템 프롬프트 입력 필요!");
         return;
     }
-    else if (!sendBtnEnable) return;
+    else if (!btnEnable) return;
     else disableInput();
 
     console.log(`📡 질의 요청 : ${userInput.value}`);
