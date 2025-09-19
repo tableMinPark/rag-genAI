@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class ChatResponseDto {
 
-    private String query;
+    private String sessionId;
 
-    private String tabId;
+    private String query;
 }

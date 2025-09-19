@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class LlmChatRequestDto {
 
-    private String tabId;
+    private String sessionId;
 
     private String query;
 

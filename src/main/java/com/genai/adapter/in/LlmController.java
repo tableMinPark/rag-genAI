@@ -31,20 +31,24 @@ public class LlmController {
     /**
      * Emitter 조회
      *
-     * @param tabId   탭 식별자
-     * @param session 세션
+     * @param sessionId 세션 ID
      * @return SSE Emitter
      */
-    @GetMapping("/stream/{tabId}")
-    public SseEmitter stream(@PathVariable String tabId, HttpSession session) {
+    @GetMapping("/stream/{sessionId}")
+    public SseEmitter stream(@PathVariable String sessionId) {
 
-        String sessionId = session.getId();
-        String emitterKey = String.format("/%s/%s/%s", SERVICE_NAME, sessionId, tabId);
+        String emitterKey = String.format("/%s/%s", SERVICE_NAME, sessionId);
 
-        log.info("LLM 테스트 스트림 요청({} | {})", sessionId, tabId);
+        log.info("LLM 테스트 스트림 요청({})", sessionId);
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(emitterKey, emitter);
+        try {
+            // 연결 확인 코멘트 전송
+            emitter.send(SseEmitter.event().comment(sessionId));
+        } catch (Exception e) {
+            emitter.completeWithError(e);
+        }
 
         // 세션 만료 또는 연결 끊김 처리
         emitter.onCompletion(() -> emitters.remove(emitterKey));
@@ -57,25 +61,23 @@ public class LlmController {
      * LLM 테스트 질의 요청
      *
      * @param llmChatRequestDto 질의 정보
-     * @param session           세션
      */
     @PostMapping("/chat")
-    public ResponseEntity<ResponseDto<ChatResponseDto>> lawChat(@RequestBody LlmChatRequestDto llmChatRequestDto, HttpSession session) {
+    public ResponseEntity<ResponseDto<ChatResponseDto>> lawChat(@RequestBody LlmChatRequestDto llmChatRequestDto) {
 
-        String sessionId = session.getId();
-        String tabId = llmChatRequestDto.getTabId();
-        String emitterKey = String.format("/%s/%s/%s", SERVICE_NAME, sessionId, tabId);
+        String sessionId = llmChatRequestDto.getSessionId();
+        String emitterKey = String.format("/%s/%s", SERVICE_NAME, sessionId);
         SseEmitter emitter = emitters.get(emitterKey);
 
-        String queryEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.QUERY_EVENT_NAME, llmChatRequestDto.getTabId());
-        String answerEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.ANSWER_EVENT_NAME, llmChatRequestDto.getTabId());
+        String queryEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.QUERY_EVENT_NAME, sessionId);
+        String answerEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.ANSWER_EVENT_NAME, sessionId);
 
         String query = llmChatRequestDto.getQuery();
         String context = llmChatRequestDto.getContext();
         String promptContext = llmChatRequestDto.getPrompt();
 
         if (emitter != null) {
-            log.info("LLM 테스트 질문 요청({} | {}) | {}\n{}\n{}", sessionId, tabId, query, context, promptContext);
+            log.info("LLM 테스트 질문 요청({}) | {}\n{}\n{}", sessionId, query, context, promptContext);
 
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
@@ -107,11 +109,11 @@ public class LlmController {
                             .message("LLM 테스트 질의 요청 성공")
                             .data(ChatResponseDto.builder()
                                     .query(query)
-                                    .tabId(tabId)
+                                    .sessionId(sessionId)
                                     .build())
                             .build());
         } else {
-            log.error("LLM 테스트 스트림 없음({} | {})", sessionId, tabId);
+            log.error("LLM 테스트 스트림 없음({})", sessionId);
 
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(ResponseDto.<ChatResponseDto>builder()
@@ -119,7 +121,7 @@ public class LlmController {
                             .message("답변 스트림이 열리지 않음")
                             .data(ChatResponseDto.builder()
                                     .query(query)
-                                    .tabId(tabId)
+                                    .sessionId(sessionId)
                                     .build())
                             .build());
         }

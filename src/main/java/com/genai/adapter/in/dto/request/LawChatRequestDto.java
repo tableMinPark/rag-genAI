@@ -9,7 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 public class LawChatRequestDto {
 
-    private String tabId;
+    private String sessionId;
 
     private String query;
 }
