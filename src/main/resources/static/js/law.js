@@ -1,6 +1,6 @@
 import {randomUUID, replaceToHtmlTag} from './util.js'
 
-const GREETING_MESSAGE    = "안녕하세요. AI BOT 입니다.\n질의를 작성해주시면 법령에 대한 문서를 기반으로 답변 드리겠습니다."
+const GREETING_MESSAGE    = "안녕하세요. LAW AI BOT 입니다.\n질의를 작성해주시면 법령에 대한 문서를 기반으로 답변 드리겠습니다.\n(시스템 프롬프트 튜닝 전이라, 답변 형식이 비정상적일 수 있습니다.)"
 const SERVICE_NAME        = "law"
 const TAB_ID              = randomUUID();
 const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${TAB_ID}`;
@@ -131,6 +131,6 @@ window.onload = () => {
             if (index >= GREETING_MESSAGE.length) {
                 clearInterval(interval);
             }
-        }, 30);
+        }, 10);
     }
 }

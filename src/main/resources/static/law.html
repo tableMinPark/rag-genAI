@@ -6,20 +6,25 @@
     <title>Rag Gen AI</title>
     <link rel="stylesheet" href="css/main.css" />
     <link rel="stylesheet" href="css/chat.css" />
+    <link rel="stylesheet" href="css/law.css" />
 </head>
 <body>
 
 <div id="sidebar">
-    <div class="sidebar-header">📡 Rag Gen AI</div>
-    <div id="home" class="sidebar-tab" >홈</div>
-    <div id="law" class="sidebar-tab select">법령</div>
-    <div id="llm" class="sidebar-tab">LLM 테스트</div>
+    <div class="sidebar-header">
+        <img src="img/logo.png"  alt="logo"/>
+        <span class="sidebar-username">테스트 사용자</span>
+    </div>
+    <div id="home" class="sidebar-tab" >🏠 <span>홈</span></div>
+    <div id="law" class="sidebar-tab select">📜 <span>법령</span></div>
+    <div id="myai" class="sidebar-tab">💻 <span>나만의 AI</span></div>
+    <div id="llm" class="sidebar-tab">🤖 <span>LLM 테스트</span></div>
 </div>
 
 <div id="container">
     <header>
-        <span id="menu-toggle">☰</span>
-        <span id="header-title">📡 테스트 페이지</span>
+        <span id="sidebar-toggle">☰</span>
+        <span id="header-title">📡 Rag Gen AI</span>
     </header>
 
     <div id="content"></div>

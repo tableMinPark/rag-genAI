@@ -23,54 +23,11 @@
     white-space: pre-line;
 }
 
-#inputArea {
-    display: flex;
-    background-color: #fff;
-    border-top: 1px solid #ddd;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.inputBox {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background-color: #fff;
-    box-sizing: border-box;
-}
-
-#userInputLabel, #contextInputLabel, #promptInputLabel {
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-#contextInputLabel, #promptInputLabel {
-    margin-top: 10px;
-}
-
-#userInput, #contextInput, #promptInput {
-    flex: 1;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 20px;
-    outline: none;
-}
-
-#contextInput, #promptInput {
-    min-height: 250px;
-    resize: none;
-}
-
-#userInput:disabled {
-    background-color: #c3c3c3;
-}
-
 #sendBtn {
     background-color: #C64F4FFF;
     color: #fff;
     border: none;
     border-radius: 20px;
-    margin-left: 10px;
     padding: 0 20px;
     cursor: pointer;
 }

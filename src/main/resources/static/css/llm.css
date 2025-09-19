@@ -1,0 +1,67 @@
+#mainArea {
+    display: flex;
+    flex-direction: row; /* 좌우 배치 */
+    gap: 10px;          /* 간격 */
+    height: calc(100vh - 60px); /* header 높이 뺀 영역 */
+}
+
+#content {
+    flex: 2;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+#inputArea {
+    flex: 1.4; /* 좁게 */
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    background-color: #fff;
+    border-top: 1px solid #ddd;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.inputBox {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff;
+    box-sizing: border-box;
+}
+
+#userInput {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    outline: none;
+}
+
+#userInput:disabled {
+    background-color: #c3c3c3;
+}
+
+#userInputLabel, #contextInputLabel, #promptInputLabel {
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+#userInput, #contextInput, #promptInput {
+    margin-bottom: 20px;
+}
+
+#contextInput, #promptInput {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    outline: none;
+    min-height: 100px;
+    resize: none;
+}
+
+#sendBtn {
+    min-height: 40px;
+}

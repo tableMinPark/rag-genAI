@@ -10,7 +10,7 @@ body {
 
 /* --- 사이드바 스타일 시작 --- */
 #sidebar {
-    width: 250px;
+    width: 220px;
     background-color: #f8f9fa;
     border-right: 1px solid #ddd;
     padding: 20px;
@@ -20,13 +20,29 @@ body {
 }
 
 #sidebar.hidden {
-    margin-left: -250px;
+    margin-left: -220px;
 }
 
 .sidebar-header {
-    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.sidebar-header img {
+    width: 40px;   /* 아이콘 크기 */
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.sidebar-username {
+    flex: 1;
+    font-size: 15px;
     font-weight: bold;
-    margin-bottom: 40px;
+    color: #333;
+    white-space: nowrap;
 }
 
 .sidebar-tab {
@@ -35,7 +51,7 @@ body {
     cursor: pointer;
     font-weight: bold;
     background-color: #e9ecef;
-    text-align: center;
+    text-align: start;
     margin-bottom: 20px;
 }
 
@@ -60,7 +76,7 @@ header {
     align-items: center;
 }
 
-#menu-toggle {
+#sidebar-toggle {
     font-size: 24px;
     cursor: pointer;
     margin-right: 15px;
@@ -90,4 +106,46 @@ header {
     padding: 10px;
     display: flex;
     flex-direction: column;
+}
+
+.menu-container {
+    display: flex;
+    justify-content: center;   /* 가로 가운데 */
+    align-items: center;       /* 세로 가운데 */
+    gap: 20px;                 /* 버튼 간격 */
+    height: 100%;
+    flex-wrap: wrap;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    width: 160px;
+    height: 160px;
+    border-radius: 20px;
+    border: 1px solid #ddd;      /* 기존 스타일과 통일 */
+    background-color: #fff;      /* 흰색 카드 */
+    color: #333;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05); /* 은은한 그림자 */
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+}
+
+.menu-card span {
+    margin-top: 10px;
+}
+
+/* Hover 효과 */
+.menu-card:hover {
+    transform: translateY(-5px);
+    border: 1px solid #aaa; /* hover 시 살짝 강조 */
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
 }

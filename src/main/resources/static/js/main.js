@@ -1,12 +1,18 @@
 
 const sidebar    = document.getElementById('sidebar');
-const menuToggle = document.getElementById('menu-toggle');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+
 const homeTab = document.getElementById('home');
 const lawTab = document.getElementById('law');
+const myaiTab = document.getElementById('myai');
 const llmTab = document.getElementById('llm');
 
+const lawMenu = document.getElementById('menu-law');
+const myaiMenu = document.getElementById('menu-myai');
+const llmMenu = document.getElementById('menu-llm');
+
 // 사이드 바 토글 버튼 클릭 이벤트
-menuToggle.addEventListener('click', () => {
+sidebarToggle.addEventListener('click', () => {
     sidebar.classList.toggle('hidden');
 });
 
@@ -20,7 +26,27 @@ lawTab.addEventListener('click', () => {
     location.href = '/law.html';
 });
 
+// MYAI 탭 클릭 이벤트
+myaiTab.addEventListener('click', () => {
+    alert('개발 진행중!')
+});
+
 // LLM 탭 클릭 이벤트
 llmTab.addEventListener('click', () => {
     location.href = '/llm.html';
+});
+
+// LAW 메뉴 클릭 이벤트
+lawMenu.addEventListener('click', () => {
+    location.href = '/law.html'
+});
+
+// MYAI 메뉴 클릭 이벤트
+myaiMenu.addEventListener('click', () => {
+    alert('개발 진행중!')
+});
+
+// LLM 메뉴 클릭 이벤트
+llmMenu.addEventListener('click', () => {
+    location.href = '/llm.html'
 });
