@@ -158,6 +158,8 @@ public class ModelPortAdapter implements ModelPort {
                 .context(context)
                 .build();
 
+        log.info("\n[ LLM Request ]\n{}", requestBody);
+
         StringBuffer jsonBuffer = new StringBuffer();
 
         return webClient.post()

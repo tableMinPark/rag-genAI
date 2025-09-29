@@ -1,9 +1,8 @@
 package com.genai.application.service;
 
-import com.genai.application.domain.Document;
-import com.genai.application.domain.Law;
-import com.genai.application.domain.Prompt;
-import com.genai.application.domain.RerankDocument;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.genai.application.domain.*;
 import com.genai.application.port.ModelPort;
 import com.genai.application.port.PromptPort;
 import com.genai.application.port.SearchPort;
@@ -13,7 +12,9 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,8 @@ public class ChatService {
     private final ModelPort modelPort;
 
     private final PromptPort promptPort;
+
+    private final ObjectMapper objectMapper;
 
     /**
      * 법령 질의
@@ -37,24 +40,48 @@ public class ChatService {
         Prompt prompt = promptPort.getPrompt("PROM-001");
 
         // 검색 결과 목록
-        List<Document<Law>> documents = new ArrayList<>();
+        Map<String, Document<Law>> documentMap = new HashMap<>();
 
         // 키워드 검색
-        documents.addAll(searchPort.lawKeywordSearch(query, SearchConst.KEYWORD_TOP_K, sessionId));
+        searchPort.lawKeywordSearch(query, SearchConst.KEYWORD_TOP_K, sessionId)
+                .forEach(lawDocument -> documentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
         // 벡터 검색
-        documents.addAll(searchPort.lawVectorSearch(query, SearchConst.VECTOR_TOP_K));
+        searchPort.lawVectorSearch(query, SearchConst.VECTOR_TOP_K)
+                .forEach(lawDocument -> documentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
         // 키워드 검색 결과, 벡터 검색 결과 리랭킹
-        List<RerankDocument<Law>> rerank = modelPort.lawRerank(query, documents);
+        List<RerankDocument<Law>> rerankDocuments = modelPort.lawRerank(query, documentMap.values().stream().toList()).stream()
+                .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
+                .toList();
 
         // Context 생성
         StringBuilder contextBuilder = new StringBuilder();
-        rerank.stream()
-                .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
-                .forEach(document -> contextBuilder.append(document.getFields().getContext()).append("\n"));
+        List<Context> contexts = new ArrayList<>();
+        for (RerankDocument<Law> rerankDocument : rerankDocuments) {
+            Context context = Context.builder()
+                    .title(rerankDocument.getFields().getTitle())
+                    .subTitle(rerankDocument.getFields().getSubTitle())
+                    .thirdTitle(rerankDocument.getFields().getThirdTitle())
+                    .content(rerankDocument.getFields().getContent())
+                    .subContent(rerankDocument.getFields().getSubContent())
+                    .build();
 
-        return modelPort.generateStreamAnswer(query, contextBuilder.toString().trim(), sessionId, prompt)
+            contexts.add(context);
+            contextBuilder.append(rerankDocument.getFields().getContext());
+        }
+
+        // 상위 RERANK_TOP_K 개 추출
+        contexts = contexts.subList(0, Math.min(SearchConst.RERANK_TOP_K, contexts.size()));
+
+        String contextJson;
+        try {
+            contextJson = objectMapper.writeValueAsString(contexts);
+        } catch (JsonProcessingException e) {
+            contextJson = contextBuilder.toString();
+        }
+
+        return modelPort.generateStreamAnswer(query, contextJson.trim(), sessionId, prompt)
                 .map(answers -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answers.forEach(answer -> answerBuilder.append(answer.getContent()));
