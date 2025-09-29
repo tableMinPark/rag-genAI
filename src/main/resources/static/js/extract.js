@@ -3,12 +3,13 @@ import {replaceToHtmlTag} from './util.js'
 const GREETING_MESSAGE    = "안녕하세요. EXTRACT BOT 입니다.\n한글 문서를 업로드 하시면, 문서를 기반으로 표 데이터를 마크다운으로 추출해드리겠습니다."
 const SERVICE_NAME        = "extract"
 
-const content      = document.getElementById("content");
-const sendBtn      = document.getElementById("sendBtn");
-const resetBtn     = document.getElementById("resetBtn");
-const dropZone     = document.getElementById("dropZone");
-const fileInput    = document.getElementById("fileInput");
-const uploadFile   = document.getElementById("uploadFile");
+const content         = document.getElementById("content");
+const sendMarkDownBtn = document.getElementById("sendMarkDownBtn");
+const sendHtmlBtn     = document.getElementById("sendHtmlBtn");
+const resetBtn        = document.getElementById("resetBtn");
+const dropZone        = document.getElementById("dropZone");
+const fileInput       = document.getElementById("fileInput");
+const uploadFile      = document.getElementById("uploadFile");
 
 let btnEnable    = true;
 let currentUploadFile= null;
@@ -16,7 +17,8 @@ let currentUploadFile= null;
 // 입력 단 비 활성화
 const disableInput = () => {
     btnEnable = false;
-    sendBtn.hidden = true;
+    sendMarkDownBtn.hidden = true;
+    sendHtmlBtn.hidden = true;
     resetBtn.hidden = true
     fileInput.disabled = true;
 };
@@ -24,7 +26,8 @@ const disableInput = () => {
 // 입력 단 활성화
 const enableInput = () => {
     btnEnable = true;
-    sendBtn.hidden = false;
+    sendMarkDownBtn.hidden = false;
+    sendHtmlBtn.hidden = false;
     resetBtn.hidden = false
     fileInput.disabled = false;
 };
@@ -40,27 +43,24 @@ function handleFiles(files) {
 }
 
 // 질의 전송
-const sendExtract = () => {
+const sendExtract = (extractType) => {
     if (!currentUploadFile) {
         alert("파일 선택 필요!");
         return;
     } else if (!btnEnable) return;
     else disableInput();
 
-    sendExtractApi()
+    sendExtractApi(extractType)
 };
 
-const sendExtractApi = () => {
+const sendExtractApi = (extractType) => {
     const fileName = currentUploadFile.name;
     console.log(`📡 추출 요청 : ${fileName}`);
 
-    // 실제 업로드 로직 (예시: 서버 전송)
-    const formData = new FormData();
-    formData.append("uploadFile", currentUploadFile);
-
     const msgDiv = document.createElement("div");
     msgDiv.className = "message query";
-    msgDiv.textContent = `${fileName} 추출`;
+    msgDiv.innerHTML += `<div>추출 문서: ${fileName}</div>`;
+    msgDiv.innerHTML += `<div>추출 방식: ${extractType}</div>`;
     content.appendChild(msgDiv);
     content.scrollTop = content.scrollHeight;
 
@@ -68,6 +68,13 @@ const sendExtractApi = () => {
     processMsg.className = "message answer";
     processMsg.innerHTML += `<div>${fileName} 데이터 추출중</div>`;
     content.appendChild(processMsg);
+
+    // 실제 업로드 로직
+    const formData = new FormData();
+    formData.append("uploadFile", currentUploadFile);
+    formData.append("requestDto", JSON.stringify({
+        extractType: extractType,
+    }));
 
     fetch(`http://127.0.0.1:8000/${SERVICE_NAME}`, {
         method: "POST",
@@ -80,7 +87,7 @@ const sendExtractApi = () => {
                     body.lines.forEach((line, index) => {
                         const extractMsg = document.createElement("div");
                         extractMsg.className = "message answer";
-                        extractMsg.innerHTML += `<div class="nodrag noselect" draggable="false"><strong>${fileName}-${index}</strong></div>`;
+                        extractMsg.innerHTML += `<div class="nodrag noselect" draggable="false"><strong>[${index}] >> ${fileName}</strong></div>`;
                         extractMsg.innerHTML += `<div>${line.content.replace("<table>", "<table border=\"1\">")}</div>`;
                         content.appendChild(extractMsg);
                     })
@@ -106,7 +113,8 @@ const sendExtractApi = () => {
 // 첫 화면
 window.onload = () => {
     // 전송 버튼 클릭 이벤트
-    sendBtn.addEventListener("click", (_) => sendExtract());
+    sendMarkDownBtn.addEventListener("click", (_) => sendExtract("markdown"));
+    sendHtmlBtn.addEventListener("click", (_) => sendExtract("html"));
 
     // 초기화 버튼 클릭 이벤트
     resetBtn.addEventListener("click", () => {

@@ -52,7 +52,7 @@
     min-height: 40px;
 }
 
-#sendBtn {
+#sendMarkDownBtn, #sendHtmlBtn {
     margin-bottom: 10px;
 }
 
