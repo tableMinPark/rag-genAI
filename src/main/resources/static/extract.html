@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rag Gen AI</title>
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/extract.css" />
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="sidebar-header">
+        <img src="img/logo.png"  alt="logo"/>
+        <span class="sidebar-username">테스트 사용자</span>
+    </div>
+    <div id="home" class="sidebar-tab" >🏠 <span>홈</span></div>
+    <div id="law" class="sidebar-tab">📜 <span>법령</span></div>
+    <div id="myai" class="sidebar-tab">💻 <span>나만의 AI</span></div>
+    <div id="llm" class="sidebar-tab">🤖 <span>LLM 테스트</span></div>
+    <div id="extract" class="sidebar-tab select">📄 <span>문서 추출</span></div>
+</div>
+
+<div id="container">
+    <header>
+        <span id="sidebar-toggle">☰</span>
+        <span id="header-title">📡 Rag Gen AI</span>
+    </header>
+
+    <div id="mainArea">
+        <div id="inputArea">
+            <div class="inputBox">
+                <label id="fileInputLabel" for="fileInput">❓<span>파일 업로드</span></label>
+                <div id="dropZone" class="drop-zone">
+                    <p id="uploadFile">여기에 파일을 드래그하거나 클릭해서 업로드하세요.</p>
+                    <input id="fileInput" type="file" hidden />
+                </div>
+            </div>
+            <button id="sendBtn" class="btn">추출</button>
+            <button id="resetBtn" class="btn">초기화</button>
+        </div>
+        <div id="content"></div>
+    </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+<script type="module" src="js/extract.js"></script>
+
+<script>
+</script>
+</body>
+</html>

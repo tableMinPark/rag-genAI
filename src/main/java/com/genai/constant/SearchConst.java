@@ -4,7 +4,7 @@ public class SearchConst {
 
     public static final int     KEYWORD_TOP_K     = 3;
     public static final int     VECTOR_TOP_K      = 3;
-    public static final double  RERANK_SCORE_MIN  = 0.15;
+    public static final double  RERANK_SCORE_MIN  = 0.01;
 
     public static final int     SYNONYM_EXPANSION = 0;
     public static final int     USE_SYNONYM       = 0;

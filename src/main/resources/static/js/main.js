@@ -6,6 +6,7 @@ const homeTab = document.getElementById('home');
 const lawTab = document.getElementById('law');
 const myaiTab = document.getElementById('myai');
 const llmTab = document.getElementById('llm');
+const extractTab = document.getElementById('extract');
 
 // 사이드 바 토글 버튼 클릭 이벤트
 sidebarToggle.addEventListener('click', () => {
@@ -30,4 +31,9 @@ myaiTab.addEventListener('click', () => {
 // LLM 탭 클릭 이벤트
 llmTab.addEventListener('click', () => {
     location.href = '/llm.html';
+});
+
+// EXTRACT 탭 클릭 이벤트
+extractTab.addEventListener('click', () => {
+    location.href = '/extract.html';
 });
