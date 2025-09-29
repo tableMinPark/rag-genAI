@@ -6,6 +6,8 @@ import com.genai.application.domain.*;
 import com.genai.application.port.ModelPort;
 import com.genai.application.port.PromptPort;
 import com.genai.application.port.SearchPort;
+import com.genai.application.vo.QuestionLawVo;
+import com.genai.application.vo.ReferenceDocumentVo;
 import com.genai.constant.SearchConst;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,7 @@ public class ChatService {
      * @param query     질의문
      * @param sessionId 세션 식별자
      */
-    public Flux<String> questionLawUseCase(String query, String sessionId) {
+    public QuestionLawVo questionLawUseCase(String query, String sessionId) {
 
         // 프롬 프트 조회
         Prompt prompt = promptPort.getPrompt("PROM-001");
@@ -55,6 +57,9 @@ public class ChatService {
                 .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
                 .toList();
 
+        // 상위 RERANK_TOP_K 개 추출
+        rerankDocuments = rerankDocuments.subList(0, Math.min(SearchConst.RERANK_TOP_K, rerankDocuments.size()));
+
         // Context 생성
         StringBuilder contextBuilder = new StringBuilder();
         List<Context> contexts = new ArrayList<>();
@@ -71,9 +76,6 @@ public class ChatService {
             contextBuilder.append(rerankDocument.getFields().getContext());
         }
 
-        // 상위 RERANK_TOP_K 개 추출
-        contexts = contexts.subList(0, Math.min(SearchConst.RERANK_TOP_K, contexts.size()));
-
         String contextJson;
         try {
             contextJson = objectMapper.writeValueAsString(contexts);
@@ -81,12 +83,29 @@ public class ChatService {
             contextJson = contextBuilder.toString();
         }
 
-        return modelPort.generateStreamAnswer(query, contextJson.trim(), sessionId, prompt)
+        Flux<String> answerStream = modelPort.generateStreamAnswer(query, contextJson.trim(), sessionId, prompt)
                 .map(answers -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answers.forEach(answer -> answerBuilder.append(answer.getContent()));
                     return answerBuilder.toString();
                 });
+
+        return QuestionLawVo.builder()
+                .answerStream(answerStream)
+                .documents(rerankDocuments.stream()
+                        .map(rerankDocument -> ReferenceDocumentVo.builder()
+                                .title(rerankDocument.getFields().getTitle())
+                                .subTitle(rerankDocument.getFields().getSubTitle())
+                                .thirdTitle(rerankDocument.getFields().getThirdTitle())
+                                .content(rerankDocument.getFields().getContent())
+                                .subContent(rerankDocument.getFields().getSubContent())
+                                .filePath(rerankDocument.getFields().getFilePath())
+                                .url(rerankDocument.getFields().getUrl())
+                                .docType(rerankDocument.getFields().getDocType())
+                                .categoryCode(rerankDocument.getFields().getCategoryCode())
+                                .build())
+                        .toList())
+                .build();
     }
 
     /**

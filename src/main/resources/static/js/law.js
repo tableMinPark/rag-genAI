@@ -12,6 +12,7 @@ const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
 const userInput    = document.getElementById("userInput");
 
+let referenceDocuments= [];
 let btnEnable = true;
 let currentLlmMsg = null;
 
@@ -42,6 +43,23 @@ const sendQuery = () => {
 
     eventSource.addEventListener("error", (event) => {
         console.log(`❌ 에러 또는 연결 끊김 발생: ${event.type}`);
+
+        const references = document.createElement("div");
+        references.className = "references";
+
+        referenceDocuments.forEach((referenceDocument, index) => {
+            const refCard = document.createElement("div");
+            refCard.className = "ref-card"
+            refCard.innerHTML += `<h3>참고문서 # ${index + 1}</h3>`;
+            refCard.innerHTML += `<p>${referenceDocument.title}</p>`;
+            refCard.innerHTML += `<p>${referenceDocument.subTitle}</p>`;
+            refCard.innerHTML += `<p>${referenceDocument.thirdTitle}</p>`;
+            refCard.innerHTML += `<p>${referenceDocument.content}</p>`;
+            references.append(refCard);
+        });
+
+        currentLlmMsg.appendChild(references);
+        currentLlmMsg = null;
         eventSource.close();
         enableInput();
     });
@@ -71,7 +89,6 @@ const sendQuery = () => {
         }
         if (event.data === ANSWER_END_PREFIX) {
             console.log("❌ 답변 끝");
-            currentLlmMsg = null;
             return;
         }
         if (currentLlmMsg) {
@@ -95,7 +112,10 @@ const sendQueryApi = (query) => {
     })
         .then(response => {
             if (response.status === 200) {
-                response.json().then(body => console.log(`📡 ${body.message}`));
+                response.json().then(body => {
+                    console.log(`📡 ${body.message}`);
+                    referenceDocuments = body.data.documents;
+                });
                 userInput.value = "";
             } else if (response.status === 202) {
                 response.json().then(body => console.error(`❌ ${body.message}`));
@@ -119,7 +139,7 @@ window.onload = () => {
 
     // 질의문 입력 키 다운 이벤트
     userInput.addEventListener("keydown", (event) => {
-        if(event.key === 'Enter' && !event.isComposing) {
+        if (event.key === 'Enter' && !event.isComposing) {
             sendQuery();
         }
     });

@@ -4,6 +4,7 @@ import com.genai.adapter.in.dto.request.LawChatRequestDto;
 import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
 import com.genai.application.service.ChatService;
+import com.genai.application.vo.QuestionLawVo;
 import com.genai.constant.ChatConst;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -89,7 +90,9 @@ public class LawChatController {
                 emitter.completeWithError(e);
             }
 
-            chatService.questionLawUseCase(query, sessionId)
+            QuestionLawVo questionLawVo = chatService.questionLawUseCase(query, sessionId);
+
+            questionLawVo.getAnswerStream()
                     .subscribe(message -> {
                                 try {
                                     if (ChatConst.STREAM_OVER_PREFIX.equals(message)) {
@@ -113,6 +116,7 @@ public class LawChatController {
                             .data(ChatResponseDto.builder()
                                     .query(query)
                                     .sessionId(sessionId)
+                                    .documents(questionLawVo.getDocuments())
                                     .build())
                             .build());
         } else {

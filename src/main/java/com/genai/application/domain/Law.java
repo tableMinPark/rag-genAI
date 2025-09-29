@@ -19,6 +19,9 @@ public class Law {
     @JsonAlias("original_id")
     private String originalId;
 
+    @JsonAlias("name")
+    private String name;
+
     @JsonAlias("title")
     private String title;
 
@@ -48,6 +51,12 @@ public class Law {
 
     @JsonAlias("token_size")
     private Integer tokenSize;
+
+    @JsonAlias("url")
+    private String url;
+
+    @JsonAlias("file_path")
+    private String filePath;
 
     @JsonAlias("created_at")
     private String createdAt;

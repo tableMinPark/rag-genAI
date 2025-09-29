@@ -29,3 +29,28 @@
 .btn {
     margin-left: 10px;
 }
+
+.references {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+}
+
+.references h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ref-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.ref-card p {
+    margin: 4px 0;
+    font-size: 14px;
+}
