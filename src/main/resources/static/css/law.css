@@ -30,27 +30,84 @@
     margin-left: 10px;
 }
 
-.references {
+.recommendQuery {
     border-top: 1px solid #e5e7eb;
     padding-top: 12px;
 }
 
-.references h3 {
+.recommendQuery h3 {
     margin: 0 0 12px 0;
     font-size: 16px;
     font-weight: 600;
 }
 
-.ref-card {
+.recommendQueryCard {
     background: #f9fafb;
     border: 1px solid #e5e7eb;
     border-radius: 10px;
     padding: 12px 14px;
     margin-bottom: 12px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    cursor: pointer;
 }
 
-.ref-card p {
+.recommendQueryCard p {
     margin: 4px 0;
     font-size: 14px;
 }
+
+.references {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+}
+
+.ref-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.ref-header {
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    font-size: 14px;
+    background: #f3f4f6;
+}
+
+.ref-header:hover {
+    background: #e5e7eb;
+}
+
+.ref-header-num {
+    flex: 0.1;
+}
+
+.ref-header-title {
+    flex: 0.9;
+}
+
+.ref-body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease-out, padding 0.25s ease-out;
+    padding: 0 14px;
+}
+
+.ref-body.open {
+    padding: 12px 14px;
+    max-height: 500px; /* 내용에 맞게 충분히 크게 */
+}
+
+.ref-body p {
+    margin: 6px 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+

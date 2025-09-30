@@ -7,6 +7,13 @@ const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
 const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
 const ANSWER_START_PREFIX = "[ANSWER_START]";
 const ANSWER_END_PREFIX   = "[ANSWER_END]";
+const RECOMMEND_QUERY     = [
+    "승선 근무 예비역의 경우 복무 기간이 상근 예비역과 동일해?",
+    "국가 유공자의 후손인 경우, 일반 현역으로 입대하는 사람들과 복무 기간의 차이가 있을까?",
+    "의약품에 대한 거짓 광고를 하는 경우 처벌이 어떻게 돼?",
+    "동물에 대한 의약품 관리 법령이 있어?",
+    "장기 요양 기관에서의 개인이 CCTV 열람이 가능해?",
+]
 
 const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
@@ -30,9 +37,15 @@ const enableInput = () => {
     userInput.disabled = false;
 };
 
+// 참고 문서 토글
+const toggleReferenceCard = (refHeader) => {
+    const body = refHeader.nextElementSibling;
+    body.classList.toggle('open');
+};
+
 // 질의 전송 요청
-const sendQuery = () => {
-    if (userInput.value.trim() === "") {
+const sendQuery = (query) => {
+    if (query.trim() === "") {
         alert("유저 프롬프트 입력 필요!");
         return;
     } else if (!btnEnable) return;
@@ -50,12 +63,23 @@ const sendQuery = () => {
         referenceDocuments.forEach((referenceDocument, index) => {
             const refCard = document.createElement("div");
             refCard.className = "ref-card"
-            refCard.innerHTML += `<h3>참고문서 # ${index + 1}</h3>`;
-            refCard.innerHTML += `<p>${referenceDocument.title}</p>`;
-            refCard.innerHTML += `<p>${referenceDocument.subTitle}</p>`;
-            refCard.innerHTML += `<p>${referenceDocument.thirdTitle}</p>`;
-            refCard.innerHTML += `<p>${referenceDocument.content}</p>`;
-            references.append(refCard);
+
+            const refHeader = document.createElement("div");
+            refHeader.className = "ref-header"
+            refHeader.onclick = () => toggleReferenceCard(refHeader);
+            refHeader.innerHTML += `<span class="ref-header-num">참고문서 #${index + 1}</span>`;
+            refHeader.innerHTML += `<span class="ref-header-title">${referenceDocument.title} ${referenceDocument.subTitle} ${referenceDocument.thirdTitle}</span>`;
+
+            const refBody = document.createElement("div");
+            refBody.className = "ref-body";
+            refBody.innerHTML += `<p>${referenceDocument.title}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.subTitle}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.thirdTitle}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.content}</p>`;
+
+            refCard.appendChild(refHeader);
+            refCard.appendChild(refBody);
+            references.appendChild(refCard);
         });
 
         currentLlmMsg.appendChild(references);
@@ -66,7 +90,7 @@ const sendQuery = () => {
 
     eventSource.addEventListener("open", () => {
         console.log("📡 SSE 연결 열림");
-        sendQueryApi(userInput.value);
+        sendQueryApi(query);
     });
 
     // 질의 SSE 수신 이벤트
@@ -135,12 +159,12 @@ const sendQueryApi = (query) => {
 // 첫 화면
 window.onload = () => {
     // 전송 버튼 클릭 이벤트
-    sendBtn.addEventListener("click", (_) => sendQuery());
+    sendBtn.addEventListener("click", (_) => sendQuery(userInput.value));
 
     // 질의문 입력 키 다운 이벤트
     userInput.addEventListener("keydown", (event) => {
         if (event.key === 'Enter' && !event.isComposing) {
-            sendQuery();
+            sendQuery(userInput.value);
         }
     });
 
@@ -158,6 +182,16 @@ window.onload = () => {
             content.scrollTop = content.scrollHeight;
             index++;
             if (index >= GREETING_MESSAGE.length) {
+                const recommendQuery = document.createElement("div");
+                recommendQuery.className = "recommendQuery";
+                RECOMMEND_QUERY.forEach(query => {
+                    const recommendQueryCard = document.createElement("div");
+                    recommendQueryCard.className = "recommendQueryCard"
+                    recommendQueryCard.onclick = () => sendQuery(query);
+                    recommendQueryCard.innerHTML += `<p><strong>Q.</strong>${query}</p>`;
+                    recommendQuery.append(recommendQueryCard);
+                });
+                greetingMsg.appendChild(recommendQuery);
                 clearInterval(interval);
             }
         }, 10);
