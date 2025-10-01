@@ -86,6 +86,7 @@ public class LlmController {
                 emitter.completeWithError(e);
             }
 
+            StringBuilder answerBuilder = new StringBuilder();
             chatService.questionUseCase(query, context, promptContext, sessionId)
                     .subscribe(message -> {
                                 try {
@@ -100,7 +101,10 @@ public class LlmController {
                                 }
                             },
                             emitter::completeWithError,
-                            emitter::complete
+                            () -> {
+                                log.info("LLM 테스트 답변 완료({}) | {} | {}", sessionId, query, answerBuilder);
+                                emitter.complete();
+                            }
                     );
 
             return ResponseEntity.ok()

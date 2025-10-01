@@ -1,7 +1,6 @@
 package com.genai.adapter.out.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
@@ -11,33 +10,43 @@ import lombok.ToString;
 public class AnswerRequest {
 
     @JsonProperty("prompt")
+    @ToString.Include(name = "prompt")
     private final String prompt;
 
     @JsonProperty("model_name")
+    @ToString.Include(name = "model_name")
     private final String modelName;
 
     @JsonProperty("user_id")
+    @ToString.Include(name = "user_id")
     private final String userId;
 
     @JsonProperty("user_input")
+    @ToString.Include(name = "user_input")
     private final String userInput;
 
     @JsonProperty("temperature")
+    @ToString.Include(name = "temperature")
     private final double temperature;
 
     @JsonProperty("top_p")
+    @ToString.Include(name = "top_p")
     private final double topP;
 
     @JsonProperty("max_tokens")
+    @ToString.Include(name = "max_tokens")
     private final int maxTokens;
 
     @JsonProperty("multi_turn")
+    @ToString.Include(name = "multi_turn")
     private final boolean multiTurn;
 
     @JsonProperty("stream")
+    @ToString.Include(name = "stream")
     private final boolean stream;
 
     @JsonProperty("context")
+    @ToString.Include(name = "context")
     private final String context;
 
     @Builder

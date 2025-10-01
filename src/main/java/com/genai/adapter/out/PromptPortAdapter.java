@@ -45,7 +45,7 @@ public class PromptPortAdapter implements PromptPort {
                                 ]
                               }
                             }
-                            """)
+                            """.replace("\n", " ").replaceAll("( {2,})+", " "))
                     .build();
             default -> throw new NotFoundException(promptCode + "을(를) 가진 프롬 프트를 찾을 수 없습니다.");
         };

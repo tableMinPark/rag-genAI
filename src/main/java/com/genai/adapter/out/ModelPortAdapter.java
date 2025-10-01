@@ -80,11 +80,11 @@ public class ModelPortAdapter implements ModelPort {
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getData().forEach(document ->
-                    builder.append(String.format("%.4f", document.getRerankScore()))
+                    builder.append(String.format("+ %.4f", document.getRerankScore()))
                             .append(" | ")
                             .append(document.getFields().getContext().replace("\n", "\\n"))
                             .append("\n"));
-            log.info("\n[ 리랭킹 결과 {} 개 ]\n{}", responseBody.getData().size(), builder.toString().trim());
+            log.info("##### 리랭킹 결과 {} 개 | {} #####\n{}", responseBody.getData().size(), query, builder.toString().trim());
         }
 
         return responseBody.getData();
@@ -158,7 +158,7 @@ public class ModelPortAdapter implements ModelPort {
                 .context(context)
                 .build();
 
-        log.info("\n[ LLM Request ]\n{}", requestBody);
+        log.info("LLM 답변 요청({}) | {}", sessionId, requestBody);
 
         StringBuffer jsonBuffer = new StringBuffer();
 

@@ -73,11 +73,11 @@ public class SearchPortAdapter implements SearchPort {
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getDocument().forEach(document ->
-                    builder.append(String.format("%.4f", document.getScore()))
+                    builder.append(String.format("+ %.4f", document.getScore()))
                             .append(" | ")
                             .append(document.getFields().getContext().replace("\n", "\\n"))
                             .append("\n"));
-            log.info("\n[ 키워드 검색 결과 {} 개 ]\n{}", responseBody.getDocument().size(), builder.toString().trim());
+            log.info("##### 키워드 검색 결과 {} 개 | {}\n{} #####", responseBody.getDocument().size(), query, builder.toString().trim());
         }
 
         return responseBody.getDocument();
@@ -117,11 +117,11 @@ public class SearchPortAdapter implements SearchPort {
         } else {
             StringBuilder builder = new StringBuilder();
             responseBody.getDocument().forEach(document ->
-                    builder.append(String.format("%.4f", document.getScore()))
+                    builder.append(String.format("+ %.4f", document.getScore()))
                             .append(" | ")
                             .append(document.getFields().getContext().replace("\n", "\\n"))
                             .append("\n"));
-            log.info("\n[ 벡터 검색 결과 {} 개 ]\n{}", responseBody.getDocument().size(), builder.toString().trim());
+            log.info("##### 벡터 검색 결과 {} 개 | {}\n{} #####", responseBody.getDocument().size(), query, builder.toString().trim());
         }
 
         return responseBody.getDocument();

@@ -9,7 +9,7 @@ import java.util.List;
 @AllArgsConstructor
 public enum CollectionType {
 
-    LAW("nhis_proto", "법령", List.of("title", "sub_title", "third_title", "content", "sub_content", "context"), List.of("context"), List.of("score"))
+    LAW("nhis_proto", "법령", List.of("title", "sub_title", "third_title", "content"), List.of("context"), List.of("score"))
     ;
 
     private final String collectionId;

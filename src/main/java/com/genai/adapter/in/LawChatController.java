@@ -92,6 +92,7 @@ public class LawChatController {
 
             QuestionLawVo questionLawVo = chatService.questionLawUseCase(query, sessionId);
 
+            StringBuilder answerBuilder = new StringBuilder();
             questionLawVo.getAnswerStream()
                     .subscribe(message -> {
                                 try {
@@ -99,6 +100,7 @@ public class LawChatController {
                                         emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_END_PREFIX));
                                         emitter.complete();
                                     } else {
+                                        answerBuilder.append(message);
                                         emitter.send(SseEmitter.event().name(answerEventName).data(message));
                                     }
                                 } catch (IOException e) {
@@ -106,7 +108,10 @@ public class LawChatController {
                                 }
                             },
                             emitter::completeWithError,
-                            emitter::complete
+                            () -> {
+                                log.info("법령 사용자 답변 완료({}) | {} | {}", sessionId, query, answerBuilder);
+                                emitter.complete();
+                            }
                     );
 
             return ResponseEntity.ok()
