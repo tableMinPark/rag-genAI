@@ -32,7 +32,8 @@
 
 .recommendQuery {
     border-top: 1px solid #e5e7eb;
-    padding-top: 12px;
+    padding-top: 20px;
+    margin-top: 20px;
 }
 
 .recommendQuery h3 {
@@ -58,7 +59,8 @@
 
 .references {
     border-top: 1px solid #e5e7eb;
-    padding-top: 12px;
+    padding-top: 20px;
+    margin-top: 20px;
 }
 
 .ref-card {

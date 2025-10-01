@@ -10,11 +10,11 @@ export const randomUUID = () => {
 };
 
 /**
- * 문자를 HTML 태그로 변환
+ * TODO: 문자를 HTML 태그로 변환
  * - 개행 => <br>
  * @param str 문자열
  * @returns {*} 변환 문자열
  */
 export const replaceToHtmlTag = (str) => {
-    return str.replaceAll("\\n", "<br>");
+    return str;
 };
