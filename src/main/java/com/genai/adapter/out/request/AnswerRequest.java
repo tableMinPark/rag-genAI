@@ -10,7 +10,7 @@ import lombok.ToString;
 @Getter
 public class AnswerRequest {
 
-    @JsonProperty("prmpt")
+    @JsonProperty("prompt")
     private final String prompt;
 
     @JsonProperty("model_name")
