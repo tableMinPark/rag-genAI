@@ -1,3 +1,5 @@
+import './markdown.js'
+
 /**
  * 랜덤 ID 생성
  * @returns {string}
@@ -10,11 +12,21 @@ export const randomUUID = () => {
 };
 
 /**
- * TODO: 문자를 HTML 태그로 변환
- * - 개행 => <br>
+ * SSE 이벤트 문자열 치환
+ */
+export const replaceEventDataToText = (eventData) => {
+    return eventData
+        .replaceAll("&nbsp", " ")
+        .replaceAll("\\n", "\n\n");
+}
+
+/**
+ * 마크 다운 문자를 HTML 태그로 변환
+ *
  * @param str 문자열
  * @returns {*} 변환 문자열
  */
 export const replaceToHtmlTag = (str) => {
-    return str;
+    const convertStr = marked.parse(str);
+    return convertStr;
 };

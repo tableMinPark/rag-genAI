@@ -100,7 +100,7 @@ public class LawChatController {
                                         emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_END_PREFIX));
                                         emitter.complete();
                                     } else {
-                                        answerBuilder.append(message);
+                                        answerBuilder.append(message.replace("&nbsp", " "));
                                         emitter.send(SseEmitter.event().name(answerEventName).data(message));
                                     }
                                 } catch (IOException e) {
@@ -109,7 +109,7 @@ public class LawChatController {
                             },
                             emitter::completeWithError,
                             () -> {
-                                log.info("법령 사용자 답변 완료({}) | {} | {}", sessionId, query, answerBuilder);
+                                log.info("법령 사용자 답변 완료({})\nQ. {}A. {}", sessionId, query, answerBuilder);
                                 emitter.complete();
                             }
                     );

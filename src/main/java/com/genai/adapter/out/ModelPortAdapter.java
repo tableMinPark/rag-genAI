@@ -208,6 +208,10 @@ public class ModelPortAdapter implements ModelPort {
                         return null;
                     }
                 })
-                .mapNotNull(AnswerResponse::getData);
+                .mapNotNull(answerResponse -> {
+                    List<Answer> answers = answerResponse.getData();
+                    answers.forEach(Answer::replaceBlackAndLine);
+                    return answers;
+                });
     }
 }

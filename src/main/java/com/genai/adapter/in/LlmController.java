@@ -94,6 +94,7 @@ public class LlmController {
                                         emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_END_PREFIX));
                                         emitter.complete();
                                     } else {
+                                        answerBuilder.append(message.replace("&nbsp", " "));
                                         emitter.send(SseEmitter.event().name(answerEventName).data(message));
                                     }
                                 } catch (IOException e) {
@@ -102,7 +103,7 @@ public class LlmController {
                             },
                             emitter::completeWithError,
                             () -> {
-                                log.info("LLM 테스트 답변 완료({}) | {} | {}", sessionId, query, answerBuilder);
+                                log.info("LLM 테스트 답변 완료({})\nQ. {}A. {}", sessionId, query, answerBuilder);
                                 emitter.complete();
                             }
                     );
