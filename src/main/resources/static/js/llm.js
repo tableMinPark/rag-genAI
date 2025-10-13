@@ -1,12 +1,11 @@
-import {randomUUID, replaceToHtmlTag} from './util.js'
+import {randomUUID, replaceEventDataToText, replaceToHtmlTag} from './util.js'
 
 const GREETING_MESSAGE    = "안녕하세요. LLM TEST BOT 입니다.\n관련 문서 및 질의, 시스템 프롬프트를 기반으로 답변 드리겠습니다."
 const SERVICE_NAME        = "llm"
 const SESSION_ID          = randomUUID();
 const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
 const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
-const ANSWER_START_PREFIX = "[ANSWER_START]";
-const ANSWER_END_PREFIX   = "[ANSWER_END]";
+const STREAM_START_PREFIX = "[STREAM_START]";
 
 const content      = document.getElementById("content");
 const sendBtn      = document.getElementById("sendBtn");
@@ -17,6 +16,7 @@ const promptInput  = document.getElementById("promptInput");
 
 let btnEnable = true;
 let currentLlmMsg = null;
+let currentLlmText= null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
@@ -57,6 +57,8 @@ const sendQuery = () => {
 
     eventSource.addEventListener("error", (event) => {
         console.log(`❌ 에러 또는 연결 끊김 발생: ${event.type}`);
+
+        currentLlmMsg = null;
         eventSource.close();
         enableInput();
     });
@@ -81,21 +83,17 @@ const sendQuery = () => {
 
     // 답변 SSE 수신 이벤트
     eventSource.addEventListener(ANSWER_EVENT_NAME, (event) => {
-        if (event.data === ANSWER_START_PREFIX) {
+        if (event.data === STREAM_START_PREFIX) {
             console.log("📋 답변 시작");
+            currentLlmText = "";
             currentLlmMsg = document.createElement("div");
             currentLlmMsg.className = "message answer";
             content.appendChild(currentLlmMsg);
             return;
         }
-        if (event.data === ANSWER_END_PREFIX) {
-            console.log("❌ 답변 끝");
-            currentLlmMsg = null;
-            return;
-        }
         if (currentLlmMsg) {
-            currentLlmMsg.innerHTML += event.data;
-            currentLlmMsg.innerHTML = replaceToHtmlTag(currentLlmMsg.innerHTML);
+            currentLlmText += replaceEventDataToText(event.data);
+            currentLlmMsg.innerHTML = replaceToHtmlTag(currentLlmText);
             content.scrollTop = content.scrollHeight;
         }
     });
@@ -158,10 +156,8 @@ window.onload = () => {
         content.appendChild(greetingMsg);
 
         let index = 0;
-
         const interval = setInterval(() => {
-            greetingMsg.innerHTML += GREETING_MESSAGE[index];
-            greetingMsg.innerHTML = replaceToHtmlTag(greetingMsg.innerHTML);
+            greetingMsg.innerHTML = replaceToHtmlTag(GREETING_MESSAGE.substring(0, index));
             content.scrollTop = content.scrollHeight;
             index++;
             if (index >= GREETING_MESSAGE.length) {

@@ -5,7 +5,6 @@ import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
 import com.genai.application.service.ChatService;
 import com.genai.constant.ChatConst;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -81,7 +80,7 @@ public class LlmController {
 
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
-                emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_START_PREFIX));
+                emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.STREAM_START_PREFIX));
             } catch (IOException e) {
                 emitter.completeWithError(e);
             }
@@ -90,20 +89,15 @@ public class LlmController {
             chatService.questionUseCase(query, context, promptContext, sessionId)
                     .subscribe(message -> {
                                 try {
-                                    if (ChatConst.STREAM_OVER_PREFIX.equals(message)) {
-                                        emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_END_PREFIX));
-                                        emitter.complete();
-                                    } else {
-                                        answerBuilder.append(message.replace("&nbsp", " "));
-                                        emitter.send(SseEmitter.event().name(answerEventName).data(message));
-                                    }
+                                    answerBuilder.append(message.replace("&nbsp", " "));
+                                    emitter.send(SseEmitter.event().name(answerEventName).data(message));
                                 } catch (IOException e) {
                                     emitter.completeWithError(e);
                                 }
                             },
                             emitter::completeWithError,
                             () -> {
-                                log.info("LLM 테스트 답변 완료({})\nQ. {}A. {}", sessionId, query, answerBuilder);
+                                log.info("LLM 테스트 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
                                 emitter.complete();
                             }
                     );

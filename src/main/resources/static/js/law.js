@@ -5,8 +5,8 @@ const SERVICE_NAME        = "law"
 const SESSION_ID          = randomUUID();
 const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
 const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
-const ANSWER_START_PREFIX = "[ANSWER_START]";
-const ANSWER_END_PREFIX   = "[ANSWER_END]";
+const INFERENCE_EVENT_NAME= `/${SERVICE_NAME}/inference/${SESSION_ID}`;
+const STREAM_START_PREFIX = "[STREAM_START]";
 const RECOMMEND_QUERY    = [
     "승선 근무 예비역의 경우 복무 기간이 상근 예비역과 동일해?",
     "국가 유공자의 후손인 경우, 일반 현역으로 입대하는 사람들과 복무 기간의 차이가 있을까?",
@@ -24,6 +24,9 @@ let referenceDocuments= [];
 let btnEnable = true;
 let currentLlmMsg = null;
 let currentLlmText= null;
+let currentInferenceMsg = null;
+let currentInferenceText= null;
+let currentInferenceRow = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
@@ -90,6 +93,9 @@ const sendQuery = (query) => {
 
         currentLlmMsg = null;
         currentLlmText = null;
+        currentInferenceMsg = null;
+        currentInferenceText = null;
+        currentInferenceRow = null;
         eventSource.close();
         enableInput();
     });
@@ -108,20 +114,72 @@ const sendQuery = (query) => {
         content.scrollTop = content.scrollHeight;
     });
 
+    // 추론 과정 SSE 수신 이벤트
+    eventSource.addEventListener(INFERENCE_EVENT_NAME, (event) => {
+        if (event.data === STREAM_START_PREFIX) {
+            console.log("📋 추론 과정 표출 시작");
+            currentInferenceText = "";
+
+            const inferenceBox = document.createElement("div");
+            inferenceBox.className = "inference-box";
+
+            const toggle = document.createElement("button");
+            toggle.innerHTML = "▼ 추론 과정 보기";
+            toggle.className = "toggle";
+
+            toggle.addEventListener("click", () => {
+                toggle.classList.toggle('active');
+                if (toggle.classList.contains('active')) {
+                    toggle.textContent = '▲ 추론 과정 숨기기';
+                } else {
+                    toggle.textContent = '▼ 추론 과정 보기';
+                }
+            });
+
+            const title = document.createElement("div");
+            title.innerText = "답변을 위해 생각하는중";
+            title.className = "title";
+
+            const spinner = document.createElement("div");
+            spinner.className = "spinner";
+
+            currentInferenceRow = document.createElement("div");
+            currentInferenceRow.className =  "status-row";
+            currentInferenceRow.appendChild(title);
+            currentInferenceRow.appendChild(spinner);
+
+            currentInferenceMsg = document.createElement("div");
+            currentInferenceMsg.className = "stream-box";
+
+            inferenceBox.appendChild(currentInferenceRow);
+            inferenceBox.appendChild(toggle);
+            inferenceBox.appendChild(currentInferenceMsg);
+            content.appendChild(inferenceBox);
+            return;
+        }
+        if (currentInferenceMsg) {
+            currentInferenceText += replaceEventDataToText(event.data);
+            currentInferenceMsg.innerHTML = replaceToHtmlTag(currentInferenceText);
+            content.scrollTop = content.scrollHeight;
+        }
+    });
+
     // 답변 SSE 수신 이벤트
     eventSource.addEventListener(ANSWER_EVENT_NAME, (event) => {
-        if (event.data === ANSWER_START_PREFIX) {
-            console.log("📋 답변 시작");
+        if (currentLlmText == null) {
             currentLlmText = "";
+        } else if (currentLlmText === "") {
+            console.log("📋 답변 시작");
+
+            if (currentInferenceRow) {
+                currentInferenceRow.remove();
+            }
+
             currentLlmMsg = document.createElement("div");
             currentLlmMsg.className = "message answer";
             content.appendChild(currentLlmMsg);
-            return;
         }
-        if (event.data === ANSWER_END_PREFIX) {
-            console.log("❌ 답변 끝");
-            return;
-        }
+
         if (currentLlmMsg) {
             currentLlmText += replaceEventDataToText(event.data);
             currentLlmMsg.innerHTML = replaceToHtmlTag(currentLlmText);

@@ -7,7 +7,7 @@ import lombok.ToString;
 
 @ToString
 @Getter
-public class AnswerRequest {
+public class LlamaAnswerRequest {
 
     @JsonProperty("prompt")
     @ToString.Include(name = "prompt")
@@ -50,7 +50,7 @@ public class AnswerRequest {
     private final String context;
 
     @Builder
-    public AnswerRequest(String prompt, String modelName, String userId, String userInput, double temperature, double topP, int maxTokens, boolean multiTurn, boolean stream, String context) {
+    public LlamaAnswerRequest(String prompt, String modelName, String userId, String userInput, double temperature, double topP, int maxTokens, boolean multiTurn, boolean stream, String context) {
         this.prompt = prompt;
         this.modelName = modelName;
         this.userId = userId;

@@ -1,28 +1,24 @@
 package com.genai.application.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
 @ToString
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
 public class Answer {
 
-    private String id;
+    private final String id;
 
-    private String content;
+    private final String content;
 
-    private String finish_reason;
+    private final String finishReason;
 
-    /**
-     * 공백 문자 치환
-     * SSE Event 수신 시, 공백 문자 누락 이슈 발생
-     */
-    public void replaceBlackAndLine() {
-        this.content = this.content.replace(" ", "&nbsp");
-        this.content = this.content.replace("\n", "\\n");
+    private final boolean isInference;
+
+    @Builder
+    public Answer(String id, String content, String finishReason, boolean isInference) {
+        this.id = id;
+        this.content = content;
+        this.finishReason = finishReason;
+        this.isInference = isInference;
     }
 }

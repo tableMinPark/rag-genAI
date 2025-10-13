@@ -9,7 +9,8 @@ import com.genai.application.port.SearchPort;
 import com.genai.application.vo.QuestionLawVo;
 import com.genai.application.vo.ReferenceDocumentVo;
 import com.genai.constant.SearchConst;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -19,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class ChatService {
 
     private final SearchPort searchPort;
@@ -29,6 +29,18 @@ public class ChatService {
     private final PromptPort promptPort;
 
     private final ObjectMapper objectMapper;
+
+    public ChatService(
+            @Autowired SearchPort searchPort,
+            @Qualifier("QwenModelPortAdapter") ModelPort modelPort,
+            @Autowired PromptPort promptPort,
+            @Autowired ObjectMapper objectMapper
+    ) {
+        this.searchPort = searchPort;
+        this.modelPort = modelPort;
+        this.promptPort = promptPort;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * 법령 질의
@@ -53,7 +65,7 @@ public class ChatService {
                 .forEach(lawDocument -> documentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
         // 키워드 검색 결과, 벡터 검색 결과 리랭킹
-        List<RerankDocument<Law>> rerankDocuments = modelPort.lawRerank(query, documentMap.values().stream().toList()).stream()
+        List<RerankDocument<Law>> rerankDocuments = searchPort.lawRerank(query, documentMap.values().stream().toList()).stream()
                 .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
                 .toList();
 
@@ -83,12 +95,7 @@ public class ChatService {
             contextJson = contextBuilder.toString();
         }
 
-        Flux<String> answerStream = modelPort.generateStreamAnswer(query, contextJson.trim(), sessionId, prompt)
-                .map(answers -> {
-                    StringBuilder answerBuilder = new StringBuilder();
-                    answers.forEach(answer -> answerBuilder.append(answer.getContent()));
-                    return answerBuilder.toString();
-                });
+        Flux<List<Answer>> answerStream = modelPort.generateStreamAnswer(query, contextJson.trim(), sessionId, prompt);
 
         return QuestionLawVo.builder()
                 .answerStream(answerStream)

@@ -3,6 +3,7 @@ package com.genai.adapter.in;
 import com.genai.adapter.in.dto.request.LawChatRequestDto;
 import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
+import com.genai.application.domain.Answer;
 import com.genai.application.service.ChatService;
 import com.genai.application.vo.QuestionLawVo;
 import com.genai.constant.ChatConst;
@@ -77,6 +78,7 @@ public class LawChatController {
 
         String queryEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.QUERY_EVENT_NAME, sessionId);
         String answerEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.ANSWER_EVENT_NAME, sessionId);
+        String inferenceEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.INFERENCE_EVENT_NAME, sessionId);
 
         String query = lawChatRequestDto.getQuery();
 
@@ -85,7 +87,7 @@ public class LawChatController {
         if (emitter != null) {
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
-                emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_START_PREFIX));
+                emitter.send(SseEmitter.event().name(inferenceEventName).data(ChatConst.STREAM_START_PREFIX));
             } catch (IOException e) {
                 emitter.completeWithError(e);
             }
@@ -94,22 +96,25 @@ public class LawChatController {
 
             StringBuilder answerBuilder = new StringBuilder();
             questionLawVo.getAnswerStream()
-                    .subscribe(message -> {
-                                try {
-                                    if (ChatConst.STREAM_OVER_PREFIX.equals(message)) {
-                                        emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.ANSWER_END_PREFIX));
-                                        emitter.complete();
-                                    } else {
-                                        answerBuilder.append(message.replace("&nbsp", " "));
-                                        emitter.send(SseEmitter.event().name(answerEventName).data(message));
+                    .subscribe(answers -> {
+                                for (Answer answer : answers) {
+                                    String message = answer.getContent();
+
+                                    try {
+                                        if (answer.isInference()) {
+                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(message));
+                                        } else {
+                                            answerBuilder.append(message.replace("&nbsp", " "));
+                                            emitter.send(SseEmitter.event().name(answerEventName).data(message));
+                                        }
+                                    } catch (IOException e) {
+                                        emitter.completeWithError(e);
                                     }
-                                } catch (IOException e) {
-                                    emitter.completeWithError(e);
                                 }
                             },
                             emitter::completeWithError,
                             () -> {
-                                log.info("법령 사용자 답변 완료({})\nQ. {}A. {}", sessionId, query, answerBuilder);
+                                log.info("법령 사용자 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
                                 emitter.complete();
                             }
                     );

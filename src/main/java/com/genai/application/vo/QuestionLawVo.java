@@ -1,5 +1,6 @@
 package com.genai.application.vo;
 
+import com.genai.application.domain.Answer;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class QuestionLawVo {
 
-    private final Flux<String> answerStream;
+    private final Flux<List<Answer>> answerStream;
 
     private final List<ReferenceDocumentVo> documents;
 }

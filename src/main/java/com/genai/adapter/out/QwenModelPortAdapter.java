@@ -1,22 +1,18 @@
 package com.genai.adapter.out;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.adapter.out.request.AnswerRequest;
-import com.genai.adapter.out.request.RerankRequest;
-import com.genai.adapter.out.response.AnswerResponse;
-import com.genai.adapter.out.response.RerankResponse;
-import com.genai.application.domain.*;
+import com.genai.adapter.out.request.QwenAnswerRequest;
+import com.genai.adapter.out.response.QwenAnswerResponse;
+import com.genai.application.domain.Answer;
+import com.genai.application.domain.Prompt;
 import com.genai.application.port.ModelPort;
 import com.genai.constant.ModelConst;
-import com.genai.exception.ModelErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -25,70 +21,22 @@ import reactor.core.publisher.Mono;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Slf4j
-@Component
+@Component("QwenModelPortAdapter")
 @RequiredArgsConstructor
-public class ModelPortAdapter implements ModelPort {
+public class QwenModelPortAdapter implements ModelPort {
 
-    @Value("${engine.reranker.url}")
-    private String RERANKER_URL;
-
-    @Value("${engine.reranker.model-name}")
-    private String RERANKER_MODEL_NAME;
-
-    @Value("${engine.llm.url}")
+    @Value("${engine.llm.qwen3.url}")
     private String LLM_URL;
 
-    @Value("${engine.llm.model-name}")
+    @Value("${engine.llm.qwen3.model-name}")
     private String LLM_MODEL_NAME;
 
     private final WebClient webClient;
 
     private final ObjectMapper objectMapper;
-
-    /**
-     * 검색 결과 리랭킹
-     *
-     * @param query     질의문
-     * @param documents 검색 결과 목록
-     * @return 리랭킹 검색 결과 목록
-     */
-    @Override
-    public List<RerankDocument<Law>> lawRerank(String query, List<Document<Law>> documents) {
-
-        RerankRequest<Law> requestBody = RerankRequest.<Law>builder()
-                .query(query)
-                .field(ModelConst.RERANK_FIELD)
-                .document(documents)
-                .build();
-
-        RerankResponse<Law> responseBody = webClient.post()
-                .uri(RERANKER_URL + "/" + RERANKER_MODEL_NAME)
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<RerankResponse<Law>>() {
-                })
-                .block();
-
-        if (responseBody == null) {
-            throw new ModelErrorException("RERANKER(" + RERANKER_MODEL_NAME + ")");
-        } else {
-            StringBuilder builder = new StringBuilder();
-            responseBody.getData().forEach(document ->
-                    builder.append(String.format("+ %.4f", document.getRerankScore()))
-                            .append(" | ")
-                            .append(document.getFields().getContext().replace("\n", "\\n"))
-                            .append("\n"));
-            log.info("##### 리랭킹 결과 {} 개 | {} #####\n{}", responseBody.getData().size(), query, builder.toString().trim());
-        }
-
-        return responseBody.getData();
-    }
 
     /**
      * 답변 생성 요청
@@ -102,35 +50,18 @@ public class ModelPortAdapter implements ModelPort {
     @Override
     public List<Answer> generateAnswer(String query, String context, String sessionId, Prompt prompt) {
 
-        AnswerRequest requestBody = AnswerRequest.builder()
+        QwenAnswerRequest requestBody = QwenAnswerRequest.builder()
                 .modelName(LLM_MODEL_NAME)
-                .userId(sessionId)
-                .userInput(query)
                 .prompt(prompt.getContext())
+                .userInput(query)
                 .temperature(prompt.getTemperature())
                 .topP(prompt.getTopP())
                 .maxTokens(prompt.getMaxTokens())
-                .multiTurn(ModelConst.LLM_MULTITURN)
-                .stream(false)
+                .stream(true)
                 .context(context)
                 .build();
 
-        ResponseEntity<AnswerResponse> responseBody = webClient.post()
-                .uri(LLM_URL)
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .retrieve()
-                .toEntity(AnswerResponse.class)
-                .block();
-
-        if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
-            throw new ModelErrorException("LLM(" + LLM_MODEL_NAME + ")");
-        }
-
-        return responseBody.getBody() != null
-                ? responseBody.getBody().getData()
-                : Collections.emptyList();
+        return List.of();
     }
 
     /**
@@ -145,15 +76,13 @@ public class ModelPortAdapter implements ModelPort {
     @Override
     public Flux<List<Answer>> generateStreamAnswer(String query, String context, String sessionId, Prompt prompt) {
 
-        AnswerRequest requestBody = AnswerRequest.builder()
+        QwenAnswerRequest requestBody = QwenAnswerRequest.builder()
                 .modelName(LLM_MODEL_NAME)
-                .userId(sessionId)
-                .userInput(query)
                 .prompt(prompt.getContext())
+                .userInput(query)
                 .temperature(prompt.getTemperature())
                 .topP(prompt.getTopP())
                 .maxTokens(prompt.getMaxTokens())
-                .multiTurn(ModelConst.LLM_MULTITURN)
                 .stream(true)
                 .context(context)
                 .build();
@@ -169,6 +98,7 @@ public class ModelPortAdapter implements ModelPort {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(DataBuffer.class)
+                // 버퍼 변환
                 .map(dataBuffer -> {
                     try {
                         byte[] bytes = new byte[dataBuffer.readableByteCount()];
@@ -178,40 +108,53 @@ public class ModelPortAdapter implements ModelPort {
                         DataBufferUtils.release(dataBuffer);
                     }
                 })
+                // 스트림 종료 메시지 필터링
+                .filter(dataBuffer -> !dataBuffer.trim().equals("[DONE]"))
+                // 버퍼 적재
                 .flatMapSequential(chunk -> {
                     List<String> blocks = new ArrayList<>();
                     jsonBuffer.append(chunk);
 
                     int idx;
-                    while ((idx = jsonBuffer.indexOf(ModelConst.LLM_RESPONSE_END_MARKER)) != -1) {
-                        int endIdx = idx + ModelConst.LLM_RESPONSE_END_MARKER.length();
+                    while ((idx = jsonBuffer.indexOf(ModelConst.JSON_END_MARKER)) != -1) {
+                        int endIdx = idx + ModelConst.JSON_END_MARKER.length();
                         String block = jsonBuffer.substring(0, endIdx).trim();
                         jsonBuffer.delete(0, endIdx);
                         blocks.add(block);
                     }
                     return Flux.fromIterable(blocks);
                 })
+                // JSON 문자열 문법 검증
                 .concatWith(Mono.defer(() -> {
                     String remaining = jsonBuffer.toString().trim();
-                    if (remaining.endsWith(ModelConst.LLM_RESPONSE_END_MARKER.trim())) {
+                    if (remaining.endsWith(ModelConst.JSON_END_MARKER.trim())) {
                         return Mono.just(remaining);
                     } else {
                         log.warn("Split json string detected: {}", remaining);
                     }
                     return Mono.empty();
                 }))
+                // JSON 문자열 역직렬화
                 .mapNotNull(block -> {
+                    block = block.replaceFirst("^data: ", "");
                     try {
-                        return objectMapper.readValue(block, AnswerResponse.class);
+                        return objectMapper.readValue(block, QwenAnswerResponse.class);
                     } catch (IOException e) {
                         log.warn("Failed to parse block, ignoring: {}", block, e);
                         return null;
                     }
                 })
-                .mapNotNull(answerResponse -> {
-                    List<Answer> answers = answerResponse.getData();
-                    answers.forEach(Answer::replaceBlackAndLine);
-                    return answers;
-                });
+                // Answer 도메인 정규화
+                .mapNotNull(qwenAnswerResponse -> qwenAnswerResponse.getChoices().stream()
+                        .map(choice -> {
+                            String id = qwenAnswerResponse.getId();
+
+                            if (choice.getDelta().getReasoningContent() != null) {
+                                return new Answer(id, choice.getDelta().getReasoningContent(), choice.getFinishReason(), true);
+                            } else {
+                                return new Answer(id, choice.getDelta().getContent(), choice.getFinishReason(), false);
+                            }
+                        })
+                        .toList());
     }
 }

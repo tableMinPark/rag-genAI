@@ -2,10 +2,20 @@ package com.genai.application.port;
 
 import com.genai.application.domain.Document;
 import com.genai.application.domain.Law;
+import com.genai.application.domain.RerankDocument;
 
 import java.util.List;
 
 public interface SearchPort {
+
+    /**
+     * 법령 검색 결과 리랭킹
+     *
+     * @param query     질의문
+     * @param documents 검색 결과 목록
+     * @return 리랭킹 검색 결과 목록
+     */
+    List<RerankDocument<Law>> lawRerank(String query, List<Document<Law>> documents);
 
     /**
      * 키워드 검색 요청

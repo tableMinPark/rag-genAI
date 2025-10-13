@@ -8,15 +8,6 @@ import java.util.List;
 public interface ModelPort {
 
     /**
-     * 법령 검색 결과 리랭킹
-     *
-     * @param query     질의문
-     * @param documents 검색 결과 목록
-     * @return 리랭킹 검색 결과 목록
-     */
-    List<RerankDocument<Law>> lawRerank(String query, List<Document<Law>> documents);
-
-    /**
      * 답변 생성 요청
      *
      * @param query     질의문
