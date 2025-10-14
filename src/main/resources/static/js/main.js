@@ -37,3 +37,7 @@ llmTab.addEventListener('click', () => {
 extractTab.addEventListener('click', () => {
     location.href = '/extract.html';
 });
+
+window.onload = () => {
+    window.mermaid.initialize({ startOnLoad: false, theme: "default" });
+};

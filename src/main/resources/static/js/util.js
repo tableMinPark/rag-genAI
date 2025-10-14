@@ -1,5 +1,3 @@
-import './markdown.js'
-
 /**
  * 랜덤 ID 생성
  * @returns {string}
@@ -21,12 +19,21 @@ export const replaceEventDataToText = (eventData) => {
 }
 
 /**
- * 마크 다운 문자를 HTML 태그로 변환
- *
- * @param str 문자열
- * @returns {*} 변환 문자열
+ * Mermaid 포함 Markdown 렌더링 유틸
+ * @param {string} markdownText - 마크다운 원본 문자열
+ * @param {HTMLElement} targetEl - 렌더링 결과를 표시할 DOM 요소
  */
-export const replaceToHtmlTag = (str) => {
-    const convertStr = marked.parse(str);
-    return convertStr;
-};
+export function renderMarkdownWithMermaid(markdownText, targetEl) {
+    const md = window.markdownit({
+        highlight: function (str, lang) {
+            if (lang === "mermaid") {
+                return `<div class="mermaid">${str}</div>`;
+            }
+            return `<pre><code>${md.utils.escapeHtml(str)}</code></pre>`;
+        },
+    });
+
+    targetEl.innerHTML = md.render(markdownText);
+
+    window.mermaid.run({ querySelector: ".mermaid" });
+}

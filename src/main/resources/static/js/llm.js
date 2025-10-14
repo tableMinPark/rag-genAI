@@ -1,6 +1,6 @@
-import {randomUUID, replaceEventDataToText, replaceToHtmlTag} from './util.js'
+import {randomUUID, renderMarkdownWithMermaid, replaceEventDataToText} from './util.js'
 
-const GREETING_MESSAGE    = "안녕하세요. LLM TEST BOT 입니다.\n관련 문서 및 질의, 시스템 프롬프트를 기반으로 답변 드리겠습니다."
+const GREETING_MESSAGE    = "안녕하세요. **LLM TEST BOT** 입니다.\n\n관련 문서 및 질의, 시스템 프롬프트를 기반으로 답변 드리겠습니다."
 const SERVICE_NAME        = "llm"
 const SESSION_ID          = randomUUID();
 const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
@@ -93,7 +93,7 @@ const sendQuery = () => {
         }
         if (currentLlmMsg) {
             currentLlmText += replaceEventDataToText(event.data);
-            currentLlmMsg.innerHTML = replaceToHtmlTag(currentLlmText);
+            renderMarkdownWithMermaid(currentLlmText, currentLlmMsg);
             content.scrollTop = content.scrollHeight;
         }
     });
@@ -157,7 +157,7 @@ window.onload = () => {
 
         let index = 0;
         const interval = setInterval(() => {
-            greetingMsg.innerHTML = replaceToHtmlTag(GREETING_MESSAGE.substring(0, index));
+            renderMarkdownWithMermaid(GREETING_MESSAGE.substring(0, index), greetingMsg);
             content.scrollTop = content.scrollHeight;
             index++;
             if (index >= GREETING_MESSAGE.length) {

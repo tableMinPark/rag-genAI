@@ -166,11 +166,11 @@ header {
 /* --- 말풍선 스타일 --- */
 .message {
     max-width: 70%;
-    padding: 10px 15px;
+    padding: 10px 25px;
     margin: 5px 0;
     border-radius: 15px;
     word-wrap: break-word;
-    line-height: 1.8;
+    line-height: 1.6;
 }
 
 .query {
@@ -186,7 +186,6 @@ header {
     border: 1px solid #ddd;
     color: #333;
     border-bottom-left-radius: 0;
-    /*white-space: pre-line;*/
 }
 
 .btn {
@@ -213,4 +212,22 @@ header {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+.mermaid {
+    display: flex;
+    padding: 10px 0;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.mermaid svg {
+    display: block;
+    max-width: 80%;
+    height: auto;
+}
+
+.mermaid svg[aria-roledescription="error"] {
+    display: none;
 }

@@ -1,6 +1,6 @@
-import {replaceToHtmlTag} from './util.js'
+import {renderMarkdownWithMermaid} from './util.js'
 
-const GREETING_MESSAGE    = "안녕하세요. EXTRACT BOT 입니다.\n한글 문서를 업로드 하시면, 문서를 기반으로 표 데이터를 마크다운으로 추출해드리겠습니다."
+const GREETING_MESSAGE    = "안녕하세요. **EXTRACT BOT** 입니다.\n\n한글 문서를 업로드 하시면, 문서를 기반으로 표 데이터를 마크다운으로 추출해드리겠습니다."
 const SERVICE_NAME        = "extract"
 
 const content         = document.getElementById("content");
@@ -165,8 +165,7 @@ window.onload = () => {
         let index = 0;
 
         const interval = setInterval(() => {
-            greetingMsg.innerHTML += GREETING_MESSAGE[index];
-            greetingMsg.innerHTML = replaceToHtmlTag(greetingMsg.innerHTML);
+            renderMarkdownWithMermaid(GREETING_MESSAGE.substring(0, index), greetingMsg);
             content.scrollTop = content.scrollHeight;
             index++;
             if (index >= GREETING_MESSAGE.length) {
