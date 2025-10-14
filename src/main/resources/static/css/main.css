@@ -227,7 +227,3 @@ header {
     max-width: 80%;
     height: auto;
 }
-
-.mermaid svg[aria-roledescription="error"] {
-    display: none;
-}
