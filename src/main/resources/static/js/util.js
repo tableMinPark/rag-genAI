@@ -25,7 +25,7 @@ export const replaceEventDataToText = (eventData) => {
  */
 export function renderMarkdownWithMermaid(markdownText, targetEl) {
     const md = window.markdownit({
-        highlight: function (str, lang) {
+        highlight: (str, lang) => {
             if (lang === "mermaid") {
                 return `<div class="mermaid">${str}</div>`;
             }
@@ -35,5 +35,10 @@ export function renderMarkdownWithMermaid(markdownText, targetEl) {
 
     targetEl.innerHTML = md.render(markdownText);
 
-    window.mermaid.run({ querySelector: ".mermaid" });
+    if (/```mermaid([\s\S]*?)```/.test(markdownText)) {
+        window.mermaid.run({
+            querySelector: ".mermaid",
+            suppressErrors: true,
+        });
+    }
 }
