@@ -1,7 +1,9 @@
-import {renderMarkdownWithMermaid} from './util.js'
+import {copyText, renderMarkdownWithMermaid} from './util.js'
 
 const GREETING_MESSAGE    = "안녕하세요. **EXTRACT BOT** 입니다.\n\n한글 문서를 업로드 하시면, 문서를 기반으로 표 데이터를 마크다운으로 추출해드리겠습니다."
 const SERVICE_NAME        = "extract"
+const EXTRACTOR_HOST      = "localhost"
+const EXTRACTOR_PORT      = "8000"
 
 const content         = document.getElementById("content");
 const sendMarkDownBtn = document.getElementById("sendMarkDownBtn");
@@ -76,7 +78,7 @@ const sendExtractApi = (extractType) => {
         extractType: extractType,
     }));
 
-    fetch(`http://127.0.0.1:8000/${SERVICE_NAME}`, {
+    fetch(`http://${EXTRACTOR_HOST}:${EXTRACTOR_PORT}/${SERVICE_NAME}`, {
         method: "POST",
         body: formData
     })
@@ -87,9 +89,24 @@ const sendExtractApi = (extractType) => {
                     body.lines.forEach((line, index) => {
                         const extractMsg = document.createElement("div");
                         extractMsg.className = "message answer";
-                        extractMsg.innerHTML += `<div class="nodrag noselect" draggable="false"><strong>[${index}] >> ${fileName}</strong></div>`;
-                        extractMsg.innerHTML += `<div>${line.content.replace("<table>", "<table border=\"1\">")}</div>`;
                         content.appendChild(extractMsg);
+
+                        let currentText = "";
+                        currentText += `### ${index}\n\n`;
+                        currentText += `---\n\n`;
+                        currentText += `### 미리 보기\n\n`;
+                        currentText += `${line.content}\n\n`;
+                        currentText += `---\n\n`;
+                        currentText += `### 원본\n\n`;
+                        renderMarkdownWithMermaid(currentText, extractMsg);
+                        extractMsg.innerHTML += `<div class="originContent">${line.content}</div>`;
+
+                        const copyBtn = document.createElement("button");
+                        copyBtn.className = "btn copy";
+                        copyBtn.innerHTML = "🔗 원본 텍스트 복사";
+                        extractMsg.appendChild(copyBtn);
+
+                        copyBtn.addEventListener("click", () => copyText(line.content));
                     })
                 });
 

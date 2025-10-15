@@ -48,10 +48,6 @@
     background-color: #c3c3c3;
 }
 
-.btn {
-    min-height: 40px;
-}
-
 #sendMarkDownBtn, #sendHtmlBtn {
     margin-bottom: 10px;
 }
@@ -71,4 +67,31 @@
     background-color: #f0f8ff;
     border-color: #4a90e2;
     color: #000;
+}
+
+/* extract custom */
+.answer {
+    width: 100%;
+}
+
+table {
+    margin-bottom: 15px;
+}
+
+table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+}
+
+
+.btn {
+    min-height: 40px;
+}
+
+.copy {
+    margin: 25px 0 15px 0;
+}
+
+.originContent {
+    white-space: pre-line;
 }

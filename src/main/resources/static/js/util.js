@@ -47,3 +47,32 @@ export const renderMarkdownWithMermaid = (markdownText, targetEl) => {
         });
     }
 }
+
+export const copyText = (text) => {
+    // clipboard API 사용
+    if (navigator.clipboard !== undefined) {
+        navigator.clipboard
+            .writeText(text)
+            .then(() => {
+                console.log(text);
+                console.log("클립 보드 저장 완료!");
+            });
+    } else {
+        // execCommand 사용
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        textArea.setSelectionRange(0, 99999);
+        try {
+            document.execCommand('copy');
+            console.log(text);
+            console.log("클립 보드 저장 완료!");
+        } catch (err) {
+            console.error('복사 실패', err);
+        }
+
+        textArea.setSelectionRange(0, 0);
+        document.body.removeChild(textArea);
+    }
+}
