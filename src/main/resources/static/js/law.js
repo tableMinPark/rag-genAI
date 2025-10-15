@@ -60,7 +60,9 @@ const sendQuery = (query) => {
     const eventSource = new EventSource(`/${SERVICE_NAME}/stream/${SESSION_ID}`);
 
     eventSource.addEventListener("error", (event) => {
-        console.log(`❌ 에러 또는 연결 끊김 발생: ${event.type}`);
+        // 답변 로그
+        console.log(currentLlmText.trim());
+        console.log(`❌ 에러 또는 연결 끊김 발생`);
 
         if (currentLlmMsg) {
             const references = document.createElement("div");

@@ -54,35 +54,5 @@ public class QwenAnswerResponse {
 
         @JsonProperty("reasoning_content")
         private String reasoningContent;
-
-        /**
-         * 공백 문자 치환
-         * SSE Event 수신 시, 공백 문자 누락 이슈 발생
-         */
-        public String getContent() {
-            String content = this.content;
-
-            if (this.content != null) {
-                content = content.replace(" ", "&nbsp");
-                content = content.replace("\n", "\\n");
-            }
-
-            return content;
-        }
-
-        /**
-         * 공백 문자 치환
-         * SSE Event 수신 시, 공백 문자 누락 이슈 발생
-         */
-        public String getReasoningContent() {
-            String reasoningContent = this.reasoningContent;
-
-            if (this.reasoningContent != null) {
-                reasoningContent = reasoningContent.replace(" ", "&nbsp");
-                reasoningContent = reasoningContent.replace("\n", "\\n");
-            }
-
-            return reasoningContent;
-        }
     }
 }

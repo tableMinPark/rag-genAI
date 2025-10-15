@@ -15,7 +15,7 @@ export const randomUUID = () => {
 export const replaceEventDataToText = (eventData) => {
     return eventData
         .replaceAll("&nbsp", " ")
-        .replaceAll("\\n", "\n\n");
+        .replaceAll("\\n", "\n");
 }
 
 /**
@@ -23,7 +23,7 @@ export const replaceEventDataToText = (eventData) => {
  * @param {string} markdownText - 마크다운 원본 문자열
  * @param {HTMLElement} targetEl - 렌더링 결과를 표시할 DOM 요소
  */
-export function renderMarkdownWithMermaid(markdownText, targetEl) {
+export const renderMarkdownWithMermaid = (markdownText, targetEl) => {
     const md = window.markdownit({
         highlight: (str, lang) => {
             if (lang === "mermaid") {
@@ -33,9 +33,14 @@ export function renderMarkdownWithMermaid(markdownText, targetEl) {
         },
     });
 
-    targetEl.innerHTML = md.render(markdownText);
+    const convertMarkdownText = markdownText.replace(/```mermaid([\s\S]*?)```/g, (match, code) => {
+        const converted = code.replace(/\[([^\[\]]+)\]/g, '["$1"]');
+        return `\`\`\`mermaid${converted}\`\`\``;
+    });
 
-    if (/```mermaid([\s\S]*?)```/.test(markdownText)) {
+    targetEl.innerHTML = md.render(convertMarkdownText);
+
+    if (/```mermaid([\s\S]*?)```/.test(convertMarkdownText)) {
         window.mermaid.run({
             querySelector: ".mermaid",
             suppressErrors: true,

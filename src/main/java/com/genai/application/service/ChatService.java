@@ -121,23 +121,18 @@ public class ChatService {
      * @param query     질의문
      * @param sessionId 세션 식별자
      */
-    public Flux<String> questionUseCase(String query, String context, String promptContext, String sessionId) {
+    public Flux<List<Answer>> questionUseCase(String query, String context, String promptContext, String sessionId, int maxToken, double temperature, double topP) {
 
         // 프롬 프트 조회
         Prompt prompt = Prompt.builder()
                 .promptCode("TEST-PROMPT-CODE")
                 .promptName("테스트 시스템 프롬 프트")
                 .context(promptContext)
-                .temperature(0.01)
-                .topP(0.9)
-                .maxTokens(4096)
+                .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxToken)
                 .build();
 
-        return modelPort.generateStreamAnswer(query, context, sessionId, prompt)
-                .map(answers -> {
-                    StringBuilder answerBuilder = new StringBuilder();
-                    answers.forEach(answer -> answerBuilder.append(answer.getContent()));
-                    return answerBuilder.toString();
-                });
+        return modelPort.generateStreamAnswer(query, context, sessionId, prompt);
     }
 }

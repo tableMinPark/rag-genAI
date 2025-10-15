@@ -32,24 +32,16 @@
     box-sizing: border-box;
 }
 
-#userInputLabel, #contextInputLabel, #promptInputLabel {
+#userInputLabel, #contextInputLabel, #promptInputLabel, #maxTokensInputLabel, #temperatureInputLabel, #topPInputLabel {
     margin-bottom: 10px;
     font-weight: bold;
 }
 
-#userInput {
+#userInput, #maxTokensInput, #temperatureInput, #topPInput {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 20px;
     outline: none;
-}
-
-#userInput, #contextInput, #promptInput {
-    margin-bottom: 20px;
-}
-
-#userInput:disabled, #contextInput:disabled, #promptInput:disabled {
-    background-color: #c3c3c3;
 }
 
 #contextInput, #promptInput {
@@ -60,6 +52,14 @@
     outline: none;
     min-height: 100px;
     resize: none;
+}
+
+#userInput, #contextInput, #promptInput, #maxTokensInput, #temperatureInput, #topPInput {
+    margin-bottom: 20px;
+}
+
+#userInput:disabled, #contextInput:disabled, #promptInput:disabled, #maxTokensInput:disabled, #temperatureInput:disabled, #topPInput:disabled {
+    background-color: #c3c3c3;
 }
 
 .btn {

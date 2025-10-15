@@ -16,4 +16,10 @@ public class LlmChatRequestDto {
     private String context;
 
     private String prompt;
+
+    private Integer maxTokens;
+
+    private Double temperature;
+
+    private Double topP;
 }

@@ -37,6 +37,12 @@
                 <textarea id="contextInput" class="textBox" type="textarea" placeholder="컨텍스트를 입력하세요."></textarea>
                 <label id="promptInputLabel" for="promptInput">🚨 <span>시스템 프롬프트</span></label>
                 <textarea id="promptInput" class="textBox" type="textarea" placeholder="시스템 프롬프트를 입력하세요."></textarea>
+                <label id="maxTokensInputLabel" for="maxTokensInput">🚨 <span>MAX TOKENS (질의 + 답변 제약 토큰 수)</span></label>
+                <input id="maxTokensInput" class="textBox" type="number" placeholder="max tokens 을 입력하세요." value="2048" />
+                <label id="temperatureInputLabel" for="temperatureInput">🚨 <span>TEMPERATURE (다양성/창의성)</span></label>
+                <input id="temperatureInput" class="textBox" type="number" placeholder="temperature 를 입력하세요. (높을수록 일관된 답변)" value="0.01" max="1.0" min="0"/>
+                <label id="topPInputLabel" for="topPInput">🚨 <span>TOP P (응답 가변성)</span></label>
+                <input id="topPInput" class="textBox" type="number" placeholder="top p 를 입력하세요. (낮을수록 일관된 답변)" value="0.9" max="1.0" min="0"/>
             </div>
             <button id="sendBtn" class="btn">전송</button>
             <button id="resetBtn" class="btn">초기화</button>

@@ -98,17 +98,16 @@ public class LawChatController {
             questionLawVo.getAnswerStream()
                     .subscribe(answers -> {
                                 for (Answer answer : answers) {
-                                    String message = answer.getContent();
-
                                     try {
                                         if (answer.isInference()) {
-                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(message));
+                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getConvertContent()));
                                         } else {
-                                            answerBuilder.append(message.replace("&nbsp", " "));
-                                            emitter.send(SseEmitter.event().name(answerEventName).data(message));
+                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
                                         }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);
+                                    } finally {
+                                        answerBuilder.append(answer.getContent());
                                     }
                                 }
                             },

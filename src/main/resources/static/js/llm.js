@@ -7,12 +7,15 @@ const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
 const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
 const STREAM_START_PREFIX = "[STREAM_START]";
 
-const content      = document.getElementById("content");
-const sendBtn      = document.getElementById("sendBtn");
-const resetBtn     = document.getElementById("resetBtn");
-const userInput    = document.getElementById("userInput");
-const contextInput = document.getElementById("contextInput");
-const promptInput  = document.getElementById("promptInput");
+const content         = document.getElementById("content");
+const sendBtn         = document.getElementById("sendBtn");
+const resetBtn        = document.getElementById("resetBtn");
+const userInput       = document.getElementById("userInput");
+const contextInput    = document.getElementById("contextInput");
+const promptInput     = document.getElementById("promptInput");
+const maxTokensInput  = document.getElementById("maxTokensInput");
+const temperatureInput= document.getElementById("temperatureInput");
+const topPInput       = document.getElementById("topPInput");
 
 let btnEnable = true;
 let currentLlmMsg = null;
@@ -26,6 +29,9 @@ const disableInput = () => {
     userInput.disabled = true;
     contextInput.disabled = true;
     promptInput.disabled = true;
+    maxTokensInput.disabled = true;
+    temperatureInput.disabled = true;
+    topPInput.disabled = true;
 };
 
 // 입력 단 활성화
@@ -36,6 +42,9 @@ const enableInput = () => {
     userInput.disabled = false;
     contextInput.disabled = false;
     promptInput.disabled = false;
+    maxTokensInput.disabled = false;
+    temperatureInput.disabled = false;
+    topPInput.disabled = false;
 };
 
 // 질의 전송
@@ -49,6 +58,15 @@ const sendQuery = () => {
     } else if (promptInput.value.trim() === "") {
         alert("시스템 프롬프트 입력 필요!");
         return;
+    } else if (maxTokensInput.value.trim() === "") {
+        alert("MAX TOKENS 입력 필요!");
+        return;
+    } else if (temperatureInput.value.trim() === "") {
+        alert("TEMPERATURE 입력 필요!");
+        return;
+    } else if (topPInput.value.trim() === "") {
+        alert("TOP P 입력 필요!");
+        return;
     } else if (!btnEnable) return;
     else disableInput();
 
@@ -56,7 +74,8 @@ const sendQuery = () => {
     const eventSource = new EventSource(`/${SERVICE_NAME}/stream/${SESSION_ID}`);
 
     eventSource.addEventListener("error", (event) => {
-        console.log(`❌ 에러 또는 연결 끊김 발생: ${event.type}`);
+        console.log(currentLlmText.trim());
+        console.log(`❌ 에러 또는 연결 끊김 발생`);
 
         currentLlmMsg = null;
         eventSource.close();
@@ -69,6 +88,9 @@ const sendQuery = () => {
             userInput.value,
             contextInput.value,
             promptInput.value,
+            maxTokensInput.value,
+            temperatureInput.value,
+            topPInput.value,
         );
     });
 
@@ -99,7 +121,7 @@ const sendQuery = () => {
     });
 };
 
-const sendQueryApi = (query, context, prompt) => {
+const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
     console.log(`📡 질의 요청 : ${userInput.value}`);
 
     fetch(`/${SERVICE_NAME}/chat`, {
@@ -110,6 +132,9 @@ const sendQueryApi = (query, context, prompt) => {
             query: query,
             context: context,
             prompt: prompt,
+            maxTokens: maxTokens,
+            temperature: temperature,
+            topP: topP,
         })
     })
         .then(response => {

@@ -3,6 +3,7 @@ package com.genai.adapter.in;
 import com.genai.adapter.in.dto.request.LlmChatRequestDto;
 import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
+import com.genai.application.domain.Answer;
 import com.genai.application.service.ChatService;
 import com.genai.constant.ChatConst;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +75,9 @@ public class LlmController {
         String query = llmChatRequestDto.getQuery();
         String context = llmChatRequestDto.getContext();
         String promptContext = llmChatRequestDto.getPrompt();
+        int maxTokens = llmChatRequestDto.getMaxTokens();
+        double temperature = llmChatRequestDto.getTemperature();
+        double topP = llmChatRequestDto.getTopP();
 
         if (emitter != null) {
             log.info("LLM 테스트 질문 요청({}) | {}\n{}\n{}", sessionId, query, context, promptContext);
@@ -86,13 +90,16 @@ public class LlmController {
             }
 
             StringBuilder answerBuilder = new StringBuilder();
-            chatService.questionUseCase(query, context, promptContext, sessionId)
-                    .subscribe(message -> {
-                                try {
-                                    answerBuilder.append(message.replace("&nbsp", " "));
-                                    emitter.send(SseEmitter.event().name(answerEventName).data(message));
-                                } catch (IOException e) {
-                                    emitter.completeWithError(e);
+            chatService.questionUseCase(query, context, promptContext, sessionId, maxTokens, temperature, topP)
+                    .subscribe(answers -> {
+                                for (Answer answer : answers) {
+                                    try {
+                                        emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
+                                    } catch (IOException e) {
+                                        emitter.completeWithError(e);
+                                    } finally {
+                                        answerBuilder.append(answer.getContent());
+                                    }
                                 }
                             },
                             emitter::completeWithError,

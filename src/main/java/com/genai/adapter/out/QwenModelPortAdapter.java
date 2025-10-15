@@ -129,7 +129,7 @@ public class QwenModelPortAdapter implements ModelPort {
                     String remaining = jsonBuffer.toString().trim();
                     if (remaining.endsWith(ModelConst.JSON_END_MARKER.trim())) {
                         return Mono.just(remaining);
-                    } else {
+                    } else if (!remaining.replaceFirst("^data: ", "").trim().startsWith("[DONE]")) {
                         log.warn("Split json string detected: {}", remaining);
                     }
                     return Mono.empty();
