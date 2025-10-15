@@ -13,7 +13,7 @@
 }
 
 #inputArea {
-    flex: 0.4; /* 좁게 */
+    flex: 0.2; /* 좁게 */
     display: flex;
     flex-direction: column;
     border-radius: 10px;

@@ -91,22 +91,46 @@ const sendExtractApi = (extractType) => {
                         extractMsg.className = "message answer";
                         content.appendChild(extractMsg);
 
-                        let currentText = "";
-                        currentText += `### ${index}\n\n`;
-                        currentText += `---\n\n`;
-                        currentText += `### 미리 보기\n\n`;
-                        currentText += `${line.content}\n\n`;
-                        currentText += `---\n\n`;
-                        currentText += `### 원본\n\n`;
-                        renderMarkdownWithMermaid(currentText, extractMsg);
-                        extractMsg.innerHTML += `<div class="originContent">${line.content}</div>`;
+                        if (extractType === 'markdown') {
+                            let currentText = "";
+                            currentText += `### ${index}\n\n`;
+                            currentText += `---\n\n`;
+                            currentText += `### 미리 보기\n\n`;
+                            currentText += `${line.content}\n\n`;
+                            currentText += `---\n\n`;
+                            currentText += `### 원본\n\n`;
+                            renderMarkdownWithMermaid(currentText, extractMsg);
+                            extractMsg.innerHTML += `<div class="originContent">${line.content}</div>`;
+                        } else {
+                            let previewText = "";
+                            const preview = document.createElement("div");
+                            extractMsg.appendChild(preview);
+
+                            let originalText = "";
+                            const original = document.createElement("div");
+                            extractMsg.appendChild(original);
+
+                            previewText += `### ${index}\n\n`;
+                            previewText += `---\n\n`;
+                            previewText += `### 미리 보기\n\n`;
+                            renderMarkdownWithMermaid(previewText, preview);
+                            preview.innerHTML += `${line.content}`;
+
+                            originalText = `---\n\n`;
+                            originalText += `### 원본\n\n`;
+                            originalText += `${line.content}`;
+                            renderMarkdownWithMermaid(originalText, original);
+                        }
 
                         const copyBtn = document.createElement("button");
                         copyBtn.className = "btn copy";
                         copyBtn.innerHTML = "🔗 원본 텍스트 복사";
+                        copyBtn.addEventListener("click", () => copyText(line.content));
                         extractMsg.appendChild(copyBtn);
 
-                        copyBtn.addEventListener("click", () => copyText(line.content));
+                        if (index === 0) {
+                            content.scrollTop += content.scrollHeight;
+                        }
                     })
                 });
 
