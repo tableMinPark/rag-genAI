@@ -2,6 +2,8 @@ package com.genai.constant;
 
 public class SearchConst {
 
+    public static final String  VECTOR_FIELD      = "context";
+
     public static final int     KEYWORD_TOP_K     = 5;
     public static final int     VECTOR_TOP_K      = 5;
     public static final int     RERANK_TOP_K      = 3;

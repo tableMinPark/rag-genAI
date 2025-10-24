@@ -3,9 +3,11 @@ package com.genai.adapter.in;
 import com.genai.adapter.in.dto.request.LawChatRequestDto;
 import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
+import com.genai.application.enums.CollectionType;
 import com.genai.application.domain.Answer;
-import com.genai.application.service.ChatService;
-import com.genai.application.vo.QuestionLawVo;
+import com.genai.application.usecase.ChatUseCase;
+import com.genai.application.vo.QuestionVo;
+import com.genai.adapter.in.vo.ReferenceDocumentVo;
 import com.genai.constant.ChatConst;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +29,7 @@ public class LawChatController {
     private static final String SERVICE_NAME = "law";
     private static final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    private final ChatService chatService;
+    private final ChatUseCase chatUseCase;
 
     /**
      * Emitter 조회
@@ -65,7 +67,7 @@ public class LawChatController {
     }
 
     /**
-     * 법령 질의 요청
+     * 법령 RAG 질의 요청
      *
      * @param lawChatRequestDto 질의 정보
      */
@@ -92,10 +94,8 @@ public class LawChatController {
                 emitter.completeWithError(e);
             }
 
-            QuestionLawVo questionLawVo = chatService.questionLawUseCase(query, sessionId);
-
-            StringBuilder answerBuilder = new StringBuilder();
-            questionLawVo.getAnswerStream()
+            QuestionVo questionVo = chatUseCase.questionRagUseCase(CollectionType.LAW, "PROM-001", query, sessionId);
+            questionVo.answerStream()
                     .subscribe(answers -> {
                                 for (Answer answer : answers) {
                                     try {
@@ -106,16 +106,11 @@ public class LawChatController {
                                         }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);
-                                    } finally {
-                                        answerBuilder.append(answer.getContent());
                                     }
                                 }
                             },
                             emitter::completeWithError,
-                            () -> {
-                                log.info("법령 사용자 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
-                                emitter.complete();
-                            }
+                            emitter::complete
                     );
 
             return ResponseEntity.ok()
@@ -125,7 +120,19 @@ public class LawChatController {
                             .data(ChatResponseDto.builder()
                                     .query(query)
                                     .sessionId(sessionId)
-                                    .documents(questionLawVo.getDocuments())
+                                    .documents(questionVo.documents().stream()
+                                            .map(document -> ReferenceDocumentVo.builder()
+                                                    .title(document.getTitle())
+                                                    .subTitle(document.getSubTitle())
+                                                    .thirdTitle(document.getThirdTitle())
+                                                    .content(document.getContent())
+                                                    .subContent(document.getSubContent())
+                                                    .filePath(document.getFilePath())
+                                                    .url(document.getUrl())
+                                                    .docType(document.getDocType())
+                                                    .categoryCode(document.getCategoryCode())
+                                                    .build())
+                                            .toList())
                                     .build())
                             .build());
         } else {

@@ -3,24 +3,19 @@ package com.genai.application.domain;
 import lombok.*;
 
 @ToString
+@Builder
 @Getter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Answer {
 
-    private final String id;
+    private String id;
 
-    private final String content;
+    private String content;
 
-    private final String finishReason;
+    private String finishReason;
 
-    private final boolean isInference;
-
-    @Builder
-    public Answer(String id, String content, String finishReason, boolean isInference) {
-        this.id = id;
-        this.content = content;
-        this.finishReason = finishReason;
-        this.isInference = isInference;
-    }
+    private boolean isInference;
 
     /**
      * 공백 문자 치환

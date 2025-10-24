@@ -1,6 +1,6 @@
 package com.genai.adapter.in.dto.response;
 
-import com.genai.application.vo.ReferenceDocumentVo;
+import com.genai.adapter.in.vo.ReferenceDocumentVo;
 import lombok.*;
 
 import java.util.List;

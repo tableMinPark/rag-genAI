@@ -7,12 +7,14 @@ import com.genai.application.domain.Answer;
 import com.genai.application.domain.Prompt;
 import com.genai.application.port.ModelPort;
 import com.genai.constant.ModelConst;
+import com.genai.exception.ModelErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -21,6 +23,7 @@ import reactor.core.publisher.Mono;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Slf4j
@@ -57,11 +60,39 @@ public class QwenModelPortAdapter implements ModelPort {
                 .temperature(prompt.getTemperature())
                 .topP(prompt.getTopP())
                 .maxTokens(prompt.getMaxTokens())
-                .stream(true)
+                .stream(false)
                 .context(context)
                 .build();
 
-        return List.of();
+        log.info("LLM 답변 요청({}) | {}", sessionId, requestBody);
+
+        ResponseEntity<QwenAnswerResponse> responseBody = webClient.post()
+                .uri(LLM_URL)
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .toEntity(QwenAnswerResponse.class)
+                .block();
+
+
+        if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
+            throw new ModelErrorException("LLM(" + LLM_MODEL_NAME + ")");
+        }
+
+        return responseBody.getBody() == null
+                ? Collections.emptyList()
+                : responseBody.getBody().getChoices().stream()
+                .map(choice -> {
+                    String id = responseBody.getBody().getId();
+
+                    if (choice.getDelta().getReasoningContent() != null) {
+                        return new Answer(id, choice.getDelta().getReasoningContent(), choice.getFinishReason(), true);
+                    } else {
+                        return new Answer(id, choice.getDelta().getContent(), choice.getFinishReason(), false);
+                    }
+                })
+                .toList();
     }
 
     /**
@@ -82,6 +113,8 @@ public class QwenModelPortAdapter implements ModelPort {
                 .userInput(query)
                 .temperature(prompt.getTemperature())
                 .topP(prompt.getTopP())
+                .minP(prompt.getMinP())
+                .topK(prompt.getTopK())
                 .maxTokens(prompt.getMaxTokens())
                 .stream(true)
                 .context(context)

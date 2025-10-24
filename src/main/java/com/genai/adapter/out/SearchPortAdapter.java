@@ -1,6 +1,8 @@
 package com.genai.adapter.out;
 
-import com.genai.adapter.out.enums.CollectionType;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.adapter.out.request.KeywordSearchRequest;
 import com.genai.adapter.out.request.RerankRequest;
 import com.genai.adapter.out.request.VectorSearchRequest;
@@ -9,24 +11,22 @@ import com.genai.adapter.out.response.SearchResponse;
 import com.genai.adapter.out.vo.SortVo;
 import com.genai.adapter.out.vo.VectorQueryVo;
 import com.genai.application.domain.Document;
-import com.genai.application.domain.Law;
-import com.genai.application.domain.RerankDocument;
+import com.genai.application.domain.Rerank;
+import com.genai.application.domain.Search;
+import com.genai.application.enums.CollectionType;
 import com.genai.application.port.SearchPort;
 import com.genai.constant.ModelConst;
 import com.genai.constant.SearchConst;
 import com.genai.exception.ModelErrorException;
 import com.genai.exception.SearchErrorException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.List;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SearchPortAdapter implements SearchPort {
@@ -42,49 +42,42 @@ public class SearchPortAdapter implements SearchPort {
 
     private final WebClient webClient;
 
+    private final ObjectMapper objectMapper;
+
     /**
      * 검색 결과 리랭킹
      *
      * @param query     질의문
-     * @param documents 검색 결과 목록
-     * @return 리랭킹 검색 결과 목록
+     * @param documents 검색 문서 목록
+     * @return 리랭킹 문서 목록
      */
     @Override
-    public List<RerankDocument<Law>> lawRerank(String query, List<Document<Law>> documents) {
+    public List<Rerank> rerank(String query, List<Rerank> documents) {
 
-        RerankRequest<Law> requestBody = RerankRequest.<Law>builder()
+        RerankRequest requestBody = RerankRequest.builder()
                 .query(query)
                 .field(ModelConst.RERANK_FIELD)
                 .document(documents)
                 .build();
 
-        RerankResponse<Law> responseBody = webClient.post()
+        RerankResponse responseBody = webClient.post()
                 .uri(RERANKER_URL + "/" + RERANKER_MODEL_NAME)
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<RerankResponse<Law>>() {
-                })
+                .bodyToMono(RerankResponse.class)
                 .block();
 
         if (responseBody == null) {
-            throw new ModelErrorException("RERANKER(" + RERANKER_MODEL_NAME + ")");
-        } else {
-            StringBuilder builder = new StringBuilder();
-            responseBody.getData().forEach(document ->
-                    builder.append(String.format("+ %.4f", document.getRerankScore()))
-                            .append(" | ")
-                            .append(document.getFields().getContext().replace("\n", "\\n"))
-                            .append("\n"));
-            log.info("##### 리랭킹 결과 {} 개 | {} #####\n{}", responseBody.getData().size(), query, builder.toString().trim());
+            throw new ModelErrorException("RERANKER/" + RERANKER_MODEL_NAME);
         }
 
         return responseBody.getData();
     }
 
     /**
-     * 법령 컬렉션 키워드 검색 요청
+     * 컬렉션 키워드 검색 요청
      *
      * @param query     질의문
      * @param topK      top K
@@ -92,9 +85,7 @@ public class SearchPortAdapter implements SearchPort {
      * @return 키워드 검색 결과 목록
      */
     @Override
-    public List<Document<Law>> lawKeywordSearch(String query, int topK, String sessionId) {
-
-        CollectionType collectionType = CollectionType.LAW;
+    public <T extends Document> List<Search<T>> keywordSearch(CollectionType collectionType, String collectionId, String query, int topK, String sessionId) {
 
         List<SortVo> sorting = collectionType.getSortFields().stream()
                 .map(field -> new SortVo(field, false))
@@ -111,41 +102,42 @@ public class SearchPortAdapter implements SearchPort {
                 .synonymExpansion(SearchConst.SYNONYM_EXPANSION)
                 .build();
 
-        SearchResponse<Law> responseBody = webClient.post()
+        String json = webClient.post()
                 .uri(SEARCH_URL + "/" + collectionType.getCollectionId())
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<SearchResponse<Law>>() {})
+                .bodyToMono(String.class)
                 .block();
 
-        if (responseBody == null) {
-            throw new SearchErrorException("키워드/" + collectionType.getCollectionName());
-        } else {
-            StringBuilder builder = new StringBuilder();
-            responseBody.getDocument().forEach(document ->
-                    builder.append(String.format("+ %.4f", document.getScore()))
-                            .append(" | ")
-                            .append(document.getFields().getContext().replace("\n", "\\n"))
-                            .append("\n"));
-            log.info("##### 키워드 검색 결과 {} 개 | {}\n{} #####", responseBody.getDocument().size(), query, builder.toString().trim());
-        }
+        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, collectionType.getMappingClass());
 
-        return responseBody.getDocument();
+        try {
+            SearchResponse<T> responseBody = objectMapper.readValue(json, type);
+
+            if (responseBody == null) {
+                throw new SearchErrorException("KEYWORD/" + collectionType.getCollectionName());
+            }
+
+            return responseBody.getDocument();
+
+        } catch (JsonProcessingException e) {
+            throw new SearchErrorException("KEYWORD/" + collectionType.getCollectionName());
+        }
     }
 
     /**
-     * 법령 컬렉션 벡터 검색 요청
+     * 컬렉션 벡터 검색 요청
      *
-     * @param query 질의문
-     * @param topK  top K
+     * @param collectionType 컬렉션 타입
+     * @param collectionId   컬렉션 ID
+     * @param query          질의문
+     * @param topK           top K
      * @return 벡터 검색 결과 목록
      */
     @Override
-    public List<Document<Law>> lawVectorSearch(String query, int topK) {
-
-        CollectionType collectionType = CollectionType.LAW;
+    public <T extends Document> List<Search<T>> vectorSearch(CollectionType collectionType, String collectionId, String query, int topK) {
 
         List<VectorQueryVo> vectorQueries = collectionType.getVectorSearchFields().stream()
                 .map(field -> new VectorQueryVo(field, query, topK))
@@ -155,27 +147,28 @@ public class SearchPortAdapter implements SearchPort {
                 .vectorQuery(vectorQueries)
                 .build();
 
-        SearchResponse<Law> responseBody = webClient.post()
+        String json = webClient.post()
                 .uri(SEARCH_URL + "/" + collectionType.getCollectionId())
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<SearchResponse<Law>>() {})
+                .bodyToMono(String.class)
                 .block();
 
-        if (responseBody == null) {
-            throw new SearchErrorException("벡터/" + collectionType.getCollectionName());
-        } else {
-            StringBuilder builder = new StringBuilder();
-            responseBody.getDocument().forEach(document ->
-                    builder.append(String.format("+ %.4f", document.getScore()))
-                            .append(" | ")
-                            .append(document.getFields().getContext().replace("\n", "\\n"))
-                            .append("\n"));
-            log.info("##### 벡터 검색 결과 {} 개 | {}\n{} #####", responseBody.getDocument().size(), query, builder.toString().trim());
-        }
+        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, collectionType.getMappingClass());
 
-        return responseBody.getDocument();
+        try {
+            SearchResponse<T> responseBody = objectMapper.readValue(json, type);
+
+            if (responseBody == null) {
+                throw new SearchErrorException("VECTOR/" + collectionType.getCollectionName());
+            }
+
+            return responseBody.getDocument();
+
+        } catch (JsonProcessingException e) {
+            throw new SearchErrorException("VECTOR/" + collectionType.getCollectionName());
+        }
     }
 }

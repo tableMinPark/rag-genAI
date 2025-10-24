@@ -1,25 +1,39 @@
 package com.genai.application.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 @Builder
 @ToString
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 public class Prompt {
 
-    private final String promptCode;
+    private String promptCode;
 
-    private final String promptName;
+    private String promptName;
 
-    private final String context;
+    private String context;
 
-    private final double temperature;
+    private double temperature;
 
-    private final double topP;
+    private double topP;
 
-    private final int maxTokens;
+    private double minP;
+
+    private double topK;
+
+    private int maxTokens;
+
+    /**
+     * 조정 값 수정
+     */
+    public void setParameter(String context, double temperature, double topP, double minP, double topK, int maxTokens) {
+        this.context = context;
+        this.temperature = temperature;
+        this.topP = topP;
+        this.minP = minP;
+        this.topK = topK;
+        this.maxTokens = maxTokens;
+    }
 }

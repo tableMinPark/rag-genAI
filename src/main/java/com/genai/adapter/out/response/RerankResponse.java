@@ -1,23 +1,21 @@
 package com.genai.adapter.out.response;
 
-import com.genai.application.domain.RerankDocument;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import com.genai.application.domain.Rerank;
+import lombok.*;
 
 import java.util.Collections;
 import java.util.List;
 
 @ToString
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class RerankResponse<T> {
+public class RerankResponse {
 
     private String status;
 
     private String message;
 
-    private List<RerankDocument<T>> data = Collections.emptyList();
+    private List<Rerank> data = Collections.emptyList();
 }

@@ -25,6 +25,14 @@ public class QwenAnswerRequest {
     @ToString.Include(name = "top_p")
     private final double topP;
 
+    @JsonProperty("min_p")
+    @ToString.Include(name = "min_p")
+    private final double minP;
+
+    @JsonProperty("top_k")
+    @ToString.Include(name = "top_k")
+    private final double topK;
+
     @JsonProperty("max_tokens")
     @ToString.Include(name = "max_tokens")
     private final int maxTokens;
@@ -38,17 +46,18 @@ public class QwenAnswerRequest {
     private final List<Message> messages;
 
     @Builder
-    public QwenAnswerRequest(String prompt, String modelName, String userInput, double temperature, double topP, int maxTokens, boolean stream, String context) {
+    public QwenAnswerRequest(String prompt, String modelName, String userInput, double temperature, double topP, double minP, double topK, int maxTokens, boolean stream, String context) {
         this.stream = stream;
         this.maxTokens = maxTokens;
         this.topP = topP;
+        this.minP = minP;
+        this.topK = topK;
         this.temperature = temperature;
         this.model = modelName;
         this.messages = List.of(
                 Message.builder().role("system").content(prompt).build(),
                 Message.builder().role("user").name("context").content(userInput).build(),
                 Message.builder().role("user").name("context").content(context).build());
-
     }
 
     @Builder

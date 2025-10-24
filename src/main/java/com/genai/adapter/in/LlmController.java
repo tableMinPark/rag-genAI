@@ -5,6 +5,7 @@ import com.genai.adapter.in.dto.response.ChatResponseDto;
 import com.genai.adapter.in.dto.response.ResponseDto;
 import com.genai.application.domain.Answer;
 import com.genai.application.service.ChatService;
+import com.genai.application.vo.QuestionVo;
 import com.genai.constant.ChatConst;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,7 @@ public class LlmController {
 
         String emitterKey = String.format("/%s/%s", SERVICE_NAME, sessionId);
 
-        log.info("LLM 테스트 스트림 요청({})", sessionId);
+        log.info("LLM 스트림 요청({})", sessionId);
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(emitterKey, emitter);
@@ -58,7 +59,7 @@ public class LlmController {
     }
 
     /**
-     * LLM 테스트 질의 요청
+     * LLM 질의 요청
      *
      * @param llmChatRequestDto 질의 정보
      */
@@ -71,6 +72,7 @@ public class LlmController {
 
         String queryEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.QUERY_EVENT_NAME, sessionId);
         String answerEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.ANSWER_EVENT_NAME, sessionId);
+        String inferenceEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.INFERENCE_EVENT_NAME, sessionId);
 
         String query = llmChatRequestDto.getQuery();
         String context = llmChatRequestDto.getContext();
@@ -80,7 +82,7 @@ public class LlmController {
         double topP = llmChatRequestDto.getTopP();
 
         if (emitter != null) {
-            log.info("LLM 테스트 질문 요청({}) | {}\n{}\n{}", sessionId, query, context, promptContext);
+            log.info("LLM 질문 요청({}) | {}\n{}\n{}", sessionId, query, context, promptContext);
 
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
@@ -89,12 +91,18 @@ public class LlmController {
                 emitter.completeWithError(e);
             }
 
+            QuestionVo questionVo = chatService.questionUseCase("PROM-003", query, context, promptContext, sessionId, maxTokens, temperature, topP);
+
             StringBuilder answerBuilder = new StringBuilder();
-            chatService.questionUseCase(query, context, promptContext, sessionId, maxTokens, temperature, topP)
+            questionVo.answerStream()
                     .subscribe(answers -> {
                                 for (Answer answer : answers) {
                                     try {
-                                        emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
+                                        if (answer.isInference()) {
+                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getConvertContent()));
+                                        } else {
+                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
+                                        }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);
                                     } finally {
@@ -104,7 +112,7 @@ public class LlmController {
                             },
                             emitter::completeWithError,
                             () -> {
-                                log.info("LLM 테스트 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
+                                log.info("LLM 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
                                 emitter.complete();
                             }
                     );
@@ -112,14 +120,14 @@ public class LlmController {
             return ResponseEntity.ok()
                     .body(ResponseDto.<ChatResponseDto>builder()
                             .status("SUCCESS")
-                            .message("LLM 테스트 질의 요청 성공")
+                            .message("LLM 질의 요청 성공")
                             .data(ChatResponseDto.builder()
                                     .query(query)
                                     .sessionId(sessionId)
                                     .build())
                             .build());
         } else {
-            log.error("LLM 테스트 스트림 없음({})", sessionId);
+            log.error("LLM 스트림 없음({})", sessionId);
 
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(ResponseDto.<ChatResponseDto>builder()

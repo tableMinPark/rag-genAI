@@ -3,19 +3,21 @@ package com.genai.application.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Builder
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 public class Context {
 
-    private final String title;
+    private String title;
 
-    private final String subTitle;
+    private String subTitle;
 
-    private final String thirdTitle;
+    private String thirdTitle;
 
-    private final String content;
+    private String content;
 
-    private final String subContent;
+    private String subContent;
 }

@@ -1,15 +1,15 @@
 package com.genai.adapter.out.vo;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
-@ToString
-@Getter
-@AllArgsConstructor
-public class PageVo {
+//@ToString
+//@Getter
+//@AllArgsConstructor
+//public class PageVo {
+//
+//    private int from;
+//
+//    private int size;
+//}
 
-    private final int from;
-
-    private final int size;
-}
+public record PageVo(int from, int size) {}
