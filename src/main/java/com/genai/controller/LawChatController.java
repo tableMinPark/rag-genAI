@@ -3,7 +3,7 @@ package com.genai.controller;
 import com.genai.controller.dto.request.LawChatRequestDto;
 import com.genai.controller.dto.response.ChatResponseDto;
 import com.genai.controller.dto.response.ResponseDto;
-import com.genai.global.enums.CollectionType;
+import com.genai.global.enums.MenuType;
 import com.genai.service.domain.Answer;
 import com.genai.service.ChatService;
 import com.genai.service.vo.QuestionVo;
@@ -94,7 +94,7 @@ public class LawChatController {
                 emitter.completeWithError(e);
             }
 
-            QuestionVo questionVo = chatService.questionRagUseCase(CollectionType.LAW, "PROM-001", query, sessionId);
+            QuestionVo questionVo = chatService.questionRagUseCase(query, sessionId, MenuType.LAW);
             questionVo.answerStream()
                     .subscribe(answers -> {
                                 for (Answer answer : answers) {

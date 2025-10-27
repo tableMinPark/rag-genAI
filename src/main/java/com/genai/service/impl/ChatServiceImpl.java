@@ -2,15 +2,16 @@ package com.genai.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.service.ChatService;
-import com.genai.global.enums.CollectionType;
+import com.genai.global.constant.ModelConst;
+import com.genai.global.constant.SearchConst;
+import com.genai.global.enums.MenuType;
 import com.genai.repository.ChatHistoryRepository;
 import com.genai.repository.ModelRepository;
 import com.genai.repository.PromptRepository;
 import com.genai.repository.SearchRepository;
-import com.genai.service.vo.QuestionVo;
-import com.genai.global.constant.SearchConst;
+import com.genai.service.ChatService;
 import com.genai.service.domain.*;
+import com.genai.service.vo.QuestionVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -52,26 +53,25 @@ public class ChatServiceImpl implements ChatService {
     /**
      * RAG 질의
      *
-     * @param collectionType 컬렉션 타입
-     * @param promptCode     시스템 프롬 프트 코드
+     * @param menuType 컬렉션 타입
      * @param query          질의문
      * @param sessionId      세션 식별자
      */
     @Override
-    public QuestionVo questionRagUseCase(CollectionType collectionType, String promptCode, String query, String sessionId) {
+    public QuestionVo questionRagUseCase(String query, String sessionId, MenuType menuType) {
 
         // 시스템 프롬 프트 조회
-        Prompt prompt = promptRepository.getPrompt(promptCode);
+        Prompt prompt = promptRepository.getPrompt(menuType.getPromptCode());
 
         // 검색 결과 목록 (key 를 통한 중복 제거)
         Map<String, Search<Document>> searchDocumentMap = new HashMap<>();
 
         // 키워드 검색
-        List<Search<Document>> keywordSearchDocuments = searchRepository.keywordSearch(collectionType, collectionType.getCollectionId(), query, SearchConst.KEYWORD_TOP_K, sessionId);
+        List<Search<Document>> keywordSearchDocuments = searchRepository.keywordSearch(menuType, menuType.getCollectionId(), query, SearchConst.KEYWORD_TOP_K, sessionId);
         keywordSearchDocuments.forEach(lawDocument -> searchDocumentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
         // 벡터 검색
-        List<Search<Document>> vectorSearchDocuments = searchRepository.vectorSearch(collectionType, collectionType.getCollectionId(), query, SearchConst.VECTOR_TOP_K);
+        List<Search<Document>> vectorSearchDocuments = searchRepository.vectorSearch(menuType, menuType.getCollectionId(), query, SearchConst.VECTOR_TOP_K);
         vectorSearchDocuments.forEach(lawDocument -> searchDocumentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
         // 키워드 검색 결과, 벡터 검색 결과 변환
@@ -129,13 +129,13 @@ public class ChatServiceImpl implements ChatService {
             }
         }, throwable -> {
         }, () -> chatHistoryRepository.registerRagChatHistory(RagChatHistory.builder()
-                .collectionType(collectionType)
+                .menuType(menuType)
                 .keywordSearchDocuments(keywordSearchDocuments)
                 .vectorSearchDocuments(vectorSearchDocuments)
                 .reranks(reranks)
                 .topReranks(topReranks)
                 .contexts(contexts)
-                .promptCode(promptCode)
+                .promptCode(menuType.getPromptCode())
                 .query(query)
                 .inference(inferenceBuilder.toString().trim())
                 .answer(answerBuilder.toString().trim())
@@ -151,7 +151,6 @@ public class ChatServiceImpl implements ChatService {
     /**
      * LLM 질의
      *
-     * @param promptCode    시스템 프롬 프트 코드
      * @param query         질의문
      * @param context       참고 문서
      * @param promptContext 시스템 프롬 프트
@@ -161,10 +160,10 @@ public class ChatServiceImpl implements ChatService {
      * @param topP          응답 가변성 조정 값
      */
     @Override
-    public QuestionVo questionUseCase(String promptCode, String query, String context, String promptContext, String sessionId, int maxToken, double temperature, double topP) {
+    public QuestionVo questionUseCase(String query, String sessionId, String context, String promptContext, int maxToken, double temperature, double topP) {
 
         // 시스템 프롬 프트 조회
-        Prompt prompt = promptRepository.getPrompt(promptCode);
+        Prompt prompt = promptRepository.getPrompt(ModelConst.LLM_DEFAULT_PROMPT_CODE);
 
         // 시스템 프롬 프트 조정
         prompt.setParameter(promptContext, temperature, topP, 0, 20, maxToken);
@@ -187,7 +186,7 @@ public class ChatServiceImpl implements ChatService {
             }
         }, throwable -> {
         }, () -> chatHistoryRepository.registerChatHistory(ChatHistory.builder()
-                .promptCode(promptCode)
+                .promptCode(ModelConst.LLM_DEFAULT_PROMPT_CODE)
                 .query(query)
                 .inference(inferenceBuilder.toString().trim())
                 .answer(answerBuilder.toString().trim())

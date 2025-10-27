@@ -3,10 +3,10 @@ package com.genai.controller;
 import com.genai.controller.dto.request.LlmChatRequestDto;
 import com.genai.controller.dto.response.ChatResponseDto;
 import com.genai.controller.dto.response.ResponseDto;
+import com.genai.global.constant.ChatConst;
 import com.genai.service.domain.Answer;
 import com.genai.service.impl.ChatServiceImpl;
 import com.genai.service.vo.QuestionVo;
-import com.genai.global.constant.ChatConst;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -91,7 +91,7 @@ public class LlmController {
                 emitter.completeWithError(e);
             }
 
-            QuestionVo questionVo = chatServiceImpl.questionUseCase("PROM-003", query, context, promptContext, sessionId, maxTokens, temperature, topP);
+            QuestionVo questionVo = chatServiceImpl.questionUseCase(query, sessionId, context, promptContext, maxTokens, temperature, topP);
 
             StringBuilder answerBuilder = new StringBuilder();
             questionVo.answerStream()

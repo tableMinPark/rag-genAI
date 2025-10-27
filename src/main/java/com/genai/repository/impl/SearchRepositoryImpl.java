@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.global.constant.ModelConst;
 import com.genai.global.constant.SearchConst;
-import com.genai.global.enums.CollectionType;
+import com.genai.global.enums.MenuType;
 import com.genai.global.exception.ModelErrorException;
 import com.genai.global.exception.SearchErrorException;
 import com.genai.repository.SearchRepository;
@@ -85,18 +85,23 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @return 키워드 검색 결과 목록
      */
     @Override
-    public <T extends Document> List<Search<T>> keywordSearch(CollectionType collectionType, String collectionId, String query, int topK, String sessionId) {
+    public <T extends Document> List<Search<T>> keywordSearch(MenuType menuType, String collectionId, String query, int topK, String sessionId) {
 
-        List<SortVo> sorting = collectionType.getSortFields().stream()
+        List<SortVo> sorting = menuType.getSortFields().stream()
                 .map(field -> new SortVo(field, false))
                 .toList();
 
+        StringBuilder filterQueryBuilder = new StringBuilder();
+        filterQueryBuilder.append("<alias:match:");
+        menuType.getAlias().forEach(alias -> filterQueryBuilder.append(" ").append(alias));
+        filterQueryBuilder.append(">");
+
         KeywordSearchRequest requestBody = KeywordSearchRequest.builder()
-                .filterQuery("<alias:match:" + collectionType.getAlias() + ">")
+                .filterQuery(filterQueryBuilder.toString())
                 .commonQuery(query)
                 .topK(topK)
                 .sessionInfo(List.of(sessionId))
-                .searchField(collectionType.getKeywordSearchFields())
+                .searchField(menuType.getKeywordSearchFields())
                 .sorting(sorting)
                 .hideQueryLog(SearchConst.HIDE_QUERY_LOG)
                 .useSynonym(SearchConst.USE_SYNONYM)
@@ -104,7 +109,7 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .build();
 
         String json = webClient.post()
-                .uri(SEARCH_URL + "/" + collectionType.getCollectionId())
+                .uri(SEARCH_URL + "/" + menuType.getCollectionId())
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
@@ -112,45 +117,50 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .bodyToMono(String.class)
                 .block();
 
-        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, collectionType.getMappingClass());
+        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, menuType.getMappingClass());
 
         try {
             SearchResponse<T> responseBody = objectMapper.readValue(json, type);
 
             if (responseBody == null) {
-                throw new SearchErrorException("KEYWORD/" + collectionType.getCollectionName());
+                throw new SearchErrorException("KEYWORD/" + menuType.getMenuName());
             }
 
             return responseBody.getDocument();
 
         } catch (JsonProcessingException e) {
-            throw new SearchErrorException("KEYWORD/" + collectionType.getCollectionName());
+            throw new SearchErrorException("KEYWORD/" + menuType.getMenuName());
         }
     }
 
     /**
      * 컬렉션 벡터 검색 요청
      *
-     * @param collectionType 컬렉션 타입
+     * @param menuType 컬렉션 타입
      * @param collectionId   컬렉션 ID
      * @param query          질의문
      * @param topK           top K
      * @return 벡터 검색 결과 목록
      */
     @Override
-    public <T extends Document> List<Search<T>> vectorSearch(CollectionType collectionType, String collectionId, String query, int topK) {
+    public <T extends Document> List<Search<T>> vectorSearch(MenuType menuType, String collectionId, String query, int topK) {
 
-        List<VectorQueryVo> vectorQueries = collectionType.getVectorSearchFields().stream()
+        List<VectorQueryVo> vectorQueries = menuType.getVectorSearchFields().stream()
                 .map(field -> new VectorQueryVo(field, query, topK))
                 .toList();
 
+        StringBuilder filterQueryBuilder = new StringBuilder();
+        filterQueryBuilder.append("<alias:match:");
+        menuType.getAlias().forEach(alias -> filterQueryBuilder.append(" ").append(alias));
+        filterQueryBuilder.append(">");
+
         VectorSearchRequest requestBody = VectorSearchRequest.builder()
-                .filterQuery("<alias:match:" + collectionType.getAlias() + ">")
+                .filterQuery(filterQueryBuilder.toString())
                 .vectorQuery(vectorQueries)
                 .build();
 
         String json = webClient.post()
-                .uri(SEARCH_URL + "/" + collectionType.getCollectionId())
+                .uri(SEARCH_URL + "/" + menuType.getCollectionId())
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(requestBody)
@@ -158,19 +168,19 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .bodyToMono(String.class)
                 .block();
 
-        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, collectionType.getMappingClass());
+        JavaType type = objectMapper.getTypeFactory().constructParametricType(SearchResponse.class, menuType.getMappingClass());
 
         try {
             SearchResponse<T> responseBody = objectMapper.readValue(json, type);
 
             if (responseBody == null) {
-                throw new SearchErrorException("VECTOR/" + collectionType.getCollectionName());
+                throw new SearchErrorException("VECTOR/" + menuType.getMenuName());
             }
 
             return responseBody.getDocument();
 
         } catch (JsonProcessingException e) {
-            throw new SearchErrorException("VECTOR/" + collectionType.getCollectionName());
+            throw new SearchErrorException("VECTOR/" + menuType.getMenuName());
         }
     }
 }

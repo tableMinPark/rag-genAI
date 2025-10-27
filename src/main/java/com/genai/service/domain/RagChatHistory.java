@@ -1,6 +1,6 @@
 package com.genai.service.domain;
 
-import com.genai.global.enums.CollectionType;
+import com.genai.global.enums.MenuType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,7 +14,7 @@ import java.util.List;
 @AllArgsConstructor
 public class RagChatHistory extends ChatHistory {
 
-    private CollectionType collectionType;
+    private MenuType menuType;
 
     private List<Search<Document>> keywordSearchDocuments;
 

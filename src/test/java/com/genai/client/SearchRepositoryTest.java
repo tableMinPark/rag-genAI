@@ -2,7 +2,7 @@ package com.genai.client;
 
 import com.genai.service.domain.Document;
 import com.genai.service.domain.Search;
-import com.genai.global.enums.CollectionType;
+import com.genai.global.enums.MenuType;
 import com.genai.repository.SearchRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class SearchRepositoryTest {
     void keywordSearchTest() {
 
         List<Search<Document>> response =
-                searchRepository.keywordSearch(CollectionType.LAW, CollectionType.LAW.getCollectionId(), "토지 소유권의 범위에 대해서 알려줘", 1, "LAW-TEST-ID");
+                searchRepository.keywordSearch(MenuType.LAW, MenuType.LAW.getCollectionId(), "토지 소유권의 범위에 대해서 알려줘", 1, "LAW-TEST-ID");
 
         assertNotNull(response);
 
@@ -41,7 +41,7 @@ class SearchRepositoryTest {
     @DisplayName("법령 컬렉션 벡터 검색을 한다.")
     void vectorSearchTest() {
 
-        List<Search<Document>> response = searchRepository.vectorSearch(CollectionType.LAW, CollectionType.LAW.getCollectionId(), "토지 소유권의 범위에 대해서 알려줘", 1);
+        List<Search<Document>> response = searchRepository.vectorSearch(MenuType.LAW, MenuType.LAW.getCollectionId(), "토지 소유권의 범위에 대해서 알려줘", 1);
 
         assertNotNull(response);
 
