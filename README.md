@@ -1,4 +1,4 @@
-# rag-genAI
+# RAG 기반 생성형 AI 
 
 ## 💻 기능
 
@@ -59,11 +59,6 @@ spring:
     multipart:
       max-file-size: 300MB
       max-request-size: 300MB
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /api-docs
 engine:
   search:
     url: ${검색_API_연결_정보}
