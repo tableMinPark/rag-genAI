@@ -7,7 +7,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class DocumentLaw extends Document {
+public class DocumentMate extends Document {
 
     @JsonAlias("training_id")
     private String trainingId;

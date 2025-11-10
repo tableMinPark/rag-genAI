@@ -92,7 +92,7 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .toList();
 
         StringBuilder filterQueryBuilder = new StringBuilder();
-        filterQueryBuilder.append("<alias:match:");
+        filterQueryBuilder.append("<alias:in:");
         menuType.getAlias().forEach(alias -> filterQueryBuilder.append(" ").append(alias));
         filterQueryBuilder.append(">");
 

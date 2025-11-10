@@ -7,7 +7,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class LawChatRequestDto {
+public class ChatRequestDto {
 
     private String sessionId;
 

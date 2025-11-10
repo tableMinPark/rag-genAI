@@ -89,13 +89,19 @@ public class ChatServiceImpl implements ChatService {
 
         // Context 생성
         List<Context> contexts = reranks.stream()
-                .map(rerank -> Context.builder()
-                        .title(rerank.getDocument().getTitle())
-                        .subTitle(rerank.getDocument().getSubTitle())
-                        .thirdTitle(rerank.getDocument().getThirdTitle())
-                        .content(rerank.getDocument().getContent())
-                        .subContent(rerank.getDocument().getSubContent())
-                        .build())
+                .map(rerank -> {
+                    String subContent = rerank.getDocument().getSubContent();
+                    // 부가 본문 압축 (문자열 자름)
+                    String subContentCompress = subContent.substring(0, Math.min(subContent.length(), ModelConst.SUB_CONTENT_MAX_TOKEN_SIZE));
+
+                    return Context.builder()
+                            .title(rerank.getDocument().getTitle())
+                            .subTitle(rerank.getDocument().getSubTitle())
+                            .thirdTitle(rerank.getDocument().getThirdTitle())
+                            .content(rerank.getDocument().getContent())
+                            .subContent(subContentCompress)
+                            .build();
+                })
                 .toList();
 
         // Context Json 직렬화

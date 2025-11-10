@@ -3,7 +3,7 @@ const sidebar    = document.getElementById('sidebar');
 const sidebarToggle = document.getElementById('sidebar-toggle');
 
 const homeTab = document.getElementById('home');
-const lawTab = document.getElementById('law');
+const mateTab = document.getElementById('mate');
 const myaiTab = document.getElementById('myai');
 const llmTab = document.getElementById('llm');
 const extractTab = document.getElementById('extract');
@@ -18,9 +18,9 @@ homeTab.addEventListener('click', () => {
     location.href = '/';
 });
 
-// LAW 탭 클릭 이벤트
-lawTab.addEventListener('click', () => {
-    location.href = '/law.html';
+// MATE 탭 클릭 이벤트
+mateTab.addEventListener('click', () => {
+    location.href = '/mate.html';
 });
 
 // MYAI 탭 클릭 이벤트

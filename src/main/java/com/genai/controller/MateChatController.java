@@ -1,14 +1,14 @@
 package com.genai.controller;
 
-import com.genai.controller.dto.request.LawChatRequestDto;
+import com.genai.controller.dto.request.ChatRequestDto;
 import com.genai.controller.dto.response.ChatResponseDto;
 import com.genai.controller.dto.response.ResponseDto;
-import com.genai.global.enums.MenuType;
-import com.genai.service.domain.Answer;
-import com.genai.service.ChatService;
-import com.genai.service.vo.QuestionVo;
 import com.genai.controller.vo.ReferenceDocumentVo;
 import com.genai.global.constant.ChatConst;
+import com.genai.global.enums.MenuType;
+import com.genai.service.ChatService;
+import com.genai.service.domain.Answer;
+import com.genai.service.vo.QuestionVo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -23,10 +23,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/law")
-public class LawChatController {
+@RequestMapping("/mate")
+public class MateChatController {
 
-    private static final String SERVICE_NAME = "law";
+    private static final String SERVICE_NAME = "mate";
     private static final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     private final ChatService chatService;
@@ -42,7 +42,7 @@ public class LawChatController {
 
         String emitterKey = String.format("/%s/%s", SERVICE_NAME, sessionId);
 
-        log.info("법령 사용자 스트림 요청({})", sessionId);
+        log.info("{} 사용자 스트림 요청({})", SERVICE_NAME, sessionId);
 
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         emitters.put(emitterKey, emitter);
@@ -55,11 +55,11 @@ public class LawChatController {
 
         // 세션 만료 또는 연결 끊김 처리
         emitter.onCompletion(() -> {
-            log.info("법령 사용자 스트림 종료({})", sessionId);
+            log.info("{} 사용자 스트림 종료({})", SERVICE_NAME, sessionId);
             emitters.remove(emitterKey);
         });
         emitter.onTimeout(() -> {
-            log.info("법령 사용자 스트림 타임 아웃({})", sessionId);
+            log.info("{} 사용자 스트림 타임 아웃({})", SERVICE_NAME, sessionId);
             emitters.remove(emitterKey);
         });
 
@@ -67,14 +67,14 @@ public class LawChatController {
     }
 
     /**
-     * 법령 RAG 질의 요청
+     * RAG 질의 요청
      *
-     * @param lawChatRequestDto 질의 정보
+     * @param chatRequestDto 질의 정보
      */
     @PostMapping("/chat")
-    public ResponseEntity<ResponseDto<ChatResponseDto>> lawChat(@RequestBody LawChatRequestDto lawChatRequestDto) {
+    public ResponseEntity<ResponseDto<ChatResponseDto>> lawChat(@RequestBody ChatRequestDto chatRequestDto) {
 
-        String sessionId = lawChatRequestDto.getSessionId();
+        String sessionId = chatRequestDto.getSessionId();
         String emitterKey = String.format("/%s/%s", SERVICE_NAME, sessionId);
         SseEmitter emitter = emitters.get(emitterKey);
 
@@ -82,9 +82,9 @@ public class LawChatController {
         String answerEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.ANSWER_EVENT_NAME, sessionId);
         String inferenceEventName = String.format("/%s/%s/%s", SERVICE_NAME, ChatConst.INFERENCE_EVENT_NAME, sessionId);
 
-        String query = lawChatRequestDto.getQuery();
+        String query = chatRequestDto.getQuery();
 
-        log.info("법령 사용자 질문 요청({}) | {}", sessionId, query);
+        log.info("{} 사용자 질문 요청({}) | {}", SERVICE_NAME, sessionId, query);
 
         if (emitter != null) {
             try {
@@ -94,7 +94,7 @@ public class LawChatController {
                 emitter.completeWithError(e);
             }
 
-            QuestionVo questionVo = chatService.questionRagUseCase(query, sessionId, MenuType.LAW);
+            QuestionVo questionVo = chatService.questionRagUseCase(query, sessionId, MenuType.MATE);
             questionVo.answerStream()
                     .subscribe(answers -> {
                                 for (Answer answer : answers) {
@@ -116,7 +116,7 @@ public class LawChatController {
             return ResponseEntity.ok()
                     .body(ResponseDto.<ChatResponseDto>builder()
                             .status("SUCCESS")
-                            .message("법령 질의 요청 성공")
+                            .message(SERVICE_NAME + " 질의 요청 성공")
                             .data(ChatResponseDto.builder()
                                     .query(query)
                                     .sessionId(sessionId)
@@ -136,7 +136,7 @@ public class LawChatController {
                                     .build())
                             .build());
         } else {
-            log.error("법령 사용자 스트림 없음({})", sessionId);
+            log.error("{} 사용자 스트림 없음({})", SERVICE_NAME, sessionId);
 
             return ResponseEntity.status(HttpStatus.ACCEPTED)
                     .body(ResponseDto.<ChatResponseDto>builder()
