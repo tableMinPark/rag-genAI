@@ -74,18 +74,20 @@ public class ChatServiceImpl implements ChatService {
         List<Search<Document>> vectorSearchDocuments = searchRepository.vectorSearch(menuType, menuType.getCollectionId(), query, SearchConst.VECTOR_TOP_K);
         vectorSearchDocuments.forEach(lawDocument -> searchDocumentMap.put(lawDocument.getFields().getDocId(), lawDocument));
 
-        // 키워드 검색 결과, 벡터 검색 결과 변환
+        // 키워드 검색 결과, 벡터 검색 결과 리랭킹
         List<Rerank> reranks = searchRepository.rerank(query, searchDocumentMap.values().stream()
                 .map(searchDocument -> Rerank.builder()
                         .document(searchDocument.getFields())
                         .build())
                 .toList());
 
-        // 리랭킹 후, 상위 RERANK_TOP_K 개 추출
-        List<Rerank> topReranks = reranks.stream()
+        // 리랭킹 스코어 기준 필터링
+        List<Rerank> filteredReranks = reranks.stream()
                 .filter(document -> document.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
-                .toList()
-                .subList(0, Math.min(SearchConst.RERANK_TOP_K, reranks.size()));
+                .toList();
+
+        // 상위 RERANK_TOP_K 개 추출
+        List<Rerank> topReranks = filteredReranks.subList(0, Math.min(SearchConst.RERANK_TOP_K, filteredReranks.size()));
 
         // Context 생성
         List<Context> contexts = reranks.stream()

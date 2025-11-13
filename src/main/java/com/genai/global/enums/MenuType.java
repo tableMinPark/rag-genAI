@@ -11,7 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public enum MenuType {
 
-    MATE(DocumentMate.class, "nhis_mate", "메이트", List.of("TRAIN-LAW", "TRAIN-GUIDE"), "PROM-003", List.of("title", "sub_title", "third_title", "content"), List.of(SearchConst.VECTOR_FIELD), List.of("score")),
+    MATE(DocumentMate.class, "nhis_mate", "메이트", List.of("TRAIN-LAW", "TRAIN-GUIDE", "TRAIN-MANUAL"), "PROM-003", List.of("title", "sub_title", "third_title", "content"), List.of(SearchConst.VECTOR_FIELD), List.of("score")),
     ;
 
     private final Class<?> mappingClass;
