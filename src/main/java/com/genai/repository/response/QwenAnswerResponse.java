@@ -1,5 +1,6 @@
 package com.genai.repository.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
@@ -11,6 +12,7 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class QwenAnswerResponse {
 
     private String id;
@@ -27,6 +29,7 @@ public class QwenAnswerResponse {
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Choice {
 
         private Integer index;
@@ -47,6 +50,7 @@ public class QwenAnswerResponse {
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Delta {
 
         private String role;
