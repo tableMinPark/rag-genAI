@@ -86,7 +86,7 @@ public class LlmController {
 
             try {
                 emitter.send(SseEmitter.event().name(queryEventName).data(query));
-                emitter.send(SseEmitter.event().name(answerEventName).data(ChatConst.STREAM_START_PREFIX));
+                emitter.send(SseEmitter.event().name(inferenceEventName).data(ChatConst.STREAM_START_PREFIX));
             } catch (IOException e) {
                 emitter.completeWithError(e);
             }
@@ -105,16 +105,11 @@ public class LlmController {
                                         }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);
-                                    } finally {
-                                        answerBuilder.append(answer.getContent());
                                     }
                                 }
                             },
                             emitter::completeWithError,
-                            () -> {
-                                log.info("LLM 답변 완료({})\nQ. {}\nA. {}", sessionId, query, answerBuilder);
-                                emitter.complete();
-                            }
+                            emitter::complete
                     );
 
             return ResponseEntity.ok()

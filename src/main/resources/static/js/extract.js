@@ -74,11 +74,8 @@ const sendExtractApi = (extractType) => {
     // 실제 업로드 로직
     const formData = new FormData();
     formData.append("uploadFile", currentUploadFile);
-    formData.append("requestDto", JSON.stringify({
-        extractType: extractType,
-    }));
 
-    fetch(`http://${EXTRACTOR_HOST}:${EXTRACTOR_PORT}/${SERVICE_NAME}`, {
+    fetch(`http://${EXTRACTOR_HOST}:${EXTRACTOR_PORT}/${SERVICE_NAME}/file/${extractType}`, {
         method: "POST",
         body: formData
     })
@@ -86,7 +83,7 @@ const sendExtractApi = (extractType) => {
             content.removeChild(processMsg);
             if (response.status === 200) {
                 response.json().then(body => {
-                    body.lines.forEach((line, index) => {
+                    body.data.lines.forEach((line, index) => {
                         const extractMsg = document.createElement("div");
                         extractMsg.className = "message answer";
                         content.appendChild(extractMsg);

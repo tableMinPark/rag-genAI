@@ -5,6 +5,7 @@ const SERVICE_NAME        = "llm"
 const SESSION_ID          = randomUUID();
 const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
 const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
+const INFERENCE_EVENT_NAME= `/${SERVICE_NAME}/inference/${SESSION_ID}`;
 const STREAM_START_PREFIX = "[STREAM_START]";
 
 const content         = document.getElementById("content");
@@ -20,6 +21,9 @@ const topPInput       = document.getElementById("topPInput");
 let btnEnable = true;
 let currentLlmMsg = null;
 let currentLlmText= null;
+let currentInferenceMsg = null;
+let currentInferenceText= null;
+let currentInferenceRow = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
@@ -47,18 +51,21 @@ const enableInput = () => {
     topPInput.disabled = false;
 };
 
-// 질의 전송
-const sendQuery = () => {
+// 질의 전송 요청
+const sendQuery = (query) => {
     if (userInput.value.trim() === "") {
         alert("유저 프롬프트 입력 필요!");
         return;
-    } else if (contextInput.value.trim() === "") {
-        alert("컨텍스트 입력 필요!");
-        return;
-    } else if (promptInput.value.trim() === "") {
-        alert("시스템 프롬프트 입력 필요!");
-        return;
-    } else if (maxTokensInput.value.trim() === "") {
+    }
+    // else if (contextInput.value.trim() === "") {
+    //     alert("컨텍스트 입력 필요!");
+    //     return;
+    // }
+    // else if (promptInput.value.trim() === "") {
+    //     alert("시스템 프롬프트 입력 필요!");
+    //     return;
+    // }
+    else if (maxTokensInput.value.trim() === "") {
         alert("MAX TOKENS 입력 필요!");
         return;
     } else if (temperatureInput.value.trim() === "") {
@@ -74,10 +81,15 @@ const sendQuery = () => {
     const eventSource = new EventSource(`/${SERVICE_NAME}/stream/${SESSION_ID}`);
 
     eventSource.addEventListener("error", (event) => {
-        console.log(currentLlmText.trim());
+        // 답변 로그
+        console.log(currentLlmText);
         console.log(`❌ 에러 또는 연결 끊김 발생`);
 
         currentLlmMsg = null;
+        currentLlmText = null;
+        currentInferenceMsg = null;
+        currentInferenceText = null;
+        currentInferenceRow = null;
         eventSource.close();
         enableInput();
     });
@@ -103,20 +115,74 @@ const sendQuery = () => {
         content.scrollTop = content.scrollHeight;
     });
 
+    // 추론 과정 SSE 수신 이벤트
+    eventSource.addEventListener(INFERENCE_EVENT_NAME, (event) => {
+        if (currentInferenceMsg) {
+            currentInferenceText += replaceEventDataToText(event.data);
+            renderMarkdownWithMermaid(currentInferenceText, currentInferenceMsg);
+            content.scrollTop = content.scrollHeight;
+        } else {
+            console.log("📋 추론 과정 표출 시작");
+            currentInferenceText = "";
+
+            const inferenceBox = document.createElement("div");
+            inferenceBox.className = "inference-box";
+
+            const toggle = document.createElement("button");
+            toggle.innerHTML = "▼ 추론 과정 보기";
+            toggle.className = "toggle";
+
+            toggle.addEventListener("click", () => {
+                toggle.classList.toggle('active');
+                if (toggle.classList.contains('active')) {
+                    toggle.textContent = '▲ 추론 과정 숨기기';
+                } else {
+                    toggle.textContent = '▼ 추론 과정 보기';
+                }
+            });
+
+            const title = document.createElement("div");
+            title.innerText = "답변을 위해 생각하는중";
+            title.className = "title";
+
+            const spinner = document.createElement("div");
+            spinner.className = "spinner";
+
+            currentInferenceRow = document.createElement("div");
+            currentInferenceRow.className =  "status-row";
+            currentInferenceRow.appendChild(title);
+            currentInferenceRow.appendChild(spinner);
+
+            currentInferenceMsg = document.createElement("div");
+            currentInferenceMsg.className = "stream-box";
+
+            inferenceBox.appendChild(currentInferenceRow);
+            inferenceBox.appendChild(toggle);
+            inferenceBox.appendChild(currentInferenceMsg);
+            content.appendChild(inferenceBox);
+        }
+    });
+
     // 답변 SSE 수신 이벤트
     eventSource.addEventListener(ANSWER_EVENT_NAME, (event) => {
-        if (event.data === STREAM_START_PREFIX) {
-            console.log("📋 답변 시작");
-            currentLlmText = "";
-            currentLlmMsg = document.createElement("div");
-            currentLlmMsg.className = "message answer";
-            content.appendChild(currentLlmMsg);
-            return;
-        }
         if (currentLlmMsg) {
             currentLlmText += replaceEventDataToText(event.data);
             renderMarkdownWithMermaid(currentLlmText, currentLlmMsg);
             content.scrollTop = content.scrollHeight;
+        } else {
+            if (!currentLlmMsg && event.data.trim().length > 0) {
+                console.log(event.data.trim());
+                console.log("📋 답변 시작");
+                currentLlmText = "";
+
+                if (currentInferenceRow) {
+                    currentInferenceRow.remove();
+                }
+
+                currentLlmMsg = document.createElement("div");
+                currentLlmMsg.className = "message answer";
+                content.appendChild(currentLlmMsg);
+            }
         }
     });
 };
@@ -139,7 +205,9 @@ const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
     })
         .then(response => {
             if (response.status === 200) {
-                response.json().then(body => console.log(`📡 ${body.message}`));
+                response.json().then(body => {
+                    console.log(`📡 ${body.message}`);
+                });
             } else if (response.status === 202) {
                 response.json().then(body => console.error(`❌ ${body.message}`));
                 alert(`새로 고침 필요`);
@@ -153,12 +221,12 @@ const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
             console.error(reason);
             enableInput();
         });
-}
+};
 
 // 첫 화면
 window.onload = () => {
     // 전송 버튼 클릭 이벤트
-    sendBtn.addEventListener("click", (_) => sendQuery());
+    sendBtn.addEventListener("click", (_) => sendQuery(userInput.value));
 
     // 초기화 버튼 클릭 이벤트
     resetBtn.addEventListener("click", () => {
@@ -169,8 +237,8 @@ window.onload = () => {
 
     // 질의문 입력 키 다운 이벤트
     userInput.addEventListener("keydown", (event) => {
-        if(event.key === 'Enter' && !event.isComposing) {
-            sendQuery();
+        if (event.key === 'Enter' && !event.isComposing) {
+            sendQuery(userInput.value);
         }
     });
 
