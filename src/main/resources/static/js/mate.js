@@ -199,6 +199,7 @@ const sendQueryApi = (query) => {
         body: JSON.stringify({
             sessionId: SESSION_ID,
             query: query,
+            chatId: 1,
         })
     })
         .then(response => {

@@ -9,6 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 public class ChatRequestDto {
 
+    private Long chatId;
+
     private String sessionId;
 
     private String query;

@@ -1,12 +1,12 @@
 package com.genai.controller;
 
+import com.genai.controller.constant.ChatConst;
 import com.genai.controller.dto.request.LlmChatRequestDto;
 import com.genai.controller.dto.response.ChatResponseDto;
 import com.genai.controller.dto.response.ResponseDto;
-import com.genai.global.constant.ChatConst;
-import com.genai.service.domain.Answer;
-import com.genai.service.impl.ChatServiceImpl;
-import com.genai.service.vo.QuestionVo;
+import com.genai.core.service.QuestionCoreService;
+import com.genai.core.service.vo.AnswerVO;
+import com.genai.core.service.vo.QuestionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -27,7 +27,7 @@ public class LlmController {
     private static final String SERVICE_NAME = "llm";
     private static final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    private final ChatServiceImpl chatServiceImpl;
+    private final QuestionCoreService questionCoreService;
 
     /**
      * Emitter 조회
@@ -91,17 +91,15 @@ public class LlmController {
                 emitter.completeWithError(e);
             }
 
-            QuestionVo questionVo = chatServiceImpl.questionUseCase(query, sessionId, context, promptContext, maxTokens, temperature, topP);
-
-            StringBuilder answerBuilder = new StringBuilder();
+            QuestionVO questionVo = questionCoreService.question(query, sessionId, llmChatRequestDto.getChatId());
             questionVo.answerStream()
                     .subscribe(answers -> {
-                                for (Answer answer : answers) {
+                                for (AnswerVO answer : answers) {
                                     try {
                                         if (answer.isInference()) {
-                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getConvertContent()));
+                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getContent()));
                                         } else {
-                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
+                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getContent()));
                                         }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);

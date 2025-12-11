@@ -9,6 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 public class LlmChatRequestDto {
 
+    private Long chatId;
+
     private String sessionId;
 
     private String query;

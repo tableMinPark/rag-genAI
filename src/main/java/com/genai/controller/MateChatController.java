@@ -1,14 +1,12 @@
 package com.genai.controller;
 
+import com.genai.controller.constant.ChatConst;
 import com.genai.controller.dto.request.ChatRequestDto;
 import com.genai.controller.dto.response.ChatResponseDto;
 import com.genai.controller.dto.response.ResponseDto;
-import com.genai.controller.vo.ReferenceDocumentVo;
-import com.genai.global.constant.ChatConst;
-import com.genai.global.enums.MenuType;
-import com.genai.service.ChatService;
-import com.genai.service.domain.Answer;
-import com.genai.service.vo.QuestionVo;
+import com.genai.core.service.QuestionCoreService;
+import com.genai.core.service.vo.AnswerVO;
+import com.genai.core.service.vo.QuestionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -29,7 +28,7 @@ public class MateChatController {
     private static final String SERVICE_NAME = "mate";
     private static final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    private final ChatService chatService;
+    private final QuestionCoreService questionCoreService;
 
     /**
      * Emitter 조회
@@ -94,15 +93,15 @@ public class MateChatController {
                 emitter.completeWithError(e);
             }
 
-            QuestionVo questionVo = chatService.questionRagUseCase(query, sessionId, MenuType.MATE);
-            questionVo.answerStream()
+            QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatRequestDto.getChatId(), Collections.emptyList());
+            questionVO.answerStream()
                     .subscribe(answers -> {
-                                for (Answer answer : answers) {
+                                for (AnswerVO answer : answers) {
                                     try {
                                         if (answer.isInference()) {
-                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getConvertContent()));
+                                            emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getContent()));
                                         } else {
-                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getConvertContent()));
+                                            emitter.send(SseEmitter.event().name(answerEventName).data(answer.getContent()));
                                         }
                                     } catch (IOException e) {
                                         emitter.completeWithError(e);
@@ -120,21 +119,9 @@ public class MateChatController {
                             .data(ChatResponseDto.builder()
                                     .query(query)
                                     .sessionId(sessionId)
-                                    .documents(questionVo.documents().stream()
-                                            .map(document -> ReferenceDocumentVo.builder()
-                                                    .title(document.getTitle())
-                                                    .subTitle(document.getSubTitle())
-                                                    .thirdTitle(document.getThirdTitle())
-                                                    .content(document.getContent())
-                                                    .subContent(document.getSubContent())
-                                                    .filePath(document.getFilePath())
-                                                    .url(document.getUrl())
-                                                    .docType(document.getDocType())
-                                                    .categoryCode(document.getCategoryCode())
-                                                    .build())
-                                            .toList())
-                                    .build())
-                            .build());
+                                    .documents(questionVO.documents())
+                            .build())
+                        .build());
         } else {
             log.error("{} 사용자 스트림 없음({})", SERVICE_NAME, sessionId);
 

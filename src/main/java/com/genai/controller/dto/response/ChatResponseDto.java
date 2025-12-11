@@ -1,6 +1,6 @@
 package com.genai.controller.dto.response;
 
-import com.genai.controller.vo.ReferenceDocumentVo;
+import com.genai.core.service.vo.DocumentVo;
 import lombok.*;
 
 import java.util.List;
@@ -16,5 +16,5 @@ public class ChatResponseDto {
 
     private String query;
 
-    private List<ReferenceDocumentVo> documents;
+    private List<DocumentVo> documents;
 }
