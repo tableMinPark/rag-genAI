@@ -15,6 +15,6 @@ public class AnswerVO {
 
     private String finishReason;
 
-    private boolean isInference;
+    private Boolean isInference;
 
 }

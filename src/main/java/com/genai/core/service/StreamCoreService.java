@@ -1,14 +1,30 @@
 package com.genai.core.service;
 
-import org.yaml.snakeyaml.emitter.Emitter;
+import com.genai.core.service.subscriber.StreamSubscriber;
+
 
 public interface StreamCoreService {
 
     /**
-     * Emitter 생성 및 조회
+     * Stream 등록
      *
-     * @param emitterKey emitter 식별자
-     * @return Emitter
+     * @param streamId stream 식별자
+     * @return StreamVO
      */
-    Emitter createEmitter(String emitterKey);
+    StreamSubscriber createStream(String streamId);
+
+    /**
+     * Stream 조회
+     *
+     * @param streamId stream 식별자
+     * @return StreamVO
+     */
+    StreamSubscriber getStream(String streamId);
+
+    /**
+     * Stream 중지 및 삭제
+     *
+     * @param streamId stream 식별자
+     */
+    void deleteStream(String streamId);
 }

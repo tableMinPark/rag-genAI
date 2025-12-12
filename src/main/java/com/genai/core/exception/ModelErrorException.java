@@ -1,4 +1,4 @@
-package com.genai.exception;
+package com.genai.core.exception;
 
 public class ModelErrorException extends RuntimeException {
     public ModelErrorException(String modelType) {

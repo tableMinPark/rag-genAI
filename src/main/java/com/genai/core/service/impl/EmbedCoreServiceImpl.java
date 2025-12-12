@@ -11,7 +11,7 @@ import com.genai.core.service.vo.SourceVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
 import com.genai.core.utils.ExtractUtil;
-import com.genai.exception.NotFoundException;
+import com.genai.core.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

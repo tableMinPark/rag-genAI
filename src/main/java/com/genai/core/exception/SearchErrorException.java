@@ -1,4 +1,4 @@
-package com.genai.exception;
+package com.genai.core.exception;
 
 public class SearchErrorException extends RuntimeException {
     public SearchErrorException(String searchType) {

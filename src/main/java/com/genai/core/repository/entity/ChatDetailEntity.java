@@ -32,8 +32,9 @@ public class ChatDetailEntity {
     @Comment("발화자 ID")
     private String speaker;
 
+    @Lob
     @Setter
-    @Column(name = "content", length = 4000)
+    @Column(name = "content")
     @Comment("대화 내용")
     private String content;
 

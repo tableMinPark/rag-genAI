@@ -10,8 +10,8 @@ import com.genai.core.service.TranslateCoreService;
 import com.genai.core.service.vo.TranslateVO;
 import com.genai.core.utils.CommonUtil;
 import com.genai.core.utils.ExtractUtil;
-import com.genai.exception.NotFoundException;
-import com.genai.exception.TranslateErrorException;
+import com.genai.core.exception.NotFoundException;
+import com.genai.core.exception.TranslateErrorException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -143,7 +143,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
         StringBuilder translateContentBuilder = new StringBuilder();
 
         modelRepository.generateAnswer(userInput, content, CommonUtil.generateRandomId(), promptEntity).forEach(answer -> {
-            if (!answer.isInference()) {
+            if (!answer.getIsInference()) {
                 translateContentBuilder.append(answer.getContent());
             }
         });

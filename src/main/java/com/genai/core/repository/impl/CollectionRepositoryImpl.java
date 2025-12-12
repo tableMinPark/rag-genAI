@@ -10,7 +10,7 @@ import com.genai.core.repository.request.CreateCollectionRequest;
 import com.genai.core.repository.response.GetCollectionResponse;
 import com.genai.core.repository.response.GetIndexResponse;
 import com.genai.core.repository.vo.ConvertVectorVO;
-import com.genai.exception.CollectionErrorException;
+import com.genai.core.exception.CollectionErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

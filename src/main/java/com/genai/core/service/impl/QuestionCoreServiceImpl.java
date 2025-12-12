@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.core.config.constant.PromptConst;
 import com.genai.core.config.constant.QuestionConst;
 import com.genai.core.config.constant.SearchConst;
+import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
 import com.genai.core.repository.wrapper.Rerank;
@@ -16,8 +17,8 @@ import com.genai.core.service.vo.DocumentVo;
 import com.genai.core.service.vo.QuestionVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
-import com.genai.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -27,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QuestionCoreServiceImpl implements QuestionCoreService {
@@ -80,7 +82,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                 .id(answerEntity.getId())
                                 .content(answerEntity.getConvertContent())
                                 .finishReason(answerEntity.getFinishReason())
-                                .isInference(answerEntity.isInference())
+                                .isInference(answerEntity.getIsInference())
                                 .build())
                         .toList());
 
@@ -192,7 +194,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             contextJson = contextBuilder.toString();
         }
 
-        // LLM 답변 스트림 요청
+        // LLM 답변 스트림 요청 (Hot Stream)
         Flux<List<AnswerVO>> answerStream = modelRepository
                 .generateStreamAnswer(query, contextJson.trim(), sessionId, promptEntity)
                 .map(answerEntities -> answerEntities.stream()
@@ -200,9 +202,13 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                 .id(answerEntity.getId())
                                 .content(answerEntity.getConvertContent())
                                 .finishReason(answerEntity.getFinishReason())
-                                .isInference(answerEntity.isInference())
+                                .isInference(answerEntity.getIsInference())
                                 .build())
-                        .toList());
+                        .toList())
+                // TODO: 학 스트림 구독자 제한 기능 작동 안함
+                // TODO: 최소 2명으로 설정 했으나, 1명이 cancel 되어도 기존 구독은 계속 진행 (upstream 중지 안됨)
+                .publish()
+                .refCount(2);
 
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
@@ -222,49 +228,51 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .build());
 
         StringBuilder answerBuilder = new StringBuilder();
-        answerStream.subscribe(answerVos -> {
-            for (AnswerVO answerVo : answerVos) {
-                if (!answerVo.isInference()) {
-                    answerBuilder.append(answerVo.getContent());
-                }
-            }
-        }, throwable -> {
-        }, () -> {
-            // 답변 병합 (답변만 적재)
-            String content = answerBuilder.toString();
+        answerStream
+                .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
+                .subscribe(answerVos -> {
+                    for (AnswerVO answerVo : answerVos) {
+                        if (!answerVo.getIsInference()) {
+                            answerBuilder.append(answerVo.getContent());
+                        }
+                    }
+                }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
+                    // 답변 병합 (답변만 적재)
+                    String content = answerBuilder.toString();
 
-            content = content.replace("&nbsp", " ");
-            content = content.replace("\\n", "\n");
+                    content = content.replace("&nbsp", " ");
+                    content = content.replace("\\n", "\n");
 
-            // 추론 및 답변 등록
-            chatDetailEntity.setContent(content.trim());
-            chatDetailRepository.save(chatDetailEntity);
+                    // 추론 및 답변 등록
+                    chatDetailEntity.setContent(content.trim());
+                    chatDetailRepository.save(chatDetailEntity);
 
-            // 참고 문서 목록
-            List<ChatPassageEntity> chatPassageEntities = finalTopRerankEntities.stream()
-                    .map(rerankEntity -> {
+                    // 참고 문서 목록
+                    List<ChatPassageEntity> chatPassageEntities = finalTopRerankEntities.stream()
+                            .map(rerankEntity -> {
 
-                        String context = rerankEntity.getDocument().getTitle() + "\n" +
-                                rerankEntity.getDocument().getSubTitle() + "\n" +
-                                rerankEntity.getDocument().getThirdTitle() + "\n" +
-                                rerankEntity.getDocument().getContent() + "\n" +
-                                rerankEntity.getDocument().getSubContent() + "\n";
+                                String context = rerankEntity.getDocument().getTitle() + "\n" +
+                                        rerankEntity.getDocument().getSubTitle() + "\n" +
+                                        rerankEntity.getDocument().getThirdTitle() + "\n" +
+                                        rerankEntity.getDocument().getContent() + "\n" +
+                                        rerankEntity.getDocument().getSubContent() + "\n";
 
-                        context = context.replace("\\n", "\n");
+                                context = context.replace("\\n", "\n");
 
-                        return ChatPassageEntity.builder()
-                                .msgId(chatDetailEntity.getMsgId())
-                                .fileDetailId(rerankEntity.getDocument().getFileDetailId())
-                                .sourceType(rerankEntity.getDocument().getSourceType())
-                                .categoryCode(rerankEntity.getDocument().getCategoryCode())
-                                .content(context)
-                                .build();
-                    })
-                    .toList();
+                                return ChatPassageEntity.builder()
+                                        .msgId(chatDetailEntity.getMsgId())
+                                        .fileDetailId(rerankEntity.getDocument().getFileDetailId())
+                                        .sourceType(rerankEntity.getDocument().getSourceType())
+                                        .categoryCode(rerankEntity.getDocument().getCategoryCode())
+                                        .content(context)
+                                        .build();
+                            })
+                            .toList();
 
-            // 참고 문서 등록
-            chatPassageRepository.saveAll(chatPassageEntities);
-        });
+                    // 참고 문서 등록
+                    chatPassageRepository.saveAll(chatPassageEntities);
+                    log.info("대화 이력 스트림 정상 종료");
+                });
 
         return QuestionVO.builder()
                 .answerStream(answerStream)

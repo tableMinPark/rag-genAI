@@ -7,7 +7,7 @@ import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.PromptCoreService;
 import com.genai.core.utils.CommonUtil;
-import com.genai.exception.NotFoundException;
+import com.genai.core.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -84,7 +84,7 @@ public class PromptCoreServiceImpl implements PromptCoreService {
         List<AnswerEntity> answerEntities = modelRepository.generateAnswer(userInput, context, CommonUtil.generateRandomId(), promptEntity);
 
         answerEntities.forEach(answer -> {
-            if (!answer.isInference()) {
+            if (!answer.getIsInference()) {
                 promptContentBuilder.append(answer.getContent());
             }
         });

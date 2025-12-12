@@ -1,59 +1,87 @@
 package com.genai.core.controller;
 
+import com.genai.chat.controller.dto.response.ResponseDto;
+import com.genai.chat.controller.dto.response.StreamCancelResponseDto;
+import com.genai.core.service.StreamCoreService;
+import com.genai.core.service.constant.StreamConst;
+import com.genai.core.service.subscriber.StreamSubscriber;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.IOException;
 
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/biz/stream")
+@RequestMapping("/stream")
 public class StreamController {
 
-    private static final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final StreamCoreService streamCoreService;
 
     /**
-     * Emitter 조회
+     * 스트림 발행
      *
      * @param sessionId 세션 ID
      * @return SSE Emitter
      */
-    @GetMapping("/{serviceName}/{sessionId}")
-    public SseEmitter stream(
-            @PathVariable("serviceName") String serviceName,
-            @PathVariable("sessionId") String sessionId
-    ) {
+    @GetMapping("/{sessionId}")
+    public SseEmitter stream(@PathVariable("sessionId") String sessionId) throws InterruptedException {
 
-        String emitterKey = String.format("/%s/%s", serviceName, sessionId);
+        log.info("사용자 스트림 요청 : {}", sessionId);
 
-        log.info("{} 스트림 요청({})", serviceName, sessionId);
+        // 스트림 등록
+        StreamSubscriber streamSubscriber = streamCoreService.createStream(sessionId);
 
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.put(emitterKey, emitter);
+        // 연결 이벤트 전송
         try {
-            // 연결 확인 코멘트 전송
-            emitter.send(SseEmitter.event().comment(sessionId));
-        } catch (Exception e) {
-            emitter.completeWithError(e);
+            streamSubscriber.getStream().getEmitter().send(SseEmitter.event()
+                    .name(StreamConst.CONNECT)
+                    .data(StreamConst.CONNECT));
+        } catch (IOException e) {
+            streamSubscriber.getStream().getEmitter().completeWithError(e);
         }
 
-        // 세션 만료 또는 연결 끊김 처리
-        emitter.onCompletion(() -> {
-            log.info("{} 사용자 스트림 종료({})", serviceName, sessionId);
-            emitters.remove(emitterKey);
-        });
-        emitter.onTimeout(() -> {
-            log.info("{} 사용자 스트림 타임 아웃({})", serviceName, sessionId);
-            emitters.remove(emitterKey);
+        // 연결 끊김 처리
+        streamSubscriber.getStream().getEmitter().onCompletion(() -> {
+            streamCoreService.deleteStream(sessionId);
+            log.info("사용자 SSE 종료 : {}", sessionId);
         });
 
-        return emitter;
+        // 세션 만료 처리
+        streamSubscriber.getStream().getEmitter().onTimeout(() -> {
+            streamCoreService.deleteStream(sessionId);
+            log.info("사용자 SSE 타임 아웃 : {}", sessionId);
+        });
+
+        // 에러 처리
+        streamSubscriber.getStream().getEmitter().onError(throwable -> {
+            log.error("사용자 SSE 에러 : {} | {}", sessionId, throwable.getMessage());
+        });
+
+        return streamSubscriber.getStream().getEmitter();
+    }
+
+    /**
+     * 스트림 중지 요청
+     *
+     * @param sessionId 세션 ID
+     */
+    @DeleteMapping("/{sessionId}")
+    public ResponseEntity<ResponseDto<StreamCancelResponseDto>> cancelStream(@PathVariable("sessionId") String sessionId) {
+
+        // 답변 스트림 삭제
+        streamCoreService.deleteStream(sessionId);
+
+        return ResponseEntity.ok()
+                .body(ResponseDto.<StreamCancelResponseDto>builder()
+                        .status("SUCCESS")
+                        .message("스트림 중지 요청 성공")
+                        .data(StreamCancelResponseDto.builder()
+                                .sessionId(sessionId)
+                                .build())
+                        .build());
     }
 }

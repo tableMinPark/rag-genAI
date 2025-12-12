@@ -18,7 +18,7 @@ import com.genai.core.repository.vo.SearchVectorQueryVO;
 import com.genai.core.repository.wrapper.Rerank;
 import com.genai.core.repository.wrapper.Search;
 import com.genai.core.type.CollectionType;
-import com.genai.exception.SearchErrorException;
+import com.genai.core.exception.SearchErrorException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -74,7 +74,7 @@ public class SearchRepositoryImpl implements SearchRepository {
         }
 
         KeywordSearchRequest requestBody = KeywordSearchRequest.builder()
-                .filterQuery(filterQueryBuilder.toString())
+                .filterQuery(filterQueryBuilder.toString().trim().isBlank() ? null : filterQueryBuilder.toString())
                 .commonQuery(query)
                 .topK(topK)
                 .sessionInfo(List.of(sessionId))
@@ -142,7 +142,7 @@ public class SearchRepositoryImpl implements SearchRepository {
         }
 
         VectorSearchRequest requestBody = VectorSearchRequest.builder()
-                .filterQuery(filterQueryBuilder.toString())
+                .filterQuery(filterQueryBuilder.toString().trim().isBlank() ? null : filterQueryBuilder.toString())
                 .vectorQuery(vectorQueryVos)
                 .build();
 

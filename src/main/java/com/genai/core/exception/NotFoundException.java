@@ -1,4 +1,4 @@
-package com.genai.exception;
+package com.genai.core.exception;
 
 public class NotFoundException extends RuntimeException {
     public NotFoundException(String message) {

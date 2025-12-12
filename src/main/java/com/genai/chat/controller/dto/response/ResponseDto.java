@@ -1,4 +1,4 @@
-package com.genai.controller.dto.response;
+package com.genai.chat.controller.dto.response;
 
 import lombok.*;
 

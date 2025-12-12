@@ -1,14 +1,11 @@
 package com.genai.core.repository.entity;
 
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Builder
 @Getter
 @NoArgsConstructor
-@AllArgsConstructor
 public class AnswerEntity {
 
     private String id;
@@ -17,7 +14,15 @@ public class AnswerEntity {
 
     private String finishReason;
 
-    private boolean isInference;
+    private Boolean isInference;
+
+    @Builder
+    public AnswerEntity(String id, String content, String finishReason, Boolean isInference) {
+        this.id = id;
+        this.content = content == null ? "" : content;
+        this.finishReason = finishReason == null ? "" : finishReason;
+        this.isInference = isInference;
+    }
 
     /**
      * 공백 문자 치환

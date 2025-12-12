@@ -35,7 +35,8 @@ public class ChatPassageEntity {
     @Comment("카테고리 코드")
     private String categoryCode;
 
-    @Column(name = "content", length = 4000)
+    @Lob
+    @Column(name = "content")
     @Comment("참고 문서 내용")
     private String content;
 }

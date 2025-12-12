@@ -1,9 +1,9 @@
-package com.genai.controller;
+package com.genai.chat.controller;
 
-import com.genai.controller.constant.ChatConst;
-import com.genai.controller.dto.request.LlmChatRequestDto;
-import com.genai.controller.dto.response.ChatResponseDto;
-import com.genai.controller.dto.response.ResponseDto;
+import com.genai.chat.controller.constant.ChatConst;
+import com.genai.chat.controller.dto.request.LlmChatRequestDto;
+import com.genai.chat.controller.dto.response.ChatResponseDto;
+import com.genai.chat.controller.dto.response.ResponseDto;
 import com.genai.core.service.QuestionCoreService;
 import com.genai.core.service.vo.AnswerVO;
 import com.genai.core.service.vo.QuestionVO;
@@ -96,7 +96,7 @@ public class LlmController {
                     .subscribe(answers -> {
                                 for (AnswerVO answer : answers) {
                                     try {
-                                        if (answer.isInference()) {
+                                        if (answer.getIsInference()) {
                                             emitter.send(SseEmitter.event().name(inferenceEventName).data(answer.getContent()));
                                         } else {
                                             emitter.send(SseEmitter.event().name(answerEventName).data(answer.getContent()));

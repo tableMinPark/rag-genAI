@@ -1,4 +1,4 @@
-package com.genai.controller.constant;
+package com.genai.chat.controller.constant;
 
 public class ChatConst {
 
