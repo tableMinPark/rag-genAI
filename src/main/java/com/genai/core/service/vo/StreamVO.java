@@ -18,9 +18,9 @@ public class StreamVO {
     private boolean cancelled;
 
     @Builder
-    public StreamVO(String streamId, SseEmitter emitter) {
+    public StreamVO(String streamId) {
         this.streamId = streamId;
-        this.emitter = emitter;
+        this.emitter = new SseEmitter(Long.MAX_VALUE);
         this.cancelled = false;
         this.inferenceStarted = false;
         this.answerStarted = false;

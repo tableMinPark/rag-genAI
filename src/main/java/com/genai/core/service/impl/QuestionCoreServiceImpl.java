@@ -43,7 +43,37 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 질문 & 답변
+     * AI 질문 & 답변
+     *
+     * @param query         질의문
+     * @param sessionId     사용자 ID
+     * @param chatId        대화 ID
+     * @param categoryCodes 카테고리 코드 목록
+     * @return 답변 VO
+     */
+    @Transactional
+    @Override
+    public QuestionVO questionAi(String query, String sessionId, long chatId, List<String> categoryCodes) {
+        return this.questionByCollectionId(query, sessionId, chatId, PromptConst.QUESTION_AI_PROMPT_ID, collectionTypeFactory.ai(), categoryCodes);
+    }
+
+    /**
+     * 나만의 AI 질문 & 답변
+     *
+     * @param query     질의문
+     * @param sessionId 사용자 ID
+     * @param chatId    대화 ID
+     * @param promptId  프롬프트 ID
+     * @return 답변 VO
+     */
+    @Transactional
+    @Override
+    public QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId) {
+        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.myai(), Collections.emptyList());
+    }
+
+    /**
+     * LLM 질문 & 답변
      *
      * @param query     질의문
      * @param sessionId 사용자 ID
@@ -52,9 +82,24 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      */
     @Transactional
     @Override
-    public QuestionVO question(String query, String sessionId, long chatId) {
+    public QuestionVO questionLlm(String query, String sessionId, long chatId) {
+        return this.questionLlm(query, sessionId, chatId, PromptConst.QUESTION_PROMPT_ID);
+    }
+
+    /**
+     * LLM 질문 & 답변
+     *
+     * @param query     질의문
+     * @param sessionId 사용자 ID
+     * @param chatId    대화 ID
+     * @param promptId  프롬프트 ID
+     * @return 답변 VO
+     */
+    @Transactional
+    @Override
+    public QuestionVO questionLlm(String query, String sessionId, long chatId, long promptId) {
         // 시스템 프롬 프트 조회
-        PromptEntity promptEntity = promptRepository.findByPromptId(PromptConst.QUESTION_AI_PROMPT_ID)
+        PromptEntity promptEntity = promptRepository.findByPromptId(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
         ChatEntity chatEntity = chatRepository.findById(chatId)
@@ -84,42 +129,31 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                 .finishReason(answerEntity.getFinishReason())
                                 .isInference(answerEntity.getIsInference())
                                 .build())
-                        .toList());
+                        .toList())
+                .publish()
+                .refCount(2);
+
+        StringBuilder answerBuilder = new StringBuilder();
+        answerStream
+                .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
+                .subscribe(answerVos -> {
+                    for (AnswerVO answerVo : answerVos) {
+                        if (!answerVo.getIsInference()) {
+                            answerBuilder.append(answerVo.getContent());
+                        }
+                    }
+                }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
+                    // 답변 저장
+                    chatDetailEntity.setContent(answerBuilder.toString());
+                    chatDetailRepository.save(chatDetailEntity);
+                    log.info("대화 이력 스트림 정상 종료");
+                });
 
         return QuestionVO.builder()
                 .answerStream(answerStream)
                 .documents(Collections.emptyList())
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
-    }
-
-    /**
-     * AI 질문 & 답변
-     *
-     * @param query         질의문
-     * @param sessionId     사용자 ID
-     * @param chatId        대화 ID
-     * @param categoryCodes 카테고리 코드 목록
-     * @return 답변 VO
-     */
-    @Transactional
-    @Override
-    public QuestionVO questionAi(String query, String sessionId, long chatId, List<String> categoryCodes) {
-        return this.questionByCollectionId(query, sessionId, chatId, PromptConst.QUESTION_AI_PROMPT_ID, collectionTypeFactory.ai(), categoryCodes);
-    }
-
-    /**
-     * 나만의 AI 질문 & 답변
-     *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @return 답변 VO
-     */
-    @Transactional
-    @Override
-    public QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId) {
-        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.myai(), Collections.emptyList());
     }
 
     /**
@@ -237,14 +271,8 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         }
                     }
                 }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
-                    // 답변 병합 (답변만 적재)
-                    String content = answerBuilder.toString();
-
-                    content = content.replace("&nbsp", " ");
-                    content = content.replace("\\n", "\n");
-
-                    // 추론 및 답변 등록
-                    chatDetailEntity.setContent(content.trim());
+                    // 답변 저장
+                    chatDetailEntity.setContent(answerBuilder.toString());
                     chatDetailRepository.save(chatDetailEntity);
 
                     // 참고 문서 목록
@@ -293,4 +321,84 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
+
+    /**
+     * LLM Simulation 질문 & 답변
+     *
+     * @param query         질의문
+     * @param sessionId     사용자 ID
+     * @param chatId        대화 ID
+     * @param context       참고 문서 (Context)
+     * @param promptContent 프롬프트 본문
+     * @param temperature   창의성
+     * @param topP          일관성
+     * @param maximumTokens 최대 토큰 수
+     * @return 답변 VO
+     */
+    @Transactional
+    @Override
+    public QuestionVO questionSimulation(String query, String sessionId, long chatId, String context, String promptContent, double temperature, double topP, int maximumTokens) {
+
+        // 시스템 프롬 프트 조회
+        PromptEntity promptEntity = PromptEntity.builder()
+                .promptContent(promptContent)
+                .temperature(temperature)
+                .topP(topP)
+                .maximumTokens(maximumTokens)
+                .build();
+
+        ChatEntity chatEntity = chatRepository.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("대화 이력"));
+
+        // 질의 이력 생성
+        chatDetailRepository.save(ChatDetailEntity.builder()
+                .chatId(chatEntity.getChatId())
+                .speaker(sessionId)
+                .content(query)
+                .build());
+
+        // 답변 이력 생성
+        ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
+                .chatId(chatEntity.getChatId())
+                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
+                .content("")
+                .build());
+
+        // LLM 답변 스트림 요청
+        Flux<List<AnswerVO>> answerStream = modelRepository
+                .generateStreamAnswer(query, context, sessionId, promptEntity)
+                .map(answerEntities -> answerEntities.stream()
+                        .map(answerEntity -> AnswerVO.builder()
+                                .id(answerEntity.getId())
+                                .content(answerEntity.getConvertContent())
+                                .finishReason(answerEntity.getFinishReason())
+                                .isInference(answerEntity.getIsInference())
+                                .build())
+                        .toList())
+                .publish()
+                .refCount(2);
+
+        StringBuilder answerBuilder = new StringBuilder();
+        answerStream
+                .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
+                .subscribe(answerVos -> {
+                    for (AnswerVO answerVo : answerVos) {
+                        if (!answerVo.getIsInference()) {
+                            answerBuilder.append(answerVo.getContent());
+                        }
+                    }
+                }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
+                    // 답변 저장
+                    chatDetailEntity.setContent(answerBuilder.toString());
+                    chatDetailRepository.save(chatDetailEntity);
+                    log.info("대화 이력 스트림 정상 종료");
+                });
+
+        return QuestionVO.builder()
+                .answerStream(answerStream)
+                .documents(Collections.emptyList())
+                .msgId(chatDetailEntity.getMsgId())
+                .build();
+    }
+
 }

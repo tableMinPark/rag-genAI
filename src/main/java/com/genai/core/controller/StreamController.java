@@ -3,15 +3,12 @@ package com.genai.core.controller;
 import com.genai.chat.controller.dto.response.ResponseDto;
 import com.genai.chat.controller.dto.response.StreamCancelResponseDto;
 import com.genai.core.service.StreamCoreService;
-import com.genai.core.service.constant.StreamConst;
 import com.genai.core.service.subscriber.StreamSubscriber;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-
-import java.io.IOException;
 
 @Slf4j
 @RestController
@@ -35,33 +32,24 @@ public class StreamController {
         // 스트림 등록
         StreamSubscriber streamSubscriber = streamCoreService.createStream(sessionId);
 
-        // 연결 이벤트 전송
-        try {
-            streamSubscriber.getStream().getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.CONNECT)
-                    .data(StreamConst.CONNECT));
-        } catch (IOException e) {
-            streamSubscriber.getStream().getEmitter().completeWithError(e);
-        }
-
         // 연결 끊김 처리
-        streamSubscriber.getStream().getEmitter().onCompletion(() -> {
+        streamSubscriber.getEmitter().onCompletion(() -> {
             streamCoreService.deleteStream(sessionId);
             log.info("사용자 SSE 종료 : {}", sessionId);
         });
 
         // 세션 만료 처리
-        streamSubscriber.getStream().getEmitter().onTimeout(() -> {
+        streamSubscriber.getEmitter().onTimeout(() -> {
             streamCoreService.deleteStream(sessionId);
             log.info("사용자 SSE 타임 아웃 : {}", sessionId);
         });
 
         // 에러 처리
-        streamSubscriber.getStream().getEmitter().onError(throwable -> {
+        streamSubscriber.getEmitter().onError(throwable -> {
             log.error("사용자 SSE 에러 : {} | {}", sessionId, throwable.getMessage());
         });
 
-        return streamSubscriber.getStream().getEmitter();
+        return streamSubscriber.getEmitter();
     }
 
     /**

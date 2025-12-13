@@ -33,7 +33,6 @@ public class ChatDetailEntity {
     private String speaker;
 
     @Lob
-    @Setter
     @Column(name = "content")
     @Comment("대화 내용")
     private String content;
@@ -48,4 +47,10 @@ public class ChatDetailEntity {
     @Comment("수정 일자")
     private LocalDateTime sysModifyDt;
 
+    public void setContent(String content) {
+        this.content = content;
+        this.content = this.content.replace("&nbsp", " ");
+        this.content = this.content.replace("\\n", "\n");
+        this.content = this.content.trim();
+    }
 }

@@ -1,14 +1,16 @@
 package com.genai.core.service.impl;
 
+import com.genai.core.config.constant.StreamConst;
+import com.genai.core.exception.NotFoundException;
 import com.genai.core.service.StreamCoreService;
 import com.genai.core.service.subscriber.StreamSubscriber;
 import com.genai.core.service.vo.StreamVO;
-import com.genai.core.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,11 +30,18 @@ public class StreamCoreServiceImpl implements StreamCoreService {
     @Override
     public StreamSubscriber createStream(String streamId) {
 
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
         StreamSubscriber streamSubscriber = new StreamSubscriber(StreamVO.builder()
                 .streamId(streamId)
-                .emitter(emitter)
                 .build());
+
+        // 연결 이벤트 전송
+        try {
+            streamSubscriber.getEmitter().send(SseEmitter.event()
+                    .name(StreamConst.CONNECT)
+                    .data(StreamConst.CONNECT));
+        } catch (IOException e) {
+            streamSubscriber.getEmitter().completeWithError(e);
+        }
 
         streamMap.put(streamId, streamSubscriber);
 
@@ -65,10 +74,8 @@ public class StreamCoreServiceImpl implements StreamCoreService {
     public void deleteStream(String streamId) {
 
         if (streamMap.containsKey(streamId)) {
-            StreamVO streamVO = streamMap.get(streamId).getStream();
-
             // 스트림 종료
-            streamVO.setCancelled(true);
+            streamMap.get(streamId).cancelStream();
 
             streamMap.remove(streamId);
 

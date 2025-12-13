@@ -1,4 +1,4 @@
-package com.genai.core.service.constant;
+package com.genai.core.config.constant;
 
 public class StreamConst {
 

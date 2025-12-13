@@ -1,9 +1,8 @@
 package com.genai.core.service.subscriber;
 
-import com.genai.core.service.constant.StreamConst;
+import com.genai.core.config.constant.StreamConst;
 import com.genai.core.service.vo.AnswerVO;
 import com.genai.core.service.vo.StreamVO;
-import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -13,12 +12,19 @@ import java.io.IOException;
 import java.util.List;
 
 @Slf4j
-@Getter
 public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
     private final StreamVO stream;
 
     public StreamSubscriber(StreamVO stream) {
         this.stream = stream;
+    }
+
+    public SseEmitter getEmitter() {
+        return stream.getEmitter();
+    }
+
+    public void cancelStream() {
+        stream.setCancelled(true);
     }
 
     @Override

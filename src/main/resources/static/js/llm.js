@@ -1,15 +1,11 @@
 import {randomUUID, renderMarkdownWithMermaid, replaceEventDataToText} from './util.js'
 
 const GREETING_MESSAGE    = "안녕하세요. **LLM TEST BOT** 입니다.\n\n관련 문서 및 질의, 시스템 프롬프트를 기반으로 답변 드리겠습니다."
-const SERVICE_NAME        = "llm"
 const SESSION_ID          = randomUUID();
-const QUERY_EVENT_NAME    = `/${SERVICE_NAME}/query/${SESSION_ID}`;
-const ANSWER_EVENT_NAME   = `/${SERVICE_NAME}/answer/${SESSION_ID}`;
-const INFERENCE_EVENT_NAME= `/${SERVICE_NAME}/inference/${SESSION_ID}`;
-const STREAM_START_PREFIX = "[STREAM_START]";
 
 const content         = document.getElementById("content");
 const sendBtn         = document.getElementById("sendBtn");
+const cancelBtn       = document.getElementById("cancelBtn");
 const resetBtn        = document.getElementById("resetBtn");
 const userInput       = document.getElementById("userInput");
 const contextInput    = document.getElementById("contextInput");
@@ -19,16 +15,13 @@ const temperatureInput= document.getElementById("temperatureInput");
 const topPInput       = document.getElementById("topPInput");
 
 let btnEnable = true;
-let currentLlmMsg = null;
-let currentLlmText= null;
-let currentInferenceMsg = null;
-let currentInferenceText= null;
-let currentInferenceRow = null;
+let chatId        = null;
 
 // 입력 단 비 활성화
 const disableInput = () => {
     btnEnable = false;
     sendBtn.hidden = true;
+    cancelBtn.hidden = false;
     resetBtn.hidden = true
     userInput.disabled = true;
     contextInput.disabled = true;
@@ -42,6 +35,7 @@ const disableInput = () => {
 const enableInput = () => {
     btnEnable = true;
     sendBtn.hidden = false;
+    cancelBtn.hidden = true;
     resetBtn.hidden = false
     userInput.disabled = false;
     contextInput.disabled = false;
@@ -52,150 +46,184 @@ const enableInput = () => {
 };
 
 // 질의 전송 요청
-const sendQuery = (query) => {
-    if (userInput.value.trim() === "") {
+const sendQuery = (query, context, prompt, maxTokens, temperature, topP) => {
+    if (query.trim() === "") {
         alert("유저 프롬프트 입력 필요!");
         return;
     }
-    // else if (contextInput.value.trim() === "") {
-    //     alert("컨텍스트 입력 필요!");
-    //     return;
-    // }
-    // else if (promptInput.value.trim() === "") {
-    //     alert("시스템 프롬프트 입력 필요!");
-    //     return;
-    // }
-    else if (maxTokensInput.value.trim() === "") {
+    else if (context.trim() === "") {
+        alert("컨텍스트 입력 필요!");
+        return;
+    }
+    else if (prompt.trim() === "") {
+        alert("시스템 프롬프트 입력 필요!");
+        return;
+    }
+    else if (maxTokens.trim() === "") {
         alert("MAX TOKENS 입력 필요!");
         return;
-    } else if (temperatureInput.value.trim() === "") {
+    } else if (temperature.trim() === "") {
         alert("TEMPERATURE 입력 필요!");
         return;
-    } else if (topPInput.value.trim() === "") {
+    } else if (topP.trim() === "") {
         alert("TOP P 입력 필요!");
         return;
     } else if (!btnEnable) return;
     else disableInput();
 
+    let answerDiv= document.createElement("div");
+    let answer = "";
+    let inferenceDiv= document.createElement("div");
+    let inference = "";
+    let inferenceTitleDiv = document.createElement("div");
+
     // 세션 기반 SSE 연결
-    const eventSource = new EventSource(`/${SERVICE_NAME}/stream/${SESSION_ID}`);
+    const eventSource = new EventSource(`/stream/${SESSION_ID}`);
 
-    eventSource.addEventListener("error", (event) => {
-        // 답변 로그
-        console.log(currentLlmText);
-        console.log(`❌ 에러 또는 연결 끊김 발생`);
+    eventSource.addEventListener("connect", (_) => {
+        console.log(`📡 스트림 연결`);
+        sendQueryApi(query, context, prompt, maxTokens, temperature, topP);
 
-        currentLlmMsg = null;
-        currentLlmText = null;
-        currentInferenceMsg = null;
-        currentInferenceText = null;
-        currentInferenceRow = null;
-        eventSource.close();
-        enableInput();
-    });
-
-    eventSource.addEventListener("open", () => {
-        console.log("📡 SSE 연결 열림");
-        sendQueryApi(
-            userInput.value,
-            contextInput.value,
-            promptInput.value,
-            maxTokensInput.value,
-            temperatureInput.value,
-            topPInput.value,
-        );
-    });
-
-    // 질의 SSE 수신 이벤트
-    eventSource.addEventListener(QUERY_EVENT_NAME, (event) => {
-        const msgDiv = document.createElement("div");
-        msgDiv.className = "message query";
-        msgDiv.textContent = event.data;
-        content.appendChild(msgDiv);
+        // 질의 등록
+        const queryDiv = document.createElement("div");
+        queryDiv.className = "message query";
+        queryDiv.textContent = query;
+        content.appendChild(queryDiv);
         content.scrollTop = content.scrollHeight;
     });
 
-    // 추론 과정 SSE 수신 이벤트
-    eventSource.addEventListener(INFERENCE_EVENT_NAME, (event) => {
-        if (currentInferenceMsg) {
-            currentInferenceText += replaceEventDataToText(event.data);
-            renderMarkdownWithMermaid(currentInferenceText, currentInferenceMsg);
-            content.scrollTop = content.scrollHeight;
-        } else {
-            console.log("📋 추론 과정 표출 시작");
-            currentInferenceText = "";
+    eventSource.addEventListener("inference-start", (_) => {
+        console.log("📋 추론 과정 표출 시작");
 
-            const inferenceBox = document.createElement("div");
-            inferenceBox.className = "inference-box";
+        // 추론 텍스트 박스
+        const inferenceBox = document.createElement("div");
+        inferenceBox.className = "inference-box";
+        // 토글 버튼
+        const toggleBtn = document.createElement("button");
+        toggleBtn.innerHTML = "▼ 추론 과정 보기";
+        toggleBtn.className = "toggle";
+        toggleBtn.addEventListener("click", () => {
+            toggleBtn.classList.toggle('active');
+            if (toggleBtn.classList.contains('active')) {
+                toggleBtn.textContent = '▲ 추론 과정 숨기기';
+            } else {
+                toggleBtn.textContent = '▼ 추론 과정 보기';
+            }
+        });
 
-            const toggle = document.createElement("button");
-            toggle.innerHTML = "▼ 추론 과정 보기";
-            toggle.className = "toggle";
+        // 추론 텍스트 박스 타이틀 문자열
+        const inferenceTitleText= document.createElement("div");
+        inferenceTitleText.innerText = "답변을 위해 생각하는중";
+        inferenceTitleText.className = "title";
+        // 스피너
+        const spinner = document.createElement("div");
+        spinner.className = "spinner";
 
-            toggle.addEventListener("click", () => {
-                toggle.classList.toggle('active');
-                if (toggle.classList.contains('active')) {
-                    toggle.textContent = '▲ 추론 과정 숨기기';
-                } else {
-                    toggle.textContent = '▼ 추론 과정 보기';
-                }
-            });
+        // 추론 텍스트 박스 타이틀
+        inferenceTitleDiv.className =  "status-row";
+        inferenceTitleDiv.appendChild(inferenceTitleText);
+        inferenceTitleDiv.appendChild(spinner);
 
-            const title = document.createElement("div");
-            title.innerText = "답변을 위해 생각하는중";
-            title.className = "title";
+        inferenceDiv = document.createElement("div");
+        inferenceDiv.className = "stream-box";
 
-            const spinner = document.createElement("div");
-            spinner.className = "spinner";
+        inferenceBox.appendChild(inferenceTitleDiv);
+        inferenceBox.appendChild(toggleBtn);
+        inferenceBox.appendChild(inferenceDiv);
+        content.appendChild(inferenceBox);
+    });
 
-            currentInferenceRow = document.createElement("div");
-            currentInferenceRow.className =  "status-row";
-            currentInferenceRow.appendChild(title);
-            currentInferenceRow.appendChild(spinner);
+    eventSource.addEventListener("inference", (event) => {
+        inference += replaceEventDataToText(event.data);
+        renderMarkdownWithMermaid(inference, inferenceDiv);
+        content.scrollTop = content.scrollHeight;
+    });
 
-            currentInferenceMsg = document.createElement("div");
-            currentInferenceMsg.className = "stream-box";
+    eventSource.addEventListener("inference-done", (_) => {
+        console.log("📋 추론 과정 표출 종료");
 
-            inferenceBox.appendChild(currentInferenceRow);
-            inferenceBox.appendChild(toggle);
-            inferenceBox.appendChild(currentInferenceMsg);
-            content.appendChild(inferenceBox);
+        if (inferenceTitleDiv) {
+            inferenceTitleDiv.remove();
         }
     });
 
-    // 답변 SSE 수신 이벤트
-    eventSource.addEventListener(ANSWER_EVENT_NAME, (event) => {
-        if (currentLlmMsg) {
-            currentLlmText += replaceEventDataToText(event.data);
-            renderMarkdownWithMermaid(currentLlmText, currentLlmMsg);
-            content.scrollTop = content.scrollHeight;
-        } else {
-            if (!currentLlmMsg && event.data.trim().length > 0) {
-                console.log(event.data.trim());
-                console.log("📋 답변 시작");
-                currentLlmText = "";
+    eventSource.addEventListener("answer-start", (_) => {
+        console.log("📋 답변 시작");
 
-                if (currentInferenceRow) {
-                    currentInferenceRow.remove();
-                }
+        answerDiv.className = "message answer";
+        content.appendChild(answerDiv);
+    });
 
-                currentLlmMsg = document.createElement("div");
-                currentLlmMsg.className = "message answer";
-                content.appendChild(currentLlmMsg);
-            }
-        }
+    eventSource.addEventListener("answer", (event) => {
+        answer += replaceEventDataToText(event.data);
+        renderMarkdownWithMermaid(answer, answerDiv);
+        content.scrollTop = content.scrollHeight;
+    });
+
+    eventSource.addEventListener("answer-done", (_) => {
+        console.log(`📋 답변 종료`);
+
+        const references = document.createElement("div");
+        references.className = "references";
+
+        referenceDocuments.forEach((referenceDocument, index) => {
+            const refCard = document.createElement("div");
+            refCard.className = "ref-card"
+
+            const refHeader = document.createElement("div");
+            refHeader.className = "ref-header"
+            refHeader.onclick = () => toggleReferenceCard(refHeader);
+            refHeader.innerHTML += `<span class="ref-header-num">참고문서 #${index + 1}</span>`;
+            refHeader.innerHTML += `<span class="ref-header-title">${referenceDocument.title} ${referenceDocument.subTitle} ${referenceDocument.thirdTitle}</span>`;
+
+            const refBody = document.createElement("div");
+            refBody.className = "ref-body";
+            refBody.innerHTML += `<p>${referenceDocument.title}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.subTitle}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.thirdTitle}</p>`;
+            refBody.innerHTML += `<p>${referenceDocument.content}</p>`;
+
+            refCard.appendChild(refHeader);
+            refCard.appendChild(refBody);
+            references.appendChild(refCard);
+        });
+
+        answerDiv.appendChild(references);
+    });
+
+    eventSource.addEventListener("disconnect", (_) => {
+        eventSource.close();
+        console.log(`❌ 스트림 닫힘`);
+        enableInput();
+    });
+
+    eventSource.addEventListener("exception", (_) => {
+        eventSource.close();
+        console.log(`❌ 예외 발생`);
+        enableInput();
     });
 };
 
+/**
+ * 질의 요청 API 호출
+ *
+ * @param query 질의문
+ * @param context 컨텍스트
+ * @param prompt 시스템 프롬프트
+ * @param maxTokens 최대 토큰 수
+ * @param temperature 창의성
+ * @param topP 응답 가변성
+ */
 const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
-    console.log(`📡 질의 요청 : ${userInput.value}`);
+    console.log(`📡 질의 요청 : ${query}`);
 
-    fetch(`/${SERVICE_NAME}/chat`, {
+    fetch(`/chat/simulation`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             sessionId: SESSION_ID,
             query: query,
+            chatId: chatId,
             context: context,
             prompt: prompt,
             maxTokens: maxTokens,
@@ -212,7 +240,7 @@ const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
                 response.json().then(body => console.error(`❌ ${body.message}`));
                 alert(`새로 고침 필요`);
                 enableInput();
-            }  else {
+            } else {
                 alert(`서버 통신 오류`);
                 enableInput();
             }
@@ -223,10 +251,41 @@ const sendQueryApi = (query, context, prompt, maxTokens, temperature, topP) => {
         });
 };
 
+/**
+ * 답변 중지 API 호출
+ */
+const cancelAnswerApi = () => {
+    console.log(`📡 답변 스트림 중지 요청`);
+
+    fetch(`/stream/${SESSION_ID}`, {
+        method: "DELETE",
+        headers: {"Content-Type": "application/json"}
+    }).then(response => {
+        if (response.status === 200) {
+            response.json().then(body => {
+                console.log(`📡 ${body.message}`);
+            });
+        } else {
+            enableInput();
+        }
+    })
+        .catch(reason => {
+            console.error(reason);
+            enableInput();
+        });
+}
+
 // 첫 화면
 window.onload = () => {
+    // 채팅방 ID 설정
+    chatId = 0;
+
     // 전송 버튼 클릭 이벤트
-    sendBtn.addEventListener("click", (_) => sendQuery(userInput.value));
+    sendBtn.addEventListener("click", (_) => sendQuery(
+        userInput.value, contextInput.value, promptInput.value, maxTokensInput.value, temperatureInput.value, topPInput.value));
+
+    // 중지 버튼 클릭 이벤트
+    cancelBtn.addEventListener("click", (_) => cancelAnswerApi())
 
     // 초기화 버튼 클릭 이벤트
     resetBtn.addEventListener("click", () => {
@@ -238,7 +297,7 @@ window.onload = () => {
     // 질의문 입력 키 다운 이벤트
     userInput.addEventListener("keydown", (event) => {
         if (event.key === 'Enter' && !event.isComposing) {
-            sendQuery(userInput.value);
+            sendQuery(userInput.value, contextInput.value, promptInput.value, maxTokensInput.value, temperatureInput.value, topPInput.value);
         }
     });
 

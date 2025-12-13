@@ -3,21 +3,35 @@ import {randomUUID, renderMarkdownWithMermaid, replaceEventDataToText} from './u
 const GREETING_MESSAGE    = "안녕하세요. **AI MATE** 입니다.\n\n질의를 작성해주시면 문서를 기반으로 답변 드리겠습니다."
 const SESSION_ID          = randomUUID();
 const RECOMMEND_QUERY    = [
-    "승선 근무 예비역의 경우 복무 기간이 상근 예비역과 동일해?",
-    "국가 유공자의 후손인 경우, 일반 현역으로 입대하는 사람들과 복무 기간의 차이가 있을까?",
-    "의약품에 대한 거짓 광고를 하는 경우 처벌이 어떻게 돼?",
-    "동물에 대한 의약품 관리 법령이 있어?",
-    "장기 요양 기관에서의 개인이 CCTV 열람이 가능해?",
-    "승선 근무 예비역의 입대 절차에 대해 상세하게 알려줘",
+    // "승선 근무 예비역의 경우 복무 기간이 상근 예비역과 동일해?",
+    // "국가 유공자의 후손인 경우, 일반 현역으로 입대하는 사람들과 복무 기간의 차이가 있을까?",
+    // "의약품에 대한 거짓 광고를 하는 경우 처벌이 어떻게 돼?",
+    // "동물에 대한 의약품 관리 법령이 있어?",
+    // "장기 요양 기관에서의 개인이 CCTV 열람이 가능해?",
+    // "승선 근무 예비역의 입대 절차에 대해 상세하게 알려줘",
+    "국민건강보험법",
+    "국민건강보험종합계획",
+    "보험료 부과체계에 관한 사항",
+    "요양급여비용에 관한 사항",
+    "건강증진 사업에 관한 사항",
+    "취약계층 지원에 관한 사항",
+    "건강보험정책심의위원회",
+    "직장가입자의 배우자",
+    "수급권자",
+    "자격의 상실 시기",
+    "건강보험증",
+    "약제에 대한 요양급여비용 상한금액의 감액",
+    "방문요양급여",
 ]
 
 const content      = document.getElementById("content");
-const userInput    = document.getElementById("userInput");
 const sendBtn      = document.getElementById("sendBtn");
 const cancelBtn    = document.getElementById("cancelBtn");
+const userInput    = document.getElementById("userInput");
 
 const referenceDocuments = [];
 let btnEnable = true;
+let chatId        = null;
 
 /**
  * 입력 단 비 활성화 이벤트
@@ -202,13 +216,13 @@ const sendQuery = (query) => {
 const sendQueryApi = (query) => {
     console.log(`📡 질의 요청 : ${query}`);
 
-    fetch(`/mate/chat`, {
+    fetch(`/chat/ai`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
             sessionId: SESSION_ID,
             query: query,
-            chatId: 1,
+            chatId: chatId,
         })
     })
         .then(response => {
@@ -258,11 +272,13 @@ const cancelAnswerApi = () => {
             console.error(reason);
             enableInput();
         });
-
 }
 
 // 첫 화면
 window.onload = () => {
+    // 채팅방 ID 설정
+    chatId = 1;
+
     // 전송 버튼 클릭 이벤트
     sendBtn.addEventListener("click", (_) => sendQuery(userInput.value));
 

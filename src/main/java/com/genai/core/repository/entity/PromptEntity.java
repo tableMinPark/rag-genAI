@@ -29,11 +29,11 @@ public class PromptEntity {
 
     @Column(name = "temperature")
     @Comment("창의성")
-    private Float temperature;
+    private Double temperature;
 
     @Column(name = "top_p")
     @Comment("일관성")
-    private Float topP;
+    private Double topP;
 
     @Column(name = "maximum_tokens")
     @Comment("최대 토큰 수")
