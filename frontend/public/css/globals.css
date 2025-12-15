@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-primary: #c64f4f;
+  --color-primary-hover: #a54242;
+  --color-sidebar: #f8f9fa;
+  --color-sidebar-hover: #e9ecef;
+  --color-sidebar-select: #d2d6da;
+  --font-sans: 'Pretendard', system-ui;
+  --spacing-128: 32rem;
+  --radius-xl: 1rem;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+.html-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+}
+.html-content th,
+.html-content td {
+  border: 1px solid #e5e7eb; /* tailwind gray-200 */
+  padding: 0.5rem;
+}
+.html-content th {
+  background-color: #f9fafb; /* tailwind gray-50 */
+  font-weight: 600;
+}

@@ -1,0 +1,416 @@
+'use client'
+
+import { useState, useRef } from 'react'
+import MarkdownIt from 'markdown-it'
+import { Play, Square, RotateCcw, Settings2 } from 'lucide-react'
+import styles from '@/public/css/markdown.module.css'
+import { randomUUID, replaceEventDataToText } from '@/public/js/util.js'
+import { cancelStreamApi, streamApi } from '@/api/stream'
+import { chatSimulateionApi } from '@/api/chat'
+
+// ###################################################
+// 상수 정의 (Const)
+// ###################################################
+// 기본 설정값
+const DEFAULT_SYSTEM_PROMPT = '참고 문서를 기반으로 답변합니다.'
+const DEFAULT_TEMPERATURE = 0.7
+const DEFAULT_TOP_P = 0.95
+const DEFAULT_MAX_TOKENS = 1200
+
+// Markdown 파서 설정
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+})
+
+export default function SimulationPage() {
+  // ###################################################
+  // 상태 정의 (State)
+  // ###################################################
+  // 세션 ID 상태
+  const [sessionId] = useState<string>(randomUUID())
+  // 질의문 입력 상태
+  const [query, setQuery] = useState('')
+  // 시스템 프롬프트 입력 상태
+  const [prompt, setPrompt] = useState(DEFAULT_SYSTEM_PROMPT)
+  // 참고 문서 입력 상태
+  const [context, setContext] = useState('')
+  // Temperature 입력 상태
+  const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
+  // TopP 입력 상태
+  const [topP, setTopP] = useState(DEFAULT_TOP_P)
+  // TopP 입력 상태
+  const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
+  // 스트리밍 상태
+  const [isStreaming, setIsStreaming] = useState(false)
+  // 실행 및 결과 상태
+  const [result, setResult] = useState('')
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // ###################################################
+  // 핸들러 (Handler)
+  // ###################################################
+  /**
+   * 입력값 초기화 핸들러
+   */
+  const handleReset = () => {
+    setQuery('')
+    setPrompt(DEFAULT_SYSTEM_PROMPT)
+    setContext('')
+    setTemperature(DEFAULT_TEMPERATURE)
+    setTopP(DEFAULT_TOP_P)
+    setResult('')
+  }
+
+  /**
+   * 시뮬레이션 실행 핸들러
+   */
+  const handleSend = (
+    query: string,
+    sessionId: string,
+    context: string,
+    promptContext: string,
+    maxTokens: number,
+    temperature: number,
+    topP: number,
+  ): void => {
+    if (!query.trim()) {
+      alert('질의문을 입력해주세요.')
+      return
+    }
+
+    setIsStreaming(true)
+    setResult('')
+    abortControllerRef.current = new AbortController()
+
+    let answer = `### 시뮬레이션 결과\n**설정된 파라미터:**\n- Temperature: \`${temperature}\`\n- Top P: \`${topP}\`\n- Token Size: \`${maxTokens}\`\n\n**System Prompt:**\n> ${promptContext}\n\n**Reference Context:**\n${context ? `\`\`\`text\n${context.substring(0, 50)}...\n\`\`\`` : '(참고 문서 없음)'}`
+
+    // 스트리밍 효과 메타 데이터 표출
+    const chars = answer.split('')
+    for (let i = 0; i < chars.length; i++) {
+      if (abortControllerRef.current?.signal.aborted) break
+      new Promise((resolve) => setTimeout(resolve, 20))
+      setResult((prev) => prev + chars[i])
+    }
+
+    // 세션 기반 SSE 연결
+    const eventSource = streamApi(sessionId)
+
+    // SSE 연결 이벤트
+    eventSource.addEventListener('connect', async (event) => {
+      console.log(`📡 스트림 연결`)
+      console.log(`📡 질의 요청 : ${query}`)
+      await chatSimulateionApi(
+        query,
+        sessionId,
+        context,
+        promptContext,
+        maxTokens,
+        temperature,
+        topP,
+      )
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+        })
+        .catch((reason) => {
+          console.error(reason)
+          setResult(
+            '**서버 통신**이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+          setIsStreaming(false)
+        })
+    })
+    // SSE 추론 시작 이벤트
+    eventSource.addEventListener('inference-start', (_) => {
+      console.log('📋 추론 과정 표출 시작')
+      setResult((prev) => {
+        answer = replaceEventDataToText(prev + `\n\n---\n\n**추론:**\n`)
+        return answer
+      })
+    })
+    // SSE 추론 이벤트
+    eventSource.addEventListener('inference', (event) => {
+      setResult((prev) => {
+        answer = replaceEventDataToText(prev + event.data)
+        return answer
+      })
+    })
+    // SSE 추론 종료 이벤트
+    eventSource.addEventListener('inference-done', (_) => {
+      console.log('📋 추론 과정 표출 종료')
+    })
+    // SSE 답변 시작 이벤트
+    eventSource.addEventListener('answer-start', (_) => {
+      console.log('📋 답변 시작')
+      setResult((prev) => {
+        answer = replaceEventDataToText(prev + `\n\n---\n\n**답변:**\n`)
+        return answer
+      })
+    })
+    // SSE 답변 이벤트
+    eventSource.addEventListener('answer', (event) => {
+      setResult((prev) => {
+        answer = replaceEventDataToText(prev + event.data)
+        return answer
+      })
+    })
+    // SSE 답변 종료 이벤트
+    eventSource.addEventListener('answer-done', (_) => {
+      console.log(`📋 답변 종료`)
+    })
+    // SSE 연결 종료 이벤트
+    eventSource.addEventListener('disconnect', (_) => {
+      eventSource.close()
+      console.log(`❌ 스트림 닫힘`)
+      setIsStreaming(false)
+    })
+    // SSE 예외 이벤트
+    eventSource.addEventListener('exception', (event) => {
+      eventSource.close()
+      console.log(event.data)
+      console.log(`❌ 예외 발생`)
+      setIsStreaming(false)
+    })
+  }
+
+  /**
+   * 생성 중단 핸들러
+   */
+  const handleStop = async () => {
+    await cancelStreamApi(sessionId)
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
+      })
+      .catch((reason) => console.error(reason))
+      .finally(() => setIsStreaming(false))
+  }
+
+  // ###################################################
+  // 렌더링 (Render)
+  // ###################################################
+  return (
+    <div className="flex h-full w-full flex-col p-6">
+      {/* 헤더 */}
+      <div className="mb-4 flex shrink-0 items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <Settings2 className="text-primary h-6 w-6" />
+              LLM 시뮬레이션
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              RAG 기반 질문 & 답변 시뮬레이션
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 메인 컨텐츠 (좌우 분할) */}
+      <div className="flex min-h-0 flex-1 gap-6">
+        {/* [왼쪽] 입력 폼 영역 */}
+        <div className="flex h-full flex-1 flex-col gap-4">
+          {/* 1. 질의문 (Input) */}
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              사용자 질의 (User Query)
+            </label>
+            <input
+              type="text"
+              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
+              placeholder="LLM에게 던질 질문을 입력하세요."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+
+          {/* 2. 시스템 프롬프트 (Textarea) */}
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              시스템 프롬프트 (System Prompt)
+            </label>
+            <textarea
+              className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
+              placeholder="AI의 페르소나나 지시사항을 입력하세요."
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+          </div>
+
+          {/* 3. 참고 문서 (Textarea) */}
+          <div className="flex min-h-[150px] flex-1 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              참고 문서 (RAG Context)
+            </label>
+            <textarea
+              className="focus:border-primary focus:ring-primary w-full flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
+              placeholder="LLM이 답변 생성 시 참고할 문맥 정보를 직접 입력하세요."
+              value={context}
+              onChange={(e) => setContext(e.target.value)}
+            />
+          </div>
+
+          {/* 4. 파라미터 설정 */}
+          <div className="grid shrink-0 grid-cols-3 gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            {/* Temperature */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <label className="text-xs font-bold text-gray-600">
+                  Temperature
+                </label>
+                <span className="text-primary text-xs font-bold">
+                  {temperature}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={temperature}
+                onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                className="accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
+              />
+            </div>
+
+            {/* Top P */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <label className="text-xs font-bold text-gray-600">Top P</label>
+                <span className="text-primary text-xs font-bold">{topP}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={topP}
+                onChange={(e) => setTopP(parseFloat(e.target.value))}
+                className="accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
+              />
+            </div>
+
+            {/* Max Tokens */}
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between">
+                <label className="text-xs font-bold text-gray-600">
+                  Token Size
+                </label>
+                <span className="text-primary text-xs font-bold">
+                  {maxTokens}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="1000"
+                max="2000"
+                step="1"
+                value={maxTokens}
+                onChange={(e) => setMaxTokens(parseFloat(e.target.value))}
+                className="accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
+              />
+            </div>
+          </div>
+
+          {/* 5. 버튼 그룹 */}
+          <div className="flex shrink-0 gap-3 pt-2">
+            <button
+              onClick={handleReset}
+              disabled={isStreaming}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              초기화
+            </button>
+
+            {isStreaming ? (
+              <button
+                onClick={handleStop}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-gray-600 px-5 py-3 text-sm font-bold text-white shadow-md transition-colors hover:bg-gray-700 active:scale-95"
+              >
+                <Square className="h-4 w-4 fill-current" />
+                생성 중단
+              </button>
+            ) : (
+              <button
+                onClick={(e) =>
+                  handleSend(
+                    query,
+                    sessionId,
+                    context,
+                    prompt,
+                    maxTokens,
+                    temperature,
+                    topP,
+                  )
+                }
+                className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                테스트 실행
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* [오른쪽] 답변 출력 영역 */}
+        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          {/* 헤더 */}
+          <div className="flex h-[56px] items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-3">
+            <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              시뮬레이션 결과 (Output)
+              {isStreaming && (
+                <span className="relative flex h-2 w-2">
+                  <span className="bg-primary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"></span>
+                  <span className="bg-primary relative inline-flex h-2 w-2 rounded-full"></span>
+                </span>
+              )}
+            </span>
+
+            {result && (
+              <button
+                className="hover:text-primary text-gray-400 transition-colors"
+                onClick={() => navigator.clipboard.writeText(result)}
+                title="결과 복사"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 결과 뷰어 */}
+          <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
+            {result ? (
+              <div
+                className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
+                dangerouslySetInnerHTML={{ __html: md.render(result) }}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
+                <div className="rounded-full bg-gray-100 p-4">
+                  <Play className="ml-1 h-8 w-8 text-gray-300" />
+                </div>
+                <p className="text-sm">
+                  왼쪽 폼을 입력하고 [테스트 실행]을 눌러보세요.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

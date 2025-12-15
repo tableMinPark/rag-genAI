@@ -1,0 +1,149 @@
+/* 마크다운 컨테이너 기본 스타일 */
+.markdown {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #333;
+}
+
+/* 제목 (Header) */
+.markdown h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  color: #111;
+}
+
+.markdown h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+  color: #111;
+}
+
+.markdown h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  color: #222;
+}
+
+/* 본문 및 목록 */
+.markdown p {
+  margin-bottom: 1em;
+  word-break: break-word; /* 긴 단어 줄바꿈 */
+}
+
+.markdown ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.markdown ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+.markdown li {
+  margin-bottom: 0.3em;
+}
+
+/* 강조 구문 */
+.markdown strong {
+  font-weight: 700;
+  color: #000;
+}
+
+.markdown em {
+  font-style: italic;
+}
+
+.markdown blockquote {
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  color: #555;
+  background-color: #f9fafb;
+  padding: 0.5em 1em;
+  border-radius: 4px;
+}
+
+/* 인라인 코드 (`code`) */
+.markdown :not(pre) > code {
+  background-color: #f3f4f6;
+  color: #eb5757; /* 붉은색 계열 포인트 */
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+/* 코드 블록 (```code```) */
+.markdown pre {
+  background-color: #1f2937; /* 다크 모드 배경 */
+  color: #e5e7eb;
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 1em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.markdown pre code {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* 링크 */
+.markdown a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown a:hover {
+  color: #1d4ed8;
+}
+
+/* 테이블 */
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5em;
+  display: block;
+  overflow-x: auto;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  color: #111;
+}
+
+.markdown tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* 구분선 */
+.markdown hr {
+  border: 0;
+  border-top: 1px solid #e5e7eb;
+  margin: 2em 0;
+}
