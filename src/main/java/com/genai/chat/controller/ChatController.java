@@ -1,8 +1,10 @@
 package com.genai.chat.controller;
 
-import com.genai.chat.controller.dto.request.ChatRequestDto;
-import com.genai.chat.controller.dto.response.ChatResponseDto;
-import com.genai.chat.controller.dto.response.ResponseDto;
+import com.genai.chat.controller.dto.request.ChatAiRequestDto;
+import com.genai.chat.controller.dto.request.ChatLlmRequestDto;
+import com.genai.chat.controller.dto.request.ChatSimulationRequestDto;
+import com.genai.chat.controller.dto.response.ChatAiResponseDto;
+import com.genai.core.controller.dto.response.ResponseDto;
 import com.genai.core.service.QuestionCoreService;
 import com.genai.core.service.StreamCoreService;
 import com.genai.core.service.subscriber.StreamSubscriber;
@@ -29,28 +31,28 @@ public class ChatController {
     /**
      * AI 질의 답변 요청
      *
-     * @param chatRequestDto 질의 정보
+     * @param chatAiRequestDto 질의 정보
      */
     @PostMapping("/ai")
-    public ResponseEntity<ResponseDto<ChatResponseDto>> chatAi(@RequestBody ChatRequestDto chatRequestDto) {
+    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatAi(@RequestBody ChatAiRequestDto chatAiRequestDto) {
 
-        String sessionId = chatRequestDto.getSessionId();
-        String query = chatRequestDto.getQuery();
+        String sessionId = chatAiRequestDto.getSessionId();
+        String query = chatAiRequestDto.getQuery();
 
         log.info("사용자 질문 요청 : {} | {}", sessionId, query);
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
         QuestionVO questionVO = questionCoreService.questionAi(
-                query, sessionId, chatRequestDto.getChatId(), Collections.emptyList());
+                query, sessionId, 2L, chatAiRequestDto.getCategoryCodes());
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok()
-                .body(ResponseDto.<ChatResponseDto>builder()
+                .body(ResponseDto.<ChatAiResponseDto>builder()
                         .status("SUCCESS")
                         .message("AI 질의 요청 성공")
-                        .data(ChatResponseDto.builder()
+                        .data(ChatAiResponseDto.builder()
                                 .query(query)
                                 .sessionId(sessionId)
                                 .documents(questionVO.documents())
@@ -61,27 +63,27 @@ public class ChatController {
     /**
      * LLM 질의 답변 요청
      *
-     * @param chatRequestDto 질의 정보
+     * @param chatLlmRequestDto 질의 정보
      */
     @PostMapping("/llm")
-    public ResponseEntity<ResponseDto<ChatResponseDto>> chatLlm(@RequestBody ChatRequestDto chatRequestDto) {
+    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatLlm(@RequestBody ChatLlmRequestDto chatLlmRequestDto) {
 
-        String sessionId = chatRequestDto.getSessionId();
-        String query = chatRequestDto.getQuery();
+        String sessionId = chatLlmRequestDto.getSessionId();
+        String query = chatLlmRequestDto.getQuery();
 
         log.info("사용자 질문 요청 : {} | {}", sessionId, query);
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
-        QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatRequestDto.getChatId());
+        QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, 1L);
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok()
-                .body(ResponseDto.<ChatResponseDto>builder()
+                .body(ResponseDto.<ChatAiResponseDto>builder()
                         .status("SUCCESS")
                         .message("Llm 질의 요청 성공")
-                        .data(ChatResponseDto.builder()
+                        .data(ChatAiResponseDto.builder()
                                 .query(query)
                                 .sessionId(sessionId)
                                 .documents(Collections.emptyList())
@@ -92,34 +94,34 @@ public class ChatController {
     /**
      * LLM Simulation 질의 답변 요청
      *
-     * @param chatRequestDto 질의 정보
+     * @param chatSimulationRequestDto 질의 정보
      */
     @PostMapping("/simulation")
-    public ResponseEntity<ResponseDto<ChatResponseDto>> chatSimulation(@RequestBody ChatRequestDto chatRequestDto) {
+    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatSimulation(@RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
 
-        String sessionId = chatRequestDto.getSessionId();
-        String query = chatRequestDto.getQuery();
-        String context = chatRequestDto.getContext();
-        String promptContext = chatRequestDto.getPrompt();
-        int maxTokens = chatRequestDto.getMaxTokens();
-        double temperature = chatRequestDto.getTemperature();
-        double topP = chatRequestDto.getTopP();
+        String sessionId = chatSimulationRequestDto.getSessionId();
+        String query = chatSimulationRequestDto.getQuery();
+        String context = chatSimulationRequestDto.getContext();
+        String promptContext = chatSimulationRequestDto.getPrompt();
+        int maxTokens = chatSimulationRequestDto.getMaxTokens();
+        double temperature = chatSimulationRequestDto.getTemperature();
+        double topP = chatSimulationRequestDto.getTopP();
 
         log.info("사용자 질문 요청 : {} | {}", sessionId, query);
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
-        long chatId = chatRequestDto.getChatId();
+        long chatId = 0L;
         QuestionVO questionVO = questionCoreService.questionSimulation(
                 query, sessionId, chatId, context, promptContext, temperature, topP, maxTokens);
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok()
-                .body(ResponseDto.<ChatResponseDto>builder()
+                .body(ResponseDto.<ChatAiResponseDto>builder()
                         .status("SUCCESS")
                         .message("Simulation 질의 요청 성공")
-                        .data(ChatResponseDto.builder()
+                        .data(ChatAiResponseDto.builder()
                                 .query(query)
                                 .sessionId(sessionId)
                                 .documents(Collections.emptyList())

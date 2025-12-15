@@ -13,7 +13,7 @@ import com.genai.core.repository.wrapper.Search;
 import com.genai.core.service.QuestionCoreService;
 import com.genai.core.service.vo.AnswerVO;
 import com.genai.core.service.vo.ContextVO;
-import com.genai.core.service.vo.DocumentVo;
+import com.genai.core.service.vo.DocumentVO;
 import com.genai.core.service.vo.QuestionVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
@@ -305,7 +305,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         return QuestionVO.builder()
                 .answerStream(answerStream)
                 .documents(finalTopRerankEntities.stream()
-                        .map(rerank -> DocumentVo.builder()
+                        .map(rerank -> DocumentVO.builder()
                                 .title(rerank.getDocument().getTitle())
                                 .subTitle(rerank.getDocument().getSubContent())
                                 .thirdTitle(rerank.getDocument().getThirdTitle())
@@ -341,6 +341,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 시스템 프롬 프트 조회
         PromptEntity promptEntity = PromptEntity.builder()
+                .promptId(Long.MIN_VALUE)
                 .promptContent(promptContent)
                 .temperature(temperature)
                 .topP(topP)

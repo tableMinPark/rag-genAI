@@ -3,7 +3,7 @@ package com.genai.core.service.vo;
 import lombok.Builder;
 
 @Builder
-public record DocumentVo(
+public record DocumentVO(
     String title,
     String subTitle,
     String thirdTitle,

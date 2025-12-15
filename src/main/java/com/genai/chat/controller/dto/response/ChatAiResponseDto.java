@@ -1,6 +1,6 @@
 package com.genai.chat.controller.dto.response;
 
-import com.genai.core.service.vo.DocumentVo;
+import com.genai.core.service.vo.DocumentVO;
 import lombok.*;
 
 import java.util.List;
@@ -10,11 +10,11 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChatResponseDto {
+public class ChatAiResponseDto {
 
     private String sessionId;
 
     private String query;
 
-    private List<DocumentVo> documents;
+    private List<DocumentVO> documents;
 }

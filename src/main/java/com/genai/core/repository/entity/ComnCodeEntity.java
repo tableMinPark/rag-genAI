@@ -2,7 +2,6 @@ package com.genai.core.repository.entity;
 
 import lombok.*;
 import org.hibernate.annotations.Comment;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 

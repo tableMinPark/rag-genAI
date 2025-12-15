@@ -7,7 +7,9 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class StreamCancelResponseDto {
+public class ChatSimulationResponseDto {
 
     private String sessionId;
+
+    private String query;
 }

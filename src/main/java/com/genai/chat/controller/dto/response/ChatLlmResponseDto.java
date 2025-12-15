@@ -7,11 +7,9 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ResponseDto<T> {
+public class ChatLlmResponseDto {
 
-    private String status;
+    private String sessionId;
 
-    private String message;
-
-    private T data;
+    private String query;
 }

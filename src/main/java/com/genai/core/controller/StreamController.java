@@ -1,7 +1,7 @@
 package com.genai.core.controller;
 
-import com.genai.chat.controller.dto.response.ResponseDto;
-import com.genai.chat.controller.dto.response.StreamCancelResponseDto;
+import com.genai.core.controller.dto.response.ResponseDto;
+import com.genai.core.controller.dto.response.StreamCancelResponseDto;
 import com.genai.core.service.StreamCoreService;
 import com.genai.core.service.subscriber.StreamSubscriber;
 import lombok.RequiredArgsConstructor;
