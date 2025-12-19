@@ -32,7 +32,7 @@ export default function LayoutWrapper({
       <Sidebar isOpen={isSidebarOpen} onToggle={toggleSidebar} />
       <div className="flex h-full w-full flex-1 flex-col overflow-hidden">
         <Header />
-        <main className="relative flex-1 overflow-y-auto bg-white p-4">
+        <main className="relative flex-1 overflow-y-auto bg-white">
           {children}
         </main>
       </div>

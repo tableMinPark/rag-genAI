@@ -1,4 +1,4 @@
-import { client } from './client'
+import { extractorClient } from './client'
 import { Passage } from '@/types/domain'
 import { ExtractApiResponse, PageResponse } from '@/types/api'
 
@@ -20,9 +20,9 @@ export const getPassagesApi = async (
   sourceId: number,
 ): Promise<ExtractApiResponse<GetPassagesResponse>> => {
   const param = `page=${page}&size=${size}&sourceId=${sourceId}`
-  const response = await client.get<ExtractApiResponse<GetPassagesResponse>>(
-    `/api/extractor/passage?${param}`,
-  )
+  const response = await extractorClient.get<
+    ExtractApiResponse<GetPassagesResponse>
+  >(`/passage?${param}`)
 
   return response.data
 }
@@ -35,9 +35,9 @@ export const getPassagesApi = async (
 export const getPassageApi = async (
   passageId: number,
 ): Promise<ExtractApiResponse<GetPassageResponse>> => {
-  const response = await client.get<ExtractApiResponse<GetPassageResponse>>(
-    `/api/extractor/passage/${passageId}`,
-  )
+  const response = await extractorClient.get<
+    ExtractApiResponse<GetPassageResponse>
+  >(`/passage/${passageId}`)
 
   return response.data
 }

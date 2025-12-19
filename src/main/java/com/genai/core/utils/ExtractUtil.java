@@ -45,6 +45,7 @@ public class ExtractUtil {
                 contentBuilder.append(line).append("\n");
             }
         } catch (IOException e) {
+            e.printStackTrace();
             throw new RuntimeException("snf extract error");
         }
 

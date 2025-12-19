@@ -1,22 +1,34 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText } from 'lucide-react'
+import MarkdownIt from 'markdown-it'
+import { FileText, Play } from 'lucide-react'
+import styles from '@/public/css/markdown.module.css'
+import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
+import { summaryFileApi, summaryTextApi } from '@/api/summary'
 
 // ###################################################
 // 상수 정의 (Const)
 // ###################################################
+// Markdown 파서 설정
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+})
 // 요약 옵션 (짧게/중간/길게)
 const SUMMARY_OPTIONS = [
-  { code: 'SHORT', name: '짧게 (Short)' },
-  { code: 'MEDIUM', name: '중간 (Medium)' },
-  { code: 'LONG', name: '길게 (Long)' },
+  { code: 'SHORT', name: '짧게 (Short)', ratio: 0.2 },
+  { code: 'MEDIUM', name: '중간 (Medium)', ratio: 0.7 },
+  { code: 'LONG', name: '길게 (Long)', ratio: 1.0 },
 ]
 
 export default function SummaryPage() {
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
+  // 세션 ID 상태
+  const [sessionId] = useState<string>(randomUUID())
   // 입력/출력 텍스트
   const [inputText, setInputText] = useState('')
   const [outputText, setOutputText] = useState('')
@@ -65,24 +77,46 @@ export default function SummaryPage() {
   /**
    * 요약 실행 핸들러 (Mock)
    */
-  const handleSummary = () => {
-    if (!inputText && !selectedFile) return
+  const handleSummary = async () => {
+    if (!inputText && !selectedFile) {
+      alert('요약할 텍스트 또는 파일를 입력해주세요.')
+      return
+    }
 
     setIsSummarizing(true)
 
-    // API 호출 시뮬레이션 로그
-    console.log(`Summary Option: ${summaryOption}`)
+    const lengthRatio = SUMMARY_OPTIONS.find((v) => v.code == summaryOption)
+      ?.ratio as number
 
-    setTimeout(() => {
-      const optionName = SUMMARY_OPTIONS.find(
-        (o) => o.code === summaryOption,
-      )?.name.split(' ')[1]
+    if (!selectedFile) {
+      await summaryTextApi(sessionId, lengthRatio, inputText)
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+          setOutputText(replaceEventDataToText(response.data.content))
+        })
+        .catch((reason) => {
+          console.error(reason)
+          setOutputText(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+          setIsSummarizing(false)
+        })
+    } else {
+      await summaryFileApi(sessionId, lengthRatio, selectedFile)
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+          setOutputText(replaceEventDataToText(response.data.content))
+        })
+        .catch((reason) => {
+          console.error(reason)
+          setOutputText(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+          setIsSummarizing(false)
+        })
+    }
 
-      setOutputText(
-        `[${optionName} 길이 요약 결과]\n\n이것은 예시 결과입니다. 실제 요약 API가 연동되면 이곳에 텍스트가 표시됩니다.\n\n(길이 옵션: ${summaryOption})`,
-      )
-      setIsSummarizing(false)
-    }, 1500)
+    setIsSummarizing(false)
   }
 
   // ###################################################
@@ -90,10 +124,17 @@ export default function SummaryPage() {
   // ###################################################
   return (
     <div className="flex h-full w-full flex-col p-6">
-      {/* 헤더 */}
-      <div className="mb-4 flex shrink-0 items-center gap-2">
-        <FileText className="text-primary h-6 w-6" />
-        <h2 className="text-2xl font-bold text-gray-800">요약</h2>
+      {/* 헤더 영역 */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FileText className="text-primary h-6 w-6" />
+              요약
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">텍스트 및 파일 요약</p>
+          </div>
+        </div>
       </div>
 
       {/* 메인 영역: 좌우 분할 */}
@@ -212,26 +253,17 @@ export default function SummaryPage() {
                 ))}
               </select>
             </div>
-          </div>
 
-          <div className="relative flex-1 bg-gray-50/30">
-            <textarea
-              readOnly
-              className="h-full w-full resize-none bg-transparent p-4 leading-relaxed text-gray-800 focus:outline-none"
-              placeholder="요약된 결과가 여기에 표시됩니다."
-              value={outputText}
-            />
-            {/* 복사 버튼 */}
             {outputText && (
               <button
-                className="hover:text-primary absolute top-2 right-2 rounded-md border border-gray-200 bg-white p-2 text-gray-400 shadow-sm"
+                className="hover:text-primary text-gray-400 transition-colors"
                 onClick={() => navigator.clipboard.writeText(outputText)}
-                title="복사하기"
+                title="결과 복사"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -243,6 +275,23 @@ export default function SummaryPage() {
                   <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
                 </svg>
               </button>
+            )}
+          </div>
+
+          {/* 결과 뷰어 */}
+          <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
+            {outputText ? (
+              <div
+                className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
+                dangerouslySetInnerHTML={{ __html: md.render(outputText) }}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
+                <div className="rounded-full bg-gray-100 p-4">
+                  <Play className="ml-1 h-8 w-8 text-gray-300" />
+                </div>
+                <p className="text-sm">왼쪽 폼을 입력하고 버튼을 눌러보세요.</p>
+              </div>
             )}
           </div>
         </div>

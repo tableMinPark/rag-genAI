@@ -4,28 +4,31 @@ import com.genai.chat.controller.dto.request.ChatAiRequestDto;
 import com.genai.chat.controller.dto.request.ChatLlmRequestDto;
 import com.genai.chat.controller.dto.request.ChatSimulationRequestDto;
 import com.genai.chat.controller.dto.response.ChatAiResponseDto;
+import com.genai.chat.controller.dto.response.GetCategoriesResponseDto;
 import com.genai.core.controller.dto.response.ResponseDto;
+import com.genai.core.service.ComnCodeCoreService;
 import com.genai.core.service.QuestionCoreService;
 import com.genai.core.service.StreamCoreService;
 import com.genai.core.service.subscriber.StreamSubscriber;
+import com.genai.core.service.vo.ComnCodeVO;
 import com.genai.core.service.vo.QuestionVO;
+import com.genai.translate.controller.dto.response.GetTranslateLanguageResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.List;
 
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/chat")
+@RequestMapping("/api/chat")
 public class ChatController {
 
     private final QuestionCoreService questionCoreService;
+    private final ComnCodeCoreService comnCodeCoreService;
     private final StreamCoreService streamCoreService;
 
     /**
@@ -43,8 +46,9 @@ public class ChatController {
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
+        long chatId = 2L;
         QuestionVO questionVO = questionCoreService.questionAi(
-                query, sessionId, 2L, chatAiRequestDto.getCategoryCodes());
+                query, sessionId, chatId, chatAiRequestDto.getCategoryCodes());
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
@@ -75,7 +79,8 @@ public class ChatController {
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
-        QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, 1L);
+        long chatId = 1L;
+        QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId);
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
@@ -126,6 +131,22 @@ public class ChatController {
                                 .sessionId(sessionId)
                                 .documents(Collections.emptyList())
                                 .build())
+                        .build());
+    }
+
+    /**
+     * 카테고리 목록 조회
+     */
+    @GetMapping("/category")
+    public ResponseEntity<ResponseDto<List<GetCategoriesResponseDto>>> getTranslateLanguages() {
+
+        List<ComnCodeVO> categoryCodes = comnCodeCoreService.getComnCodes("TRAIN");
+
+        return ResponseEntity.ok()
+                .body(ResponseDto.<List<GetCategoriesResponseDto>>builder()
+                        .status("SUCCESS")
+                        .message("카테고리 목록 조회 성공")
+                        .data(GetCategoriesResponseDto.toList(categoryCodes))
                         .build());
     }
 }

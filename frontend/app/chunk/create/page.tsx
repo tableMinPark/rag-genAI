@@ -19,7 +19,7 @@ import { gfm } from 'turndown-plugin-gfm'
 // [타입 정의]
 // ###################################################
 interface ChunkFormData {
-  passageId: string
+  passageId: number
   title: string
   subTitle: string
   thirdTitle: string
@@ -81,11 +81,11 @@ const TokenBadge = ({ current, max }: { current: number; max: number }) => (
 function ChunkCreateContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const passageIdParam = searchParams.get('passageId') || ''
+  const passageId = Number(searchParams.get('passageId'))
 
   // --- 상태 관리 ---
   const [formData, setFormData] = useState<ChunkFormData>({
-    passageId: passageIdParam,
+    passageId: passageId,
     title: '',
     subTitle: '',
     thirdTitle: '',

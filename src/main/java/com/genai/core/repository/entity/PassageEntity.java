@@ -83,5 +83,5 @@ public class PassageEntity {
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "passage_id")
-    private List<ChunkEntity> chunks = new ArrayList<>();
+    private List<ChunkEntity> chunks;
 }

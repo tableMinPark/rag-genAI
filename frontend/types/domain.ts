@@ -33,11 +33,15 @@ export interface Source {
   sourceId: number
   version: string
   sourceType: string
+  sourceTypeName: string
   categoryCode: string
+  categoryName: string
   name: string
   collectionId: string
   selectType: string
-  isAuto: string
+  selectTypeName: string
+  isAuto: boolean
+  isBatch: boolean
   sysCreateDt: string
   sysModifyDt: string
 }
@@ -77,4 +81,22 @@ export interface Chunk {
   subContentTokenSize: number
   sysCreateDt: string
   sysModifyDt: string
+}
+
+// 번역 언어
+export interface TranslateLanguage {
+  code: string
+  name: string
+}
+
+// 번역 언어
+export interface Category {
+  code: string
+  name: string
+}
+
+// 문서 추출 본문
+export interface ExtractContent {
+  type: string
+  content: string
 }

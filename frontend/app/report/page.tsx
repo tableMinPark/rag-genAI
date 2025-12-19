@@ -1,17 +1,28 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText } from 'lucide-react'
+import MarkdownIt from 'markdown-it'
+import { FileText, Play } from 'lucide-react'
+import styles from '@/public/css/markdown.module.css'
+import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
+import { generateReportFileApi, generateReportTextApi } from '@/api/report'
 
 // ###################################################
 // 상수 정의 (Const)
 // ###################################################
-// (현재는 상수가 없지만, 추후 확장 시 여기에 추가)
+// Markdown 파서 설정
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+})
 
 export default function ReportPage() {
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
+  // 세션 ID 상태
+  const [sessionId] = useState<string>(randomUUID())
   // 입력 텍스트
   const [promptText, setPromptText] = useState('')
   const [contextText, setContextText] = useState('')
@@ -65,9 +76,9 @@ export default function ReportPage() {
   }
 
   /**
-   * 보고서 생성 핸들러 (Mock)
+   * 보고서 생성 핸들러
    */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!promptText || (!contextText && !selectedFile)) {
       alert('보고서 양식과 참고 자료를 모두 입력해주세요.')
       return
@@ -75,12 +86,35 @@ export default function ReportPage() {
 
     setIsGenerating(true)
 
-    // API 호출 시뮬레이션
-    setTimeout(() => {
-      const result = `# [보고서] ${selectedFile ? selectedFile.name : '참고 자료'} 기반 분석\n\n## 1. 개요\n사용자가 요청한 양식에 따라 작성된 보고서입니다. ${promptText.substring(0, 20)}...\n\n## 2. 주요 내용\n- 분석 결과 1\n- 분석 결과 2\n\n## 3. 결론\n성공적으로 보고서가 생성되었습니다.`
-      setOutputText(result)
-      setIsGenerating(false)
-    }, 2000)
+    if (!selectedFile) {
+      await generateReportTextApi(sessionId, promptText, contextText)
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+          setOutputText(replaceEventDataToText(response.data.content))
+        })
+        .catch((reason) => {
+          console.error(reason)
+          setOutputText(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+          setIsGenerating(false)
+        })
+    } else {
+      await generateReportFileApi(sessionId, promptText, selectedFile)
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+          setOutputText(replaceEventDataToText(response.data.content))
+        })
+        .catch((reason) => {
+          console.error(reason)
+          setOutputText(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+          setIsGenerating(false)
+        })
+    }
+
+    setIsGenerating(false)
   }
 
   // ###################################################
@@ -88,10 +122,19 @@ export default function ReportPage() {
   // ###################################################
   return (
     <div className="flex h-full w-full flex-col p-6">
-      {/* 헤더 */}
-      <div className="mb-4 flex shrink-0 items-center gap-2">
-        <FileText className="text-primary h-6 w-6" />
-        <h2 className="text-2xl font-bold text-gray-800">보고서 생성</h2>
+      {/* 헤더 영역 */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FileText className="text-primary h-6 w-6" />
+              보고서 생성
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              텍스트 및 파일 기반 보고서 초안 생성
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 메인 영역: 좌우 분할 */}
@@ -215,27 +258,17 @@ export default function ReportPage() {
             <span className="text-sm font-bold text-gray-700">
               생성 결과 (Result)
             </span>
-          </div>
 
-          <div className="relative flex-1 bg-gray-50/30">
-            <textarea
-              readOnly
-              className="h-full w-full resize-none bg-transparent p-4 text-sm leading-relaxed text-gray-800 focus:outline-none"
-              placeholder="여기에 생성된 보고서가 표시됩니다."
-              value={outputText}
-            />
-
-            {/* 복사 버튼 */}
             {outputText && (
               <button
-                className="hover:text-primary absolute top-2 right-2 rounded-md border border-gray-200 bg-white p-2 text-gray-400 shadow-sm transition-colors"
+                className="hover:text-primary text-gray-400 transition-colors"
                 onClick={() => navigator.clipboard.writeText(outputText)}
-                title="복사하기"
+                title="결과 복사"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
+                  width="18"
+                  height="18"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -247,6 +280,23 @@ export default function ReportPage() {
                   <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
                 </svg>
               </button>
+            )}
+          </div>
+
+          {/* 결과 뷰어 */}
+          <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
+            {outputText ? (
+              <div
+                className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
+                dangerouslySetInnerHTML={{ __html: md.render(outputText) }}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
+                <div className="rounded-full bg-gray-100 p-4">
+                  <Play className="ml-1 h-8 w-8 text-gray-300" />
+                </div>
+                <p className="text-sm">왼쪽 폼을 입력하고 버튼을 눌러보세요.</p>
+              </div>
             )}
           </div>
         </div>

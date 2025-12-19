@@ -196,7 +196,7 @@ export default function HomePage() {
               color="bg-white border-2 border-primary/20 hover:border-primary"
               textColor="text-gray-800 group-hover:text-primary"
               subTextColor="text-gray-500"
-              onClick={() => router.push('/llm')}
+              onClick={() => router.push('/myai')}
             />
             <QuickActionCard
               title="LLM Chat"
@@ -205,17 +205,7 @@ export default function HomePage() {
               color="bg-white border-2 border-primary/20 hover:border-primary"
               textColor="text-gray-800 group-hover:text-primary"
               subTextColor="text-gray-500"
-              onClick={() => router.push('/myai')}
-            />
-            <QuickActionCard
-              title="요약"
-              desc="문서 요약 도구"
-              icon={
-                <FileText className="group-hover:text-primary h-6 w-6 text-gray-600" />
-              }
-              color="bg-white border border-gray-200 hover:border-primary/50"
-              textColor="text-gray-800"
-              onClick={() => router.push('/summary')}
+              onClick={() => router.push('/llm')}
             />
             <QuickActionCard
               title="번역"
@@ -226,6 +216,16 @@ export default function HomePage() {
               color="bg-white border border-gray-200 hover:border-primary/50"
               textColor="text-gray-800"
               onClick={() => router.push('/translate')}
+            />
+            <QuickActionCard
+              title="요약"
+              desc="문서 요약 도구"
+              icon={
+                <FileText className="group-hover:text-primary h-6 w-6 text-gray-600" />
+              }
+              color="bg-white border border-gray-200 hover:border-primary/50"
+              textColor="text-gray-800"
+              onClick={() => router.push('/summary')}
             />
             <QuickActionCard
               title="보고서"
@@ -245,7 +245,7 @@ export default function HomePage() {
               }
               color="bg-white border border-gray-200 hover:border-primary/50"
               textColor="text-gray-800"
-              onClick={() => router.push('/extract')}
+              onClick={() => router.push('/simulation')}
             />
             <QuickActionCard
               title="문서 추출"

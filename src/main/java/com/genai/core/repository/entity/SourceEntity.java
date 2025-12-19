@@ -83,5 +83,5 @@ public class SourceEntity {
 
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "source_id")
-    private List<PassageEntity> passages = new ArrayList<>();
+    private List<PassageEntity> passages;
 }

@@ -13,6 +13,7 @@ import com.genai.core.utils.ExtractUtil;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.exception.TranslateErrorException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TranslateCoreServiceImpl implements TranslateCoreService {
@@ -93,7 +95,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
         Map<String, ComnCodeEntity> comnCodeEntityMap = comnCodeRepository
-                .findComnCodeByCodeGroup(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP)
+                .findComnCodeByCodeGroupOrderBySortOrder(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP)
                 .stream().collect(Collectors.toMap(ComnCodeEntity::getCode, v -> v));
 
         if (!comnCodeEntityMap.containsKey(beforeLang)) {

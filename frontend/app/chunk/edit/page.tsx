@@ -1,12 +1,11 @@
 'use client'
 
 import React, { useState, useEffect, Suspense } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import {
   FolderOpen,
   Loader2,
   Save,
-  ArrowLeft,
   FileText,
   AlignLeft,
   ListPlus,
@@ -17,6 +16,7 @@ import HtmlEditor from '@/components/editor/HtmlEditor'
 import TurndownService from 'turndown'
 // @ts-ignore
 import { gfm } from 'turndown-plugin-gfm'
+import { getChunkApi } from '@/api/chunk'
 
 // ###################################################
 // [타입 정의]
@@ -30,38 +30,6 @@ interface ChunkFormData {
   content: string
   compactContent: string
   subContent: string
-}
-
-// ###################################################
-// [API Mock]
-// ###################################################
-const fetchChunkDetail = async (chunkId: number): Promise<ChunkFormData> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (Math.random() > 0.1) {
-        resolve({
-          chunkId: chunkId,
-          passageId: 101,
-          title: '제1장 총칙',
-          subTitle: '제1조(목적)',
-          thirdTitle: '제1항',
-          content: `
-            <p>이 법은 국민의 <strong>질병ㆍ부상</strong>에 대한 예방ㆍ진단ㆍ치료ㆍ재활과 건강증진에 대하여 보험급여를 실시한다.</p>
-            <table border="1" style="width: 100%;">
-              <tbody>
-                <tr><td>구분</td><td>내용</td></tr>
-                <tr><td>대상</td><td>전 국민</td></tr>
-              </tbody>
-            </table>
-          `,
-          compactContent: '', // 로드 후 자동 변환됨
-          subContent: '<p>[전문개정 2011. 12. 31.]</p>',
-        })
-      } else {
-        reject(new Error('청크 정보를 불러오는데 실패했습니다.'))
-      }
-    }, 800)
-  })
 }
 
 const updateChunkData = async (
@@ -149,8 +117,8 @@ const TokenBadge = ({ current, max }: { current: number; max: number }) => (
 // ###################################################
 function ChunkEditContent() {
   const router = useRouter()
-  const params = useParams()
-  const chunkId = Number(params.chunkId)
+  const searchParams = useSearchParams()
+  const chunkId = Number(searchParams.get('chunkId'))
 
   // --- 상태 관리 ---
   const [formData, setFormData] = useState<ChunkFormData>({
@@ -165,22 +133,48 @@ function ChunkEditContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // 1. 초기 데이터 로드
-  useEffect(() => {
-    if (!chunkId) return
-    const loadData = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const data = await fetchChunkDetail(chunkId)
-        setFormData(data)
-      } catch (err) {
-        console.error(err)
-        setError('데이터를 불러올 수 없습니다.')
-      } finally {
-        setIsLoading(false)
-      }
+  const loadData = async () => {
+    if (!chunkId || Number.isNaN(chunkId)) {
+      setError('청크를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
     }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await getChunkApi(chunkId).then((response) => {
+        console.log(`📡 ${response.message}`)
+        setFormData({
+          title: response.result.title,
+          subTitle: response.result.subTitle,
+          thirdTitle: response.result.thirdTitle,
+          content: response.result.content,
+          compactContent: response.result.compactContent,
+          subContent: response.result.subContent,
+        })
+      })
+    } catch (err) {
+      console.error(err)
+      setError('청크를 불러올 수 없습니다.')
+    } finally {
+      setIsLoading(false)
+    }
+
+    setIsLoading(false)
+  }
+
+  /**
+   * 화면 진입 시 데이터 로드
+   */
+  useEffect(() => {
+    if (!chunkId || Number.isNaN(chunkId)) {
+      setError('청크를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
+
     loadData()
   }, [chunkId])
 

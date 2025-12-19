@@ -34,4 +34,6 @@ public class ComnCodeEntity {
     @Column(name = "sort_order")
     @Comment("정렬 필드")
     private Integer sortOrder;
+
+
 }

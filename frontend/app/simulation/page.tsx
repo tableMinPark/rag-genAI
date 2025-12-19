@@ -1,28 +1,28 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import MarkdownIt from 'markdown-it'
 import { Play, Square, RotateCcw, Settings2 } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
-import { randomUUID, replaceEventDataToText } from '@/public/js/util.js'
+import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatSimulateionApi } from '@/api/chat'
 
 // ###################################################
 // 상수 정의 (Const)
 // ###################################################
-// 기본 설정값
-const DEFAULT_SYSTEM_PROMPT = '참고 문서를 기반으로 답변합니다.'
-const DEFAULT_TEMPERATURE = 0.7
-const DEFAULT_TOP_P = 0.95
-const DEFAULT_MAX_TOKENS = 1200
-
 // Markdown 파서 설정
 const md = new MarkdownIt({
   html: true,
   breaks: true,
   linkify: true,
 })
+
+// 기본 설정값
+const DEFAULT_SYSTEM_PROMPT = '참고 문서를 기반으로 답변합니다.'
+const DEFAULT_TEMPERATURE = 0.7
+const DEFAULT_TOP_P = 0.95
+const DEFAULT_MAX_TOKENS = 1200
 
 export default function SimulationPage() {
   // ###################################################

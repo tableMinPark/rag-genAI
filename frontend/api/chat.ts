@@ -1,6 +1,6 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
-import { Document } from '@/types/domain'
+import { Category, Document } from '@/types/domain'
 
 export interface ChatAiResponse {
   query: string
@@ -18,6 +18,8 @@ export interface ChatSimulationResponse {
   sessionId: string
 }
 
+export interface GetCategoriesResponse extends Category {}
+
 /**
  * AI 답변 요청 API
  *
@@ -30,14 +32,11 @@ export const chatAiApi = async (
   sessionId: string,
   categoryCodes: string[],
 ): Promise<ApiResponse<ChatAiResponse>> => {
-  const response = await client.post<ApiResponse<ChatAiResponse>>(
-    '/api/rag-gen/chat/ai',
-    {
-      query,
-      sessionId,
-      categoryCodes,
-    },
-  )
+  const response = await client.post<ApiResponse<ChatAiResponse>>(`/chat/ai`, {
+    query,
+    sessionId,
+    categoryCodes,
+  })
 
   return response.data
 }
@@ -53,7 +52,7 @@ export const chatLlmApi = async (
   sessionId: string,
 ): Promise<ApiResponse<ChatLlmResponse>> => {
   const response = await client.post<ApiResponse<ChatLlmResponse>>(
-    '/api/rag-gen/chat/llm',
+    `/chat/llm`,
     {
       query,
       sessionId,
@@ -84,7 +83,7 @@ export const chatSimulateionApi = async (
   topP: number,
 ): Promise<ApiResponse<ChatSimulationResponse>> => {
   const response = await client.post<ApiResponse<ChatSimulationResponse>>(
-    '/api/rag-gen/chat/simulation',
+    `/chat/simulation`,
     {
       query,
       sessionId,
@@ -95,6 +94,18 @@ export const chatSimulateionApi = async (
       topP,
     },
   )
+
+  return response.data
+}
+
+/**
+ * 카테고리 목록 조회 API
+ */
+export const getCategoriesApi = async (): Promise<
+  ApiResponse<GetCategoriesResponse[]>
+> => {
+  const response =
+    await client.get<ApiResponse<GetCategoriesResponse[]>>(`/chat/category`)
 
   return response.data
 }

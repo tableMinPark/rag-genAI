@@ -31,3 +31,7 @@ body {
   background-color: #f9fafb; /* tailwind gray-50 */
   font-weight: 600;
 }
+
+button {
+  cursor: pointer;
+}

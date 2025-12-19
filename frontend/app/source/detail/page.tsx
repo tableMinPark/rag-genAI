@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { FolderOpen, Loader2, AlertCircle } from 'lucide-react'
 import { getSourceApi } from '@/api/source'
 import { getPassagesApi } from '@/api/passage'
@@ -11,15 +11,15 @@ import { Passage, Source } from '@/types/domain'
 // 상수 및 타입 정의 (Constants & Types)
 // ###################################################
 
-export default function SourceDetailPage() {
+function SourceDetailContent() {
   // ###################################################
   // 훅 및 파라미터 정의 (Hooks & Params)
   // ###################################################
   // 페이지당 항목 수
   const ITEMS_PER_PAGE = 10
-  const params = useParams()
   const router = useRouter()
-  const sourceId = Number(params.sourceId)
+  const searchParams = useSearchParams()
+  const sourceId = Number(searchParams.get('sourceId'))
 
   // ###################################################
   // 상태 정의 (State)
@@ -36,8 +36,15 @@ export default function SourceDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   const loadData = async () => {
+    if (!sourceId || Number.isNaN(sourceId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     setError(null)
+
     try {
       await getSourceApi(sourceId).then((response) => {
         console.log(`📡 ${response.message}`)
@@ -61,11 +68,21 @@ export default function SourceDetailPage() {
   }
 
   useEffect(() => {
+    if (!sourceId || Number.isNaN(sourceId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
+
     loadData()
   }, [page, size])
 
   useEffect(() => {
-    if (!sourceId) return
+    if (!sourceId || Number.isNaN(sourceId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
 
     loadData()
   }, [sourceId])
@@ -79,7 +96,7 @@ export default function SourceDetailPage() {
    * 행 클릭 핸들러 (상세 화면 이동)
    */
   const handleRowClick = (passageId: number) => {
-    router.push(`/passage/${passageId}`)
+    router.push(`/passage/detail?passageId=${passageId}`)
   }
 
   const handlePrevPage = () => {
@@ -97,6 +114,41 @@ export default function SourceDetailPage() {
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
+  function updateStatusBadge(updateState: string) {
+    const status = updateState as
+      | 'UPDATE-STATE-STAY'
+      | 'UPDATE-STATE-INSERT'
+      | 'UPDATE-STATE-CHANGE'
+      | 'UPDATE-STATE-DELETE'
+
+    // 1. 값에 따른 색상 정의
+    const updateStatusColors = {
+      'UPDATE-STATE-STAY': 'green',
+      'UPDATE-STATE-INSERT': 'blue',
+      'UPDATE-STATE-CHANGE': 'red',
+      'UPDATE-STATE-DELETE': 'black',
+    }
+
+    const updateStatusNames = {
+      'UPDATE-STATE-STAY': '변경없음',
+      'UPDATE-STATE-INSERT': '추가',
+      'UPDATE-STATE-CHANGE': '변경',
+      'UPDATE-STATE-DELETE': '삭제',
+    }
+
+    // 2. 현재 status에 맞는 색상 선택 (없으면 기본값 black)
+    const updateStatusColor = updateStatusColors[status] || 'black'
+    const updateStatusName = updateStatusNames[status] || '오류'
+
+    return (
+      <span
+        className={`inline-flex items-center rounded-full bg-${updateStatusColor}-50 px-2 py-0.5 text-xs font-medium text-${updateStatusColor}-700 ring-1 ring-${updateStatusColor}-700/10 ring-inset`}
+      >
+        {updateStatusName}
+      </span>
+    )
+  }
+
   // 1. 로딩 상태
   if (isLoading) {
     return (
@@ -133,9 +185,16 @@ export default function SourceDetailPage() {
       {/* 1. 상단: 문서 정보 카드 & 뒤로가기 */}
       <div className="mb-4 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <div className="flex shrink-0 items-center gap-2">
-            <FolderOpen className="text-primary h-6 w-6" />
-            <h2 className="text-2xl font-bold text-gray-800">패시지 목록</h2>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+                <FolderOpen className="text-primary h-6 w-6" />
+                패시지 목록
+              </h2>
+              <p className="mt-1 text-xs text-gray-500">
+                대상 문서 상세 정보 & 패시지 목록
+              </p>
+            </div>
           </div>
           {/* 뒤로가기 버튼 */}
           <button
@@ -149,24 +208,66 @@ export default function SourceDetailPage() {
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              📄 {source.name}
+              {source.name}
             </h2>
           </div>
-          <div className="grid grid-cols-4 gap-4 text-sm text-gray-600">
+          <div className="grid grid-cols-8 gap-4 text-sm text-gray-600">
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400">문서 ID</span>
+              <span className="pb-2 text-xs text-gray-400">문서 ID</span>
               <span className="font-bold text-gray-800">{source.sourceId}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400">총 패시지 수</span>
-              <span className="text-primary font-bold">{totalCounts}개</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-gray-400">버전</span>
+              <span className="pb-2 text-xs text-gray-400">버전</span>
               <span className="text-primary font-bold">v{source.version}</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400">등록일</span>
+              <span className="pb-2 text-xs text-gray-400">문서 타입</span>
+              <span className="font-bold text-gray-800">
+                {source.sourceTypeName}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="pb-2 text-xs text-gray-400">문서 분류</span>
+              <span className="font-bold text-gray-800">
+                {source.categoryName}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="pb-2 text-xs text-gray-400">전처리 타입</span>
+              <span className="font-bold text-gray-800">
+                {source.selectTypeName}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="pb-2 text-xs text-gray-400">자동화여부</span>
+              <div>
+                {source.isAuto ? (
+                  <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+                    자동
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 ring-inset">
+                    수동
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="pb-2 text-xs text-gray-400">배치여부</span>
+              <div>
+                {source.isBatch ? (
+                  <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-700/10 ring-inset">
+                    활성화
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800 ring-1 ring-red-600/20 ring-inset">
+                    비활성화
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <span className="pb-2 text-xs text-gray-400">등록일</span>
               <span className="font-bold text-gray-800">
                 {source.sysCreateDt}
               </span>
@@ -183,11 +284,12 @@ export default function SourceDetailPage() {
             <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase shadow-sm">
               <tr>
                 <th className="w-[80px] px-6 py-4 text-center">ID</th>
-                <th className="w-[80px] px-6 py-4 text-center">순서</th>
+                <th className="w-[80px] px-6 py-4 text-center">버전</th>
                 <th className="w-[150px] px-6 py-4">제목</th>
                 <th className="px-6 py-4">본문</th>
                 <th className="w-[80px] px-6 py-4 text-center">토큰</th>
-                <th className="w-[60px] px-6 py-4 text-center">버전</th>
+                <th className="w-[110px] px-6 py-4 text-center">변경이력</th>
+                <th className="w-[80px] px-6 py-4 text-center">순서</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
@@ -200,8 +302,8 @@ export default function SourceDetailPage() {
                   <td className="px-6 py-4 text-center font-mono text-gray-400 group-hover:text-gray-600">
                     {passage.passageId}
                   </td>
-                  <td className="px-6 py-4 text-center font-medium text-gray-600">
-                    {passage.sortOrder}
+                  <td className="px-6 py-4 text-center text-xs text-gray-400">
+                    v{passage.version}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col truncate">
@@ -217,7 +319,7 @@ export default function SourceDetailPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div
-                      className="max-w-xl truncate text-gray-600 group-hover:text-gray-900"
+                      className="max-w-2xl truncate text-gray-600 group-hover:text-gray-900"
                       title={passage.content}
                     >
                       {passage.content}
@@ -236,12 +338,14 @@ export default function SourceDetailPage() {
                       {passage.contentTokenSize}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-center text-xs text-gray-400">
-                    v{passage.version}
+                  <td className="px-6 py-4 text-center">
+                    {updateStatusBadge(passage.updateState)}
+                  </td>
+                  <td className="px-6 py-4 text-center font-medium text-gray-600">
+                    {passage.sortOrder}
                   </td>
                 </tr>
               ))}
-
               {passageList.length === 0 && (
                 <tr>
                   <td
@@ -293,5 +397,19 @@ export default function SourceDetailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SourceDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        </div>
+      }
+    >
+      <SourceDetailContent />
+    </Suspense>
   )
 }

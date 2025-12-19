@@ -1,14 +1,17 @@
-// src/api/client.ts
 import axios from 'axios'
 
-// 환경 변수에서 API 주소 가져오기
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
-
 export const client = axios.create({
-  baseURL: BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: '/api/rag-genai',
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // },
+})
+
+export const extractorClient = axios.create({
+  baseURL: '/api/extractor',
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // },
 })
 
 // [요청 인터셉터] 토큰이 있다면 헤더에 자동 추가

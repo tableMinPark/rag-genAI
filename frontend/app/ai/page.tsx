@@ -1,22 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ChatArea, { Message } from '@/components/ChatArea'
-import { Bot } from 'lucide-react'
-import { randomUUID, replaceEventDataToText } from '@/public/js/util.js'
+import { AlertCircle, Bot, Loader2, RefreshCw } from 'lucide-react'
+import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
-import { chatAiApi } from '@/api/chat'
-import { Document } from '@/types/domain'
-
-// ###################################################
-// 상수 정의 (Const)
-// ###################################################
-const CATEGORIES = [
-  { code: 'TRAIN-LAW', name: '법률' },
-  { code: 'TRAIN-GUIDE', name: '지침' },
-  { code: 'TRAIN-MANUAL', name: '매뉴얼' },
-  { code: 'TRAIN-EDU', name: '교육자료' },
-]
+import { chatAiApi, getCategoriesApi } from '@/api/chat'
+import { Category, Document } from '@/types/domain'
 
 export default function AiPage() {
   // ###################################################
@@ -32,12 +22,39 @@ export default function AiPage() {
         '안녕하세요. **AI MATE** 입니다.\n\n질의를 작성해주시면 문서를 기반으로 답변 드리겠습니다.',
     },
   ])
+  // 프로세스 상태
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
   // 선택 카테고리 목록 상태
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    CATEGORIES.map((c) => c.code),
-  )
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      await getCategoriesApi().then((response) => {
+        console.log(`📡 ${response.message}`)
+        setCategories(() => {
+          setSelectedCategories(() =>
+            response.data.map((category) => category.code),
+          )
+          return response.data
+        })
+      })
+    } catch (err) {
+      console.error(err)
+      setError('질문 가능한 카테고리가 없습니다.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
 
   // ###################################################
   // 핸들러 (Handler)
@@ -190,11 +207,15 @@ export default function AiPage() {
     )
   }
 
+  const handleRefresh = () => {
+    loadData()
+  }
+
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
   return (
-    <div className="flex h-full w-full flex-col p-2">
+    <div className="flex h-full w-full flex-col p-6">
       {/* 헤더 영역 */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -206,53 +227,81 @@ export default function AiPage() {
             <p className="mt-1 text-xs text-gray-500">검색 기반 질문 & 답변</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
-          <span className="mr-2 text-xs font-bold text-gray-500">
-            검색 범위:
-          </span>
-          {CATEGORIES.map((cat) => (
-            <label
-              key={cat.code}
-              className={`flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-all ${
-                selectedCategories.includes(cat.code)
-                  ? 'bg-primary hover:bg-primary-hover text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="hidden"
-                checked={selectedCategories.includes(cat.code)}
-                onChange={() => toggleCategory(cat.code)}
-              />
-              {selectedCategories.includes(cat.code) && (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  className="h-3 w-3"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-              {cat.name}
-            </label>
-          ))}
-        </div>
+
+        {!isLoading && !error && (
+          <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
+            <span className="mr-2 text-xs font-bold text-gray-500">
+              검색 범위:
+            </span>
+            {categories.map((cat) => (
+              <label
+                key={cat.code}
+                className={`flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-all ${
+                  selectedCategories.includes(cat.code)
+                    ? 'bg-primary hover:bg-primary-hover text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="hidden"
+                  checked={selectedCategories.includes(cat.code)}
+                  onChange={() => toggleCategory(cat.code)}
+                />
+                {selectedCategories.includes(cat.code) && (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-3 w-3"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                {cat.name}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 채팅 영역 */}
       <div className="min-h-0 flex-1">
-        <ChatArea
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onStop={handleStop}
-          isStreaming={isStreaming}
-        />
+        {isLoading && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3">
+            <Loader2 className="text-primary h-8 w-8 animate-spin" />
+            <p className="text-sm font-medium text-gray-500">
+              목록을 불러오는 중입니다...
+            </p>
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+            <p className="text-sm font-bold text-gray-700">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-200"
+            >
+              <RefreshCw className="h-3 w-3" />
+              다시 시도
+            </button>
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <ChatArea
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onStop={handleStop}
+            isStreaming={isStreaming}
+          />
+        )}
       </div>
     </div>
   )

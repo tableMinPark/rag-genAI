@@ -1,117 +1,86 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
-import { FolderOpen, Plus, Loader2, AlertCircle } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { FolderOpen, Loader2, AlertCircle, Plus } from 'lucide-react'
+import { Chunk, Passage } from '@/types/domain'
+import { getPassageApi } from '@/api/passage'
+import { getChunksApi } from '@/api/chunk'
 
-// ###################################################
-// 상수 및 타입 정의 (Constants & Types)
-// ###################################################
-
-interface PassageDetailType {
-  passageId: number
-  sourceId: number
-  sourceName: string
-  title: string
-  subTitle: string | null
-  thirdTitle: string | null
-  content: string
-  subContent: string | null
-  version: number
-}
-
-interface ChunkType {
-  id: number
-  content: string
-  type: 'TABLE' | 'TEXT'
-  tokenSize: number
-}
-
-// [API Mock] 패시지 상세 및 청크 목록 조회 API
-const fetchPassageData = async (
-  passageId: number,
-): Promise<{ passage: PassageDetailType; chunks: ChunkType[] }> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (Math.random() > 0.1) {
-        // 90% 성공
-        const passage = {
-          passageId: passageId,
-          sourceId: 1,
-          sourceName: '국민건강보험법.pdf',
-          title: '제1장 총칙',
-          subTitle: '제1조(목적)',
-          thirdTitle: '제1항',
-          content: `이 법은 국민의 질병ㆍ부상에 대한 예방ㆍ진단ㆍ치료ㆍ재활과 출산ㆍ사망 및 건강증진에 대하여 보험급여를 실시함으로써 국민보건 향상과 사회보장 증진에 이바지함을 목적으로 한다. (API Load)`,
-          subContent: `[전문개정 2011. 12. 31.]\n(이 부분은 부가적인 설명이나 개정 이력 등이 들어가는 공간입니다.)`,
-          version: 1,
-        }
-
-        // Mock Chunks (30개)
-        const chunks = Array.from({ length: 30 }).map((_, i) => {
-          const isTable = i % 10 === 5
-          const id = 1001 + i
-          let content = ''
-          if (isTable) {
-            content = `[표 ${Math.floor(i / 10) + 1}] 보험료율 현황\n| 구분 | 요율 |\n|---|---|\n| 직장 | 7.09% |`
-          } else {
-            content = `제${Math.floor(i / 3) + 1}조 내용... (청크 ID: ${id})`
-          }
-          return {
-            id: id,
-            content: content,
-            type: (isTable ? 'TABLE' : 'TEXT') as 'TABLE' | 'TEXT',
-            tokenSize: Math.floor(Math.random() * 300) + 50,
-          }
-        })
-
-        resolve({ passage, chunks })
-      } else {
-        reject(new Error('패시지 정보를 불러오는데 실패했습니다.'))
-      }
-    }, 800)
-  })
-}
-
-export default function PassageDetailPage() {
+function PassageDetailContent() {
   // ###################################################
   // 훅 및 파라미터 정의 (Hooks & Params)
   // ###################################################
-  const params = useParams()
+  const ITEMS_PER_PAGE = 10
   const router = useRouter()
-  const passageId = Number(params.passageId)
+  const searchParams = useSearchParams()
+  const passageId = Number(searchParams.get('passageId'))
 
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
-  const [passage, setPassage] = useState<PassageDetailType | null>(null)
-  const [chunkList, setChunkList] = useState<ChunkType[]>([])
+  const [passage, setPassage] = useState<Passage | null>(null)
+  const [chunkList, setChunkList] = useState<Chunk[]>([])
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(ITEMS_PER_PAGE)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalCounts, setTotalCounts] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const loadData = async () => {
+    if (!passageId || Number.isNaN(passageId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await getPassageApi(passageId).then((response) => {
+        console.log(`📡 ${response.message}`)
+        setPassage(response.result)
+      })
+
+      await getChunksApi(page, size, passageId).then((response) => {
+        console.log(`📡 ${response.message}`)
+        setPage(response.result.pageNo)
+        setSize(response.result.pageSize)
+        setTotalPages(response.result.totalPages)
+        setTotalCounts(response.result.totalCount)
+        setChunkList(response.result.content)
+      })
+    } catch (err) {
+      console.error(err)
+      setError('패시지 및 청크를 불러올 수 없습니다.')
+    } finally {
+      setIsLoading(false)
+    }
+
+    setIsLoading(false)
+  }
 
   // ###################################################
   // 이펙트 및 로직 (Effects & Logic)
   // ###################################################
-  /**
-   * 화면 진입 시 데이터 로드
-   */
   useEffect(() => {
-    if (!passageId) return
+    if (!passageId || Number.isNaN(passageId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
 
-    const loadData = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const { passage, chunks } = await fetchPassageData(passageId)
-        setPassage(passage)
-        setChunkList(chunks)
-      } catch (err) {
-        console.error(err)
-        setError('데이터를 불러올 수 없습니다.')
-      } finally {
-        setIsLoading(false)
-      }
+    loadData()
+  }, [page, size])
+
+  useEffect(() => {
+    if (!passageId || Number.isNaN(passageId)) {
+      setError('패시지를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
     }
 
     loadData()
@@ -129,10 +98,18 @@ export default function PassageDetailPage() {
     }
   }
 
+  /**
+   * TODO: 청크 무한 스크롤 연결 필요
+   */
+  const handleNextPage = () => {
+    if (page < totalPages) {
+      setPage((prev) => prev + 1)
+    }
+  }
+
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
-
   // 1. 로딩 상태
   if (isLoading) {
     return (
@@ -168,9 +145,16 @@ export default function PassageDetailPage() {
     <div className="flex h-full w-full flex-col p-6">
       {/* 1. 상단 네비게이션 */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex shrink-0 items-center gap-2">
-          <FolderOpen className="text-primary h-6 w-6" />
-          <h2 className="text-2xl font-bold text-gray-800">패시지 상세</h2>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FolderOpen className="text-primary h-6 w-6" />
+              패시지 상세
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">
+              패시지 상세 정보 & 청크 목록
+            </p>
+          </div>
         </div>
         {/* 뒤로가기 버튼 */}
         <button
@@ -246,40 +230,40 @@ export default function PassageDetailPage() {
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-gray-800">청크 목록</h3>
               <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
-                {chunkList.length}
+                {totalCounts}
               </span>
             </div>
 
             {/* 청크 등록 버튼 */}
-            <button
+            {/* <button
               onClick={handleCreateChunk}
               className="hover:border-primary hover:text-primary flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-600 shadow-sm transition-all active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" />
               청크 등록
-            </button>
+            </button> */}
           </div>
 
           <div className="flex-1 overflow-auto bg-gray-50/50 p-4">
             <div className="flex flex-col gap-3">
               {chunkList.map((chunk) => (
                 <Link
-                  key={chunk.id}
-                  href={`/chunk/${chunk.id}`}
+                  key={chunk.chunkId}
+                  href={`/chunk/detail?chunkId=${chunk.chunkId}`}
                   className="hover:border-primary group relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-5 transition-all hover:shadow-md"
                 >
                   {/* 카드 헤더 */}
                   <div className="mb-3 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-gray-500">
-                        #{chunk.id}
+                        #{chunk.chunkId}
                       </span>
-                      <span className="rounded border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">
-                        {chunk.type}
+                      <span className="rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500">
+                        v{chunk.version}
                       </span>
                     </div>
                     <span className="text-[10px] font-medium text-gray-400">
-                      {chunk.tokenSize} Tokens
+                      {chunk.compactContentTokenSize} Tokens
                     </span>
                   </div>
 
@@ -309,3 +293,16 @@ export default function PassageDetailPage() {
   )
 }
 
+export default function PassageDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        </div>
+      }
+    >
+      <PassageDetailContent />
+    </Suspense>
+  )
+}

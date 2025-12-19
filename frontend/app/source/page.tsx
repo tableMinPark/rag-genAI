@@ -17,9 +17,8 @@ import {
   Database,
   Server,
 } from 'lucide-react'
-import { RegexPattern, RepoResource, Source } from '@/types/domain'
-import { getSourcesApi } from '@/api/source'
-
+import { Category, RegexPattern, RepoResource, Source } from '@/types/domain'
+import { getCategoriesSource, getSourcesApi } from '@/api/source'
 // ###################################################
 // 로컬 타입 정의
 // ###################################################
@@ -740,31 +739,41 @@ const DocumentRegisterModal = ({
 
 export default function SourceListPage() {
   const router = useRouter()
+  const ITEM_INIT_PAGE = 1
   const ITEMS_PER_PAGE = 10
 
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
   const [sourceList, setSourceList] = useState<Source[]>([])
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(ITEM_INIT_PAGE)
   const [size, setSize] = useState(ITEMS_PER_PAGE)
   const [totalPages, setTotalPages] = useState(0)
   const [totalCounts, setTotalCounts] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [keyword, setKeyword] = useState('')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedFilterCategory, setSelectedFilterCategory] = useState('ALL')
 
   const loadData = async () => {
     setIsLoading(true)
     setError(null)
     try {
-      await getSourcesApi(page, size).then((response) => {
+      await getSourcesApi(page, size, keyword, selectedFilterCategory).then(
+        (response) => {
+          console.log(`📡 ${response.message}`)
+          setPage(response.result.pageNo)
+          setSize(response.result.pageSize)
+          setTotalPages(response.result.totalPages)
+          setTotalCounts(response.result.totalCount)
+          setSourceList(response.result.content)
+        },
+      )
+      await getCategoriesSource().then((response) => {
         console.log(`📡 ${response.message}`)
-        setPage(response.result.pageNo)
-        setSize(response.result.pageSize)
-        setTotalPages(response.result.totalPages)
-        setTotalCounts(response.result.totalCount)
-        setSourceList(response.result.content)
+        setCategories(() => response.result)
       })
     } catch (err) {
       console.error(err)
@@ -776,7 +785,7 @@ export default function SourceListPage() {
 
   useEffect(() => {
     loadData()
-  }, [page, size])
+  }, [page])
 
   useEffect(() => {
     loadData()
@@ -789,7 +798,7 @@ export default function SourceListPage() {
   const endIndex = startIndex + ITEMS_PER_PAGE
 
   const handleRowClick = (sourceId: number) => {
-    router.push(`/source/${sourceId}`)
+    router.push(`/source/detail?sourceId=${sourceId}`)
   }
 
   const handlePrevPage = () => {
@@ -805,15 +814,20 @@ export default function SourceListPage() {
   }
 
   const handleRefresh = () => {
-    loadData()
+    setPage((prev) => {
+      if (prev == ITEM_INIT_PAGE) {
+        loadData()
+      }
+      return ITEM_INIT_PAGE
+    })
   }
 
   const handleRegisterSuccess = () => {
     setPage((prev) => {
-      if (prev == 1) {
+      if (prev == ITEM_INIT_PAGE) {
         loadData()
       }
-      return 1
+      return ITEM_INIT_PAGE
     })
   }
 
@@ -823,9 +837,14 @@ export default function SourceListPage() {
   return (
     <div className="flex w-full flex-col p-6">
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex shrink-0 items-center gap-2">
-          <FolderOpen className="text-primary h-6 w-6" />
-          <h2 className="text-2xl font-bold text-gray-800">RAG 문서 관리</h2>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FolderOpen className="text-primary h-6 w-6" />
+              RAG 문서 관리
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">대상 문서 목록</p>
+          </div>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -833,6 +852,69 @@ export default function SourceListPage() {
         >
           <span>+ 문서 등록</span>
         </button>
+      </div>
+      {/* 2. 검색 및 필터 영역 (새로 추가됨) */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        {/* 좌측: 카테고리 셀렉트 + 검색어 입력 */}
+        <div className="flex flex-1 items-center gap-3">
+          {/* 카테고리 필터 셀렉트 */}
+          <div className="relative">
+            <select
+              value={selectedFilterCategory}
+              onChange={(e) => setSelectedFilterCategory(e.target.value)}
+              className="focus:border-primary focus:ring-primary h-10 w-[140px] appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:ring-1 focus:outline-none"
+            >
+              <option value="ALL">전체 카테고리</option>
+              {categories.map((cat) => (
+                <option key={cat.code} value={cat.code}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+            {/* 셀렉트 화살표 아이콘 커스텀 */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+              <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* 검색어 입력창 */}
+          <div className="relative max-w-md flex-1">
+            <input
+              type="text"
+              placeholder="문서명을 검색하세요..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleRefresh()} // 엔터키 검색
+              className="focus:border-primary focus:ring-primary h-10 w-full rounded-lg border border-gray-300 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
+            />
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* 검색 버튼 (선택 사항) */}
+          <button
+            onClick={handleRefresh}
+            className="hover:text-primary h-10 rounded-lg border border-gray-300 bg-gray-50 px-4 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-100"
+          >
+            검색
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -867,13 +949,16 @@ export default function SourceListPage() {
                   <tr>
                     <th className="w-[60px] px-4 py-4 text-center">ID</th>
                     <th className="px-4 py-4">문서명</th>
-                    <th className="w-[160px] px-4 py-4 text-center">분류</th>
-                    <th className="w-[160px] px-4 py-4 text-center">타입</th>
-                    <th className="w-[160px] px-4 py-4 text-center">전처리</th>
+                    <th className="w-[80px] px-4 py-4 text-center">분류</th>
+                    <th className="w-[80px] px-4 py-4 text-center">타입</th>
+                    <th className="w-[80px] px-4 py-4 text-center">전처리</th>
                     <th className="w-[60px] px-4 py-4 text-center">버전</th>
                     <th className="w-[80px] px-4 py-4 text-center">자동화</th>
-                    <th className="w-[160px] px-4 py-4 text-center">생성일</th>
-                    <th className="w-[160px] px-4 py-4 text-center">수정일</th>
+                    <th className="w-[100px] px-4 py-4 text-center">
+                      배치여부
+                    </th>
+                    <th className="w-[180px] px-4 py-4 text-center">생성일</th>
+                    <th className="w-[180px] px-4 py-4 text-center">수정일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
@@ -894,17 +979,17 @@ export default function SourceListPage() {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                          {source.categoryCode}
+                          {source.categoryName}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className="font-mono text-xs font-bold text-gray-500">
-                          {source.sourceType}
+                          {source.sourceTypeName}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center">
                         <span className="text-xs text-gray-600">
-                          {source.selectType}
+                          {source.selectTypeName}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center text-gray-500">
@@ -913,11 +998,22 @@ export default function SourceListPage() {
                       <td className="px-4 py-4 text-center">
                         {source.isAuto ? (
                           <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-                            자동화
+                            자동
                           </span>
                         ) : (
                           <span className="inline-flex items-center rounded-full bg-yellow-50 px-2 py-0.5 text-xs font-medium text-yellow-800 ring-1 ring-yellow-600/20 ring-inset">
                             수동
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        {source.isBatch ? (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-green-700/10 ring-inset">
+                            활성화
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-800 ring-1 ring-red-600/20 ring-inset">
+                            비활성화
                           </span>
                         )}
                       </td>

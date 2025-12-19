@@ -12,12 +12,14 @@ import {
   Copy,
   Check,
 } from 'lucide-react'
+import { extractFileApi, extractFileTextApi } from '@/api/extract'
+import { measureRequest, replaceEventDataToText } from '@/public/ts/commonUtil'
 
 // ###################################################
 // 상수 및 타입 정의 (Constants & Types)
 // ###################################################
 // 추출 옵션 타입
-type ExtractType = 'html' | 'markdown'
+type ExtractType = 'html' | 'markdown' | 'text'
 
 export default function ExtractPage() {
   // ###################################################
@@ -62,23 +64,40 @@ export default function ExtractPage() {
   }
 
   /**
-   * 텍스트 추출 실행 핸들러 (Mock)
+   * 텍스트 추출 실행 핸들러
    */
-  const handleExtract = () => {
+  const handleExtract = async () => {
     if (!selectedFile) return alert('파일을 업로드해주세요.')
 
     setIsProcessing(true)
     setExtractedLines([])
 
-    setTimeout(() => {
-      const mockContent = generateMockContent(extractType, selectedFile.name)
-      // 개행 기준으로 분리 및 빈 줄 제거
-      const lines = mockContent.split('\n').filter((line) => line.trim() !== '')
-
-      setExtractedLines(lines)
-      setProcessTime('1.42s')
-      setIsProcessing(false)
-    }, 1500)
+    if (extractType === 'text') {
+      await measureRequest(() => extractFileTextApi(selectedFile))
+        .then(({ response, duration }) => {
+          setExtractedLines([response.result])
+          setProcessTime(`${duration.toFixed(2)}ms`)
+        })
+        .catch((reason) => {
+          console.error(reason)
+          alert(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+        })
+    } else {
+      await measureRequest(() => extractFileApi(extractType, selectedFile))
+        .then(({ response, duration }) => {
+          setExtractedLines(response.result.lines.map((line) => line.content))
+          setProcessTime(`${duration.toFixed(2)}ms`)
+        })
+        .catch((reason) => {
+          console.error(reason)
+          alert(
+            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+          )
+        })
+    }
+    setIsProcessing(false)
   }
 
   /**
@@ -91,54 +110,22 @@ export default function ExtractPage() {
     setTimeout(() => setCopiedIndex(null), 2000)
   }
 
-  /**
-   * [Helper] 더미 데이터 생성 함수
-   */
-  const generateMockContent = (type: ExtractType, fileName: string): string => {
-    if (type === 'html') {
-      return `
-        <h1>[문서 추출 결과] ${fileName}</h1>
-        <p>이 문서는 <b>HTML 형식</b>으로 추출된 결과입니다.</p>
-        <p>문서의 구조를 태그로 표현합니다.</p>
-        <h2>1. 개요</h2>
-        <p>이 시스템은 RAG(Retrieval-Augmented Generation)를 위한 전처리 모듈입니다.</p>
-        <table border="1">
-          <tr><td>항목</td><td>내용</td></tr>
-          <tr><td>포맷</td><td>HTML</td></tr>
-        </table>
-        <p>위 표는 원본 문서의 테이블을 변환한 것입니다.</p>
-        <div class="note">참고: 이미지는 텍스트로 변환되지 않습니다.</div>
-      `
-    } else {
-      return `
-        # [문서 추출 결과] ${fileName}
-
-        이 문서는 **Markdown 형식**으로 추출된 결과입니다.
-        문서의 구조를 마크다운 문법으로 표현합니다.
-
-        ## 1. 개요
-        이 시스템은 RAG(Retrieval-Augmented Generation)를 위한 전처리 모듈입니다.
-
-        | 항목 | 내용 |
-        |---|---|
-        | 포맷 | Markdown |
-
-        위 표는 원본 문서의 테이블을 변환한 것입니다.
-
-        > 참고: 이미지는 텍스트로 변환되지 않습니다.
-      `
-    }
-  }
-
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
   return (
     <div className="flex h-full w-full flex-col p-6">
-      {/* 헤더 */}
-      <div className="mb-6 flex items-center gap-2">
-        <FileText className="text-primary h-6 w-6" />
-        <h2 className="text-2xl font-bold text-gray-800">문서 추출</h2>
+      {/* 헤더 영역 */}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FileText className="text-primary h-6 w-6" />
+              문서 추출
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">파일 문서 텍스트 추출</p>
+          </div>
+        </div>
       </div>
 
       {/* 메인 컨텐츠 (좌우 분할) */}
@@ -198,17 +185,17 @@ export default function ExtractPage() {
             <h3 className="mb-4 text-sm font-bold text-gray-700">
               추출 포맷 설정
             </h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
-                onClick={() => setExtractType('html')}
+                onClick={() => setExtractType('text')}
                 className={`flex flex-col items-center justify-center gap-2 rounded-lg border p-4 transition-all ${
-                  extractType === 'html'
+                  extractType === 'text'
                     ? 'border-primary text-primary ring-primary bg-red-50 ring-1'
                     : 'hover:border-primary/50 border-gray-200 bg-white text-gray-600'
                 }`}
               >
-                <Code className="h-6 w-6" />
-                <span className="text-sm font-bold">HTML</span>
+                <FileText className="h-6 w-6" />
+                <span className="text-sm font-bold">PlainText</span>
               </button>
               <button
                 onClick={() => setExtractType('markdown')}
@@ -221,15 +208,29 @@ export default function ExtractPage() {
                 <FileType className="h-6 w-6" />
                 <span className="text-sm font-bold">Markdown</span>
               </button>
+              <button
+                onClick={() => setExtractType('html')}
+                className={`flex flex-col items-center justify-center gap-2 rounded-lg border p-4 transition-all ${
+                  extractType === 'html'
+                    ? 'border-primary text-primary ring-primary bg-red-50 ring-1'
+                    : 'hover:border-primary/50 border-gray-200 bg-white text-gray-600'
+                }`}
+              >
+                <Code className="h-6 w-6" />
+                <span className="text-sm font-bold">HTML</span>
+              </button>
             </div>
             <div className="mt-4 rounded bg-gray-50 p-3 text-xs text-gray-500">
               <p>
-                • <b>HTML</b>: 원본 문서의 스타일과 구조(표, 이미지 위치 등)를
-                최대한 유지합니다.
+                • <b>PlainText</b>: 표 및 이미지를 제외한 텍스트만을 추출합니다.
               </p>
               <p className="mt-1">
                 • <b>Markdown</b>: LLM 학습 및 색인에 최적화된 경량화된
                 포맷입니다.
+              </p>
+              <p className="mt-1">
+                • <b>HTML</b>: 원본 문서의 스타일과 구조(표, 이미지 위치 등)를
+                최대한 유지합니다.
               </p>
             </div>
           </div>

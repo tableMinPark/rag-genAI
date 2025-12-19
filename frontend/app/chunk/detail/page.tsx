@@ -1,72 +1,54 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { FolderOpen, Edit, Loader2, AlertCircle } from 'lucide-react'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { FolderOpen, Edit, Loader2, AlertCircle, Delete } from 'lucide-react'
+import { Chunk } from '@/types/domain'
+import { deleteChunkApi, getChunkApi } from '@/api/chunk'
 
 // ###################################################
 // 상수 및 타입 정의 (Constants & Types)
 // ###################################################
-
-// API 응답 데이터 타입 정의
-interface ChunkDetailType {
-  chunkId: number
-  passageId: number
-  version: number
-  title: string
-  subTitle: string | null
-  thirdTitle: string | null
-  content: string
-  compactContent: string | null
-  subContent: string | null
-  tokenSize: number
-  compactTokenSize: number
-  sysCreateDt: string
-  sysModifyDt: string
-}
-
-// [API Mock] 청크 상세 조회 API (실제로는 src/api/chunk.ts 등에서 import)
-const fetchChunkDetail = async (chunkId: number): Promise<ChunkDetailType> => {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // 90% 성공, 10% 에러 시뮬레이션
-      if (Math.random() > 0.1) {
-        resolve({
-          chunkId: chunkId,
-          passageId: 101,
-          version: 1,
-          title: '제1장 총칙',
-          subTitle: '제1조(목적)',
-          thirdTitle: '제1항',
-          content: `이 법은 국민의 질병ㆍ부상에 대한 예방ㆍ진단ㆍ치료ㆍ재활과 출산ㆍ사망 및 건강증진에 대하여 보험급여를 실시함으로써 국민보건 향상과 사회보장 증진에 이바지함을 목적으로 한다. (API에서 로드된 데이터입니다.)`,
-          compactContent: `국민건강보험법 목적: 국민의 질병, 부상, 예방, 진단, 치료, 재활, 출산, 사망, 건강증진에 대한 보험급여 실시. 국민보건 향상 및 사회보장 증진 기여.`,
-          subContent: `[전문개정 2011. 12. 31.]`,
-          tokenSize: 156,
-          compactTokenSize: 85,
-          sysCreateDt: '2023-12-13 14:30:00',
-          sysModifyDt: '2023-12-13 14:30:00',
-        })
-      } else {
-        reject(new Error('데이터를 불러오는데 실패했습니다.'))
-      }
-    }, 800) // 0.8초 딜레이
-  })
-}
-
-export default function ChunkDetailPage() {
+function ChunkDetailContent() {
   // ###################################################
   // 훅 및 파라미터 정의 (Hooks & Params)
   // ###################################################
-  const params = useParams()
   const router = useRouter()
-  const chunkId = Number(params.chunkId)
+  const searchParams = useSearchParams()
+  const chunkId = Number(searchParams.get('chunkId'))
 
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
-  const [chunk, setChunk] = useState<ChunkDetailType | null>(null)
+  const [chunk, setChunk] = useState<Chunk | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const loadData = async () => {
+    if (!chunkId || Number.isNaN(chunkId)) {
+      setError('청크를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      await getChunkApi(chunkId).then((response) => {
+        console.log(`📡 ${response.message}`)
+        setChunk(response.result)
+      })
+    } catch (err) {
+      console.error(err)
+      setError('청크를 불러올 수 없습니다.')
+    } finally {
+      setIsLoading(false)
+    }
+
+    setIsLoading(false)
+  }
 
   // ###################################################
   // 이펙트 및 로직 (Effects & Logic)
@@ -75,20 +57,10 @@ export default function ChunkDetailPage() {
    * 화면 진입 시 데이터 로드
    */
   useEffect(() => {
-    if (!chunkId) return
-
-    const loadData = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const data = await fetchChunkDetail(chunkId)
-        setChunk(data)
-      } catch (err) {
-        console.error(err)
-        setError('청크 정보를 불러올 수 없습니다.')
-      } finally {
-        setIsLoading(false)
-      }
+    if (!chunkId || Number.isNaN(chunkId)) {
+      setError('청크를 불러올 수 없습니다.')
+      setIsLoading(false)
+      return
     }
 
     loadData()
@@ -102,7 +74,27 @@ export default function ChunkDetailPage() {
    */
   const handleEdit = () => {
     if (chunk) {
-      router.push(`/chunk/edit/${chunk.chunkId}`)
+      router.push(`/chunk/edit?chunkId=${chunk.chunkId}`)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (confirm('삭제된 청크는 복구할 수 없습니다. 삭제하시겠습니까?')) {
+      setIsDeleting(true)
+
+      await deleteChunkApi(chunkId)
+        .then((response) => {
+          console.log(`📡 ${response.message}`)
+          router.back()
+        })
+        .catch((reason) => {
+          console.error(reason)
+        })
+        .finally(() => {
+          setIsDeleting(false)
+        })
+
+      setIsDeleting(false)
     }
   }
 
@@ -145,9 +137,14 @@ export default function ChunkDetailPage() {
     <div className="flex h-full w-full flex-col p-6">
       {/* 1. 상단 네비게이션 */}
       <div className="mb-4 flex items-center justify-between">
-        <div className="flex shrink-0 items-center gap-2">
-          <FolderOpen className="text-primary h-6 w-6" />
-          <h2 className="text-2xl font-bold text-gray-800">청크 상세</h2>
+        <div className="flex items-center gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+              <FolderOpen className="text-primary h-6 w-6" />
+              청크 상세
+            </h2>
+            <p className="mt-1 text-xs text-gray-500">청크 상세 정보</p>
+          </div>
         </div>
 
         {/* 버튼 그룹 */}
@@ -161,13 +158,27 @@ export default function ChunkDetailPage() {
           </button>
 
           {/* 수정 버튼 */}
-          <button
+          {/* <button
             onClick={handleEdit}
             className="bg-primary hover:bg-primary-hover flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition-all active:scale-95"
           >
             <Edit className="h-4 w-4" />
             수정
-          </button>
+          </button> */}
+
+          {/* 삭제 버튼 */}
+          {/* <button
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="bg-primary hover:bg-primary-hover flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-sm transition-all active:scale-95"
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Delete className="h-4 w-4" />
+            )}{' '}
+            삭제
+          </button> */}
         </div>
       </div>
 
@@ -207,7 +218,7 @@ export default function ChunkDetailPage() {
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-gray-500">본문 토큰 수</span>
                   <span className="font-bold text-gray-800">
-                    {chunk.tokenSize}
+                    {chunk.contentTokenSize}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -215,7 +226,7 @@ export default function ChunkDetailPage() {
                     색인 본문 토큰 수
                   </span>
                   <span className="text-primary font-bold">
-                    {chunk.compactTokenSize}
+                    {chunk.compactContentTokenSize}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -294,5 +305,19 @@ export default function ChunkDetailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ChunkDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
+        </div>
+      }
+    >
+      <ChunkDetailContent />
+    </Suspense>
   )
 }

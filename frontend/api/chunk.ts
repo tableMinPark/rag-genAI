@@ -1,4 +1,4 @@
-import { client } from './client'
+import { extractorClient } from './client'
 import { Chunk } from '@/types/domain'
 import { ExtractApiResponse, PageResponse } from '@/types/api'
 
@@ -13,15 +13,17 @@ export interface GetChunksResponse extends PageResponse {
  *
  * @param page 페이지
  * @param size 사이즈
+ * @param passageId 패시지 ID
  */
 export const getChunksApi = async (
   page: number,
   size: number,
+  passageId: number,
 ): Promise<ExtractApiResponse<GetChunksResponse>> => {
-  const param = `page=${page}&size=${size}`
-  const response = await client.get<ExtractApiResponse<GetChunksResponse>>(
-    `/api/extractor/chunk?${param}`,
-  )
+  const param = `page=${page}&size=${size}&passageId=${passageId}`
+  const response = await extractorClient.get<
+    ExtractApiResponse<GetChunksResponse>
+  >(`/chunk?${param}`)
 
   return response.data
 }
@@ -34,9 +36,9 @@ export const getChunksApi = async (
 export const getChunkApi = async (
   chunkId: number,
 ): Promise<ExtractApiResponse<GetChunkResponse>> => {
-  const response = await client.get<ExtractApiResponse<GetChunkResponse>>(
-    `/api/extractor/chunk/${chunkId}`,
-  )
+  const response = await extractorClient.get<
+    ExtractApiResponse<GetChunkResponse>
+  >(`/chunk/${chunkId}`)
 
   return response.data
 }
@@ -59,8 +61,8 @@ export const createChunkApi = async (
   content: string,
   subContent: string,
 ): Promise<ExtractApiResponse<void>> => {
-  const response = await client.post<ExtractApiResponse<void>>(
-    `/api/extractor/chunk`,
+  const response = await extractorClient.post<ExtractApiResponse<void>>(
+    `/chunk`,
     {
       passageId,
       title,
@@ -91,8 +93,8 @@ export const updateChunkApi = async (
   content: string,
   subContent: string,
 ): Promise<ExtractApiResponse<void>> => {
-  const response = await client.put<ExtractApiResponse<void>>(
-    `/api/extractor/chunk/${chunkId}`,
+  const response = await extractorClient.put<ExtractApiResponse<void>>(
+    `/extractor/chunk/${chunkId}`,
     {
       title,
       subTitle,
@@ -100,6 +102,20 @@ export const updateChunkApi = async (
       content,
       subContent,
     },
+  )
+  return response.data
+}
+
+/**
+ * 청크 삭제
+ *
+ * @param chunkId 청크 ID
+ */
+export const deleteChunkApi = async (
+  chunkId: number,
+): Promise<ExtractApiResponse<void>> => {
+  const response = await extractorClient.delete<ExtractApiResponse<void>>(
+    `/extractor/chunk/${chunkId}`,
   )
   return response.data
 }

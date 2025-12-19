@@ -83,7 +83,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               pathname.startsWith('/passage') ||
               pathname.startsWith('/chunk'))
 
-          const isActive = pathname === item.path || isSourceRelated
+          const isActive = pathname.startsWith(item.path) || isSourceRelated
           const Icon = item.icon
 
           return (

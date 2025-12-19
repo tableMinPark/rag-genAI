@@ -185,7 +185,7 @@ export default function MyAiPage() {
   // 렌더링 (Render)
   // ###################################################
   return (
-    <div className="relative flex h-full w-full flex-col bg-white">
+    <div className="relative flex h-full w-full flex-col bg-white p-4">
       {/* ----------------------------------------------------------
           [배경] 채팅 화면
       ----------------------------------------------------------- */}

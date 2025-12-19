@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import ChatArea, { Message } from '@/components/ChatArea'
 import { Brain } from 'lucide-react'
-import { randomUUID, replaceEventDataToText } from '@/public/js/util.js'
+import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatLlmApi } from '@/api/chat'
 
@@ -161,7 +161,7 @@ export default function LlmPage() {
   // 렌더링 (Render)
   // ###################################################
   return (
-    <div className="flex h-full w-full flex-col p-2">
+    <div className="flex h-full w-full flex-col p-6">
       {/* 헤더 영역 */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
