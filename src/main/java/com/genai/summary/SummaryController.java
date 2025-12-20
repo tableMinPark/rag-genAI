@@ -20,7 +20,7 @@ import javax.validation.Valid;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/summary")
+@RequestMapping("/summary")
 public class SummaryController {
 
     private final SummaryCoreService summaryCoreService;

@@ -24,7 +24,7 @@ import java.util.List;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/translate")
+@RequestMapping("/translate")
 public class TranslateController {
 
     private final TranslateCoreService translateCoreService;

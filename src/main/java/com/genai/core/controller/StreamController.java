@@ -13,7 +13,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/stream")
+@RequestMapping("/stream")
 public class StreamController {
 
     private final StreamCoreService streamCoreService;
