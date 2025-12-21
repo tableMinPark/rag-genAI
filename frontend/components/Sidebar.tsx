@@ -11,6 +11,7 @@ import {
   FlaskConical,
   ChevronLeft,
   FileSearch,
+  Sparkles,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -20,7 +21,7 @@ interface SidebarProps {
 
 export const MENU_ITEMS = [
   { name: 'RAG', path: '/ai', icon: Bot },
-  { name: '나만의AI', path: '/myai', icon: FileSearch },
+  // { name: '나만의AI (개발중), path: '/myai', icon: FileSearch },
   { name: 'LLM', path: '/llm', icon: Brain },
   { name: '번역', path: '/translate', icon: Languages },
   { name: '요약', path: '/summary', icon: FileText },
@@ -48,13 +49,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             href="/"
             className="flex items-center gap-2 rounded-md p-1 hover:bg-gray-200"
           >
-            <Image
-              src="/img/logo.png"
-              alt="Rag Gen AI Logo"
-              width={20}
-              height={20}
-              priority
-            />
+            <Sparkles className="text-primary fill-primary/20 h-6 w-6" />
           </Link>
         )}
 
