@@ -9,7 +9,6 @@ import {
   Languages,
   FileText,
   FlaskConical,
-  FolderOpen,
   ChevronLeft,
   FileSearch,
 } from 'lucide-react'
@@ -27,8 +26,6 @@ export const MENU_ITEMS = [
   { name: '요약', path: '/summary', icon: FileText },
   { name: '보고서', path: '/report', icon: FileText },
   { name: '시뮬레이션', path: '/simulation', icon: FlaskConical },
-  { name: '문서 추출', path: '/extract', icon: FileText },
-  { name: 'RAG 문서 관리', path: '/source', icon: FolderOpen },
 ]
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {

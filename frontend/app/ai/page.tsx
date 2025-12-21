@@ -7,8 +7,11 @@ import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatAiApi, getCategoriesApi } from '@/api/chat'
 import { Category, Document } from '@/types/domain'
+import { useSearchParams } from 'next/navigation'
 
 export default function AiPage() {
+  const searchParams = useSearchParams()
+  const initialQuery = searchParams.get('query')
   // ###################################################
   // 상태 정의 (State)
   // ###################################################
@@ -53,6 +56,12 @@ export default function AiPage() {
   }
 
   useEffect(() => {
+    if (initialQuery) {
+      handleSendMessage(initialQuery, true)
+    }
+  }, [initialQuery])
+
+  useEffect(() => {
     loadData()
   }, [])
 
@@ -64,9 +73,12 @@ export default function AiPage() {
    *
    * @param query 사용자 질의
    */
-  const handleSendMessage = async (query: string) => {
+  const handleSendMessage = async (
+    query: string,
+    isInitQuery: boolean = false,
+  ) => {
     // 입력 값 체크
-    if (selectedCategories.length === 0) {
+    if (!isInitQuery && selectedCategories.length === 0) {
       alert('최소 하나의 카테고리를 선택해주세요.')
       return
     }
