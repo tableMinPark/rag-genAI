@@ -47,7 +47,7 @@ public class CollectionType {
     public static CollectionType myai() {
         return CollectionType.builder()
                 .mappingClass(DocumentEntity.class)
-                .collectionId("nhis_myai")
+                .collectionId("gen_myai")
                 .keywordSearchFields(List.of("title", "sub_title", "third_title", "content"))
                 .vectorSearchFields(List.of("context"))
                 .sortFields(List.of("score"))

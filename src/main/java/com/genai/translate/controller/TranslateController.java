@@ -1,16 +1,17 @@
 package com.genai.translate.controller;
 
+import com.genai.core.config.constant.ComnConst;
 import com.genai.core.controller.dto.response.ResponseDto;
 import com.genai.core.service.ComnCodeCoreService;
 import com.genai.core.service.TranslateCoreService;
 import com.genai.core.service.vo.ComnCodeVO;
 import com.genai.core.service.vo.TranslateVO;
+import com.genai.global.enums.Response;
 import com.genai.translate.controller.dto.request.TranslateFileRequestDto;
 import com.genai.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.translate.controller.dto.response.GetTranslateLanguageResponseDto;
 import com.genai.translate.controller.dto.response.TranslateResponseDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -20,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.validation.Valid;
 import java.util.List;
 
-@Slf4j
 @Validated
 @RestController
 @RequiredArgsConstructor
@@ -44,28 +44,21 @@ public class TranslateController {
         boolean containDic = translateTextRequestDto.isContainDic();
         String context = translateTextRequestDto.getContext();
 
-        log.info("텍스트 번역 요청 : {} | {} -> {} : {}", sessionId, beforeLang, afterLang, context);
-
-        long chatId = 4L;
+        long chatId = 7L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, context, sessionId, chatId, containDic);
 
-        return ResponseEntity.ok()
-                .body(ResponseDto.<TranslateResponseDto>builder()
-                        .status("SUCCESS")
-                        .message("번역 요청 성공")
-                        .data(TranslateResponseDto.builder()
-                                .sessionId(sessionId)
-                                .msgId(translateVO.getMsgId())
-                                .content(translateVO.getContent())
-                                .build())
-                        .build());
+        return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
+                .sessionId(sessionId)
+                .msgId(translateVO.getMsgId())
+                .content(translateVO.getContent())
+                .build()));
     }
 
     /**
      * 번역 요청
      *
      * @param translateFileRequestDto 번역 요청 정보
-     * @param multipartFile 번역 문서 파일
+     * @param multipartFile           번역 문서 파일
      */
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseDto<TranslateResponseDto>> translateFile(
@@ -79,21 +72,14 @@ public class TranslateController {
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();
 
-        log.info("파일 번역 요청 : {} | {} -> {} : {}", sessionId, beforeLang, afterLang, multipartFile.getOriginalFilename());
-
-        long chatId = 4L;
+        long chatId = 7L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, multipartFile, sessionId, chatId, containDic);
 
-        return ResponseEntity.ok()
-                .body(ResponseDto.<TranslateResponseDto>builder()
-                        .status("SUCCESS")
-                        .message("번역 요청 성공")
-                        .data(TranslateResponseDto.builder()
-                                .sessionId(sessionId)
-                                .msgId(translateVO.getMsgId())
-                                .content(translateVO.getContent())
-                                .build())
-                        .build());
+        return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
+                .sessionId(sessionId)
+                .msgId(translateVO.getMsgId())
+                .content(translateVO.getContent())
+                .build()));
     }
 
     /**
@@ -102,13 +88,9 @@ public class TranslateController {
     @GetMapping("/language")
     public ResponseEntity<ResponseDto<List<GetTranslateLanguageResponseDto>>> getTranslateLanguages() {
 
-        List<ComnCodeVO> translateLanguageComnCodes = comnCodeCoreService.getComnCodes("LANG");
+        List<ComnCodeVO> translateLanguageComnCodes = comnCodeCoreService.getComnCodes(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP);
 
-        return ResponseEntity.ok()
-                .body(ResponseDto.<List<GetTranslateLanguageResponseDto>>builder()
-                        .status("SUCCESS")
-                        .message("번역 언어 목록 조회 성공")
-                        .data(GetTranslateLanguageResponseDto.toList(translateLanguageComnCodes))
-                        .build());
+        return ResponseEntity.ok().body(Response.TRANSLATE_TRANSLATE_LANGUAGES.toResponseDto(GetTranslateLanguageResponseDto
+                .toList(translateLanguageComnCodes)));
     }
 }

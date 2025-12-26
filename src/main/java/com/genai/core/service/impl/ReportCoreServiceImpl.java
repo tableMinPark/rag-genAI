@@ -1,11 +1,9 @@
 package com.genai.core.service.impl;
 
 import com.genai.core.config.constant.PromptConst;
-import com.genai.core.config.constant.QuestionConst;
-import com.genai.core.config.properties.EmbedProperty;
+import com.genai.core.config.properties.FileProperty;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.exception.ReportErrorException;
-import com.genai.core.exception.TranslateErrorException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.ModelRepository;
@@ -37,7 +35,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final ExtractUtil extractUtil;
-    private final EmbedProperty embedProperty;
+    private final FileProperty fileProperty;
 
     /**
      * 보고서 생성
@@ -55,7 +53,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
 
         String originFileName = file.getOriginalFilename();
         String fileName = CommonUtil.generateRandomId();
-        Path fullPath = Paths.get(embedProperty.getFileStorePath(), embedProperty.getTempDir(), fileName);
+        Path fullPath = Paths.get(fileProperty.getFileStorePath(), fileProperty.getTempDir(), fileName);
 
         if (fullPath.toFile().exists()) {
             throw new ReportErrorException(originFileName);
@@ -93,41 +91,30 @@ public class ReportCoreServiceImpl implements ReportCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        String userInput = String.format("""
-        > 보고서 생성 참고 사항과 컨텍스트를 기반으로 보고서 생성해줘
+        String query = String.format("""
+        > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
+        # 보고서 제목
+        %s
         # 보고서 생성 참고 사항
         %s
-        """, promptContext);
+        """, reportTitle, promptContext);
 
-        PromptEntity promptEntity = promptRepository.findByPromptId(PromptConst.REPORT_PROMPT_ID)
+        PromptEntity promptEntity = promptRepository.findById(PromptConst.REPORT_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        StringBuilder reportContentBuilder = new StringBuilder();
-
-        modelRepository.generateAnswer(userInput, content, CommonUtil.generateRandomId(), promptEntity).forEach(answer -> {
-            if (!answer.getIsInference()) {
-                reportContentBuilder.append(answer.getContent());
-            }
-        });
-
-        String reportContent = reportContentBuilder.toString();
-
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(userInput)
-                .build());
+        String reportContent = modelRepository.generateAnswerStr(query, content, CommonUtil.generateRandomId(), promptEntity);
 
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content(reportContent)
+                .query(query)
+                .rewriteQuery(query)
+                .answer(reportContent)
+                .summaryAnswer(reportContent)
                 .build());
 
         return ReportVO.builder()
-                .chatId(chatId)
+                .chatId(chatEntity.getChatId())
                 .msgId(chatDetailEntity.getMsgId())
                 .content(reportContent)
                 .build();

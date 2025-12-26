@@ -1,8 +1,9 @@
 package com.genai.core.service.impl;
 
 import com.genai.core.config.constant.PromptConst;
-import com.genai.core.config.constant.QuestionConst;
-import com.genai.core.config.properties.EmbedProperty;
+import com.genai.core.config.properties.FileProperty;
+import com.genai.core.exception.NotFoundException;
+import com.genai.core.exception.TranslateErrorException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.ModelRepository;
@@ -14,8 +15,6 @@ import com.genai.core.service.SummaryCoreService;
 import com.genai.core.service.vo.SummaryVO;
 import com.genai.core.utils.CommonUtil;
 import com.genai.core.utils.ExtractUtil;
-import com.genai.core.exception.NotFoundException;
-import com.genai.core.exception.TranslateErrorException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,7 +32,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final ExtractUtil extractUtil;
-    private final EmbedProperty embedProperty;
+    private final FileProperty fileProperty;
 
     /**
      * 파일 요약
@@ -49,7 +48,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
 
         String originFileName = file.getOriginalFilename();
         String fileName = CommonUtil.generateRandomId();
-        Path fullPath = Paths.get(embedProperty.getFileStorePath(), embedProperty.getTempDir(), fileName);
+        Path fullPath = Paths.get(fileProperty.getFileStorePath(), fileProperty.getTempDir(), fileName);
 
         if (fullPath.toFile().exists()) {
             throw new TranslateErrorException(originFileName);
@@ -85,39 +84,26 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        String userInput = String.format("""
-        > 길이 비율 값이 %.2f 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.
-        """, lengthRatio);
+        String query = String.format("""
+                > 길이 비율 값이 %.2f 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.
+                """, lengthRatio);
 
-        PromptEntity promptEntity = promptRepository.findByPromptId(PromptConst.SUMMARY_PROMPT_ID)
+        PromptEntity promptEntity = promptRepository.findById(PromptConst.SUMMARY_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        StringBuilder summaryContentBuilder = new StringBuilder();
-
-        modelRepository.generateAnswer(userInput, content, CommonUtil.generateRandomId(), promptEntity).forEach(answer -> {
-            if (!answer.getIsInference()) {
-                summaryContentBuilder.append(answer.getContent());
-            }
-        });
-
-        String summaryContent = summaryContentBuilder.toString();
-
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(userInput)
-                .build());
+        String summaryContent = modelRepository.generateAnswerStr(query, content, CommonUtil.generateRandomId(), promptEntity);
 
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content(summaryContent)
+                .query(query)
+                .rewriteQuery(query)
+                .answer(summaryContent)
+                .summaryAnswer(summaryContent)
                 .build());
 
         return SummaryVO.builder()
-                .chatId(chatId)
+                .chatId(chatEntity.getChatId())
                 .msgId(chatDetailEntity.getMsgId())
                 .content(summaryContent)
                 .build();

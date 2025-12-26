@@ -29,6 +29,16 @@ public class LlmProperty {
 
     private String platform;
 
+    private int modelContextLimit;
+
+    private int internalTokenOverhead;
+
+    private int safetyMargin;
+
+    private int minOutputTokens;
+
+    private int maxOutputTokens;
+
     /**
      * LLM 요청 URL 조회
      *

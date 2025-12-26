@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -97,6 +98,7 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param collectionEntity 컬렉션
      * @return 컬렉션
      */
+    @Transactional
     @Override
     public CollectionEntity createCollection(String collectionId, CollectionEntity collectionEntity) {
 
@@ -156,6 +158,7 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      *
      * @param collectionId 컬렉션 ID
      */
+    @Transactional
     @Override
     public void deleteCollection(String collectionId) {
 
@@ -218,8 +221,13 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param documentEntities 변환 대상 문서 목록
      * @return 변환 완료 문서 목록
      */
+    @Transactional
     @Override
     public List<DocumentEntity> convertVector(String collectionId, List<DocumentEntity> documentEntities) {
+
+        if (documentEntities.isEmpty()) {
+            return documentEntities;
+        }
 
         List<ConvertVectorVO> convertVectorVos = documentEntities.stream()
                 .map(documentEntity -> ConvertVectorVO.builder()
@@ -263,8 +271,11 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param documentEntities 색인 대상 문서 목록
      * @param isStatic         정적 색인 여부
      */
+    @Transactional
     @Override
     public void createIndex(String collectionId, List<DocumentEntity> documentEntities, boolean isStatic) {
+
+        if (documentEntities.isEmpty()) return;
 
         // 정적 색인 전환
         if (isStatic) {
@@ -305,8 +316,11 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param collectionId 컬렉션 ID
      * @param chunkIds     chunkId 목록
      */
+    @Transactional
     @Override
     public void deleteIndex(String collectionId, List<String> chunkIds) {
+
+        if (chunkIds.isEmpty()) return;
 
         ResponseEntity<Map<String, Object>> responseEntity = webClient.post()
                 .uri(indexerProperty.getDeleteIndexUrl(collectionId))

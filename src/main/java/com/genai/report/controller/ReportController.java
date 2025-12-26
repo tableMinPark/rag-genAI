@@ -3,11 +3,11 @@ package com.genai.report.controller;
 import com.genai.core.controller.dto.response.ResponseDto;
 import com.genai.core.service.ReportCoreService;
 import com.genai.core.service.vo.ReportVO;
+import com.genai.global.enums.Response;
 import com.genai.report.controller.dto.request.ReportFileRequestDto;
 import com.genai.report.controller.dto.request.ReportTextRequestDto;
 import com.genai.report.controller.dto.response.ReportResponseDto;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
 
-@Slf4j
 @Validated
 @RestController
 @RequiredArgsConstructor
@@ -35,23 +34,17 @@ public class ReportController {
 
         String sessionId = reportTextRequestDto.getSessionId();
         String promptContext = reportTextRequestDto.getPrompt();
+        String title = reportTextRequestDto.getTitle();
         String content = reportTextRequestDto.getContext();
 
-        log.info("텍스트 참조 보고서 생성 요청 : {} | {} : {}", sessionId, promptContext, content);
+        long chatId = 5L;
+        ReportVO reportVO = reportCoreService.generateReport(title, promptContext, content, sessionId, chatId);
 
-        long chatId = 3L;
-        ReportVO reportVO = reportCoreService.generateReport("", promptContext, content, sessionId, chatId);
-
-        return ResponseEntity.ok()
-                .body(ResponseDto.<ReportResponseDto>builder()
-                        .status("SUCCESS")
-                        .message("보고서 생성 요청 성공")
-                        .data(ReportResponseDto.builder()
-                                .sessionId(sessionId)
-                                .msgId(reportVO.getMsgId())
-                                .content(reportVO.getContent())
-                                .build())
-                        .build());
+        return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
+                .sessionId(sessionId)
+                .msgId(reportVO.getMsgId())
+                .content(reportVO.getContent())
+                .build()));
     }
 
     /**
@@ -69,21 +62,15 @@ public class ReportController {
 
         String sessionId = reportFileRequestDto.getSessionId();
         String promptContext = reportFileRequestDto.getPrompt();
+        String title = reportFileRequestDto.getTitle();
 
-        log.info("파일 참조 보고서 생성 요청 : {} | {} : {}", sessionId, promptContext, multipartFile.getOriginalFilename());
+        long chatId = 5L;
+        ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFile, sessionId, chatId);
 
-        long chatId = 3L;
-        ReportVO reportVO = reportCoreService.generateReport("", promptContext, multipartFile, sessionId, chatId);
-
-        return ResponseEntity.ok()
-                .body(ResponseDto.<ReportResponseDto>builder()
-                        .status("SUCCESS")
-                        .message("보고서 생성 요청 성공")
-                        .data(ReportResponseDto.builder()
-                                .sessionId(sessionId)
-                                .msgId(reportVO.getMsgId())
-                                .content(reportVO.getContent())
-                                .build())
-                        .build());
+        return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()
+                .sessionId(sessionId)
+                .msgId(reportVO.getMsgId())
+                .content(reportVO.getContent())
+                .build()));
     }
 }

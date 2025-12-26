@@ -8,19 +8,18 @@ import java.util.List;
 public interface SourceRepository extends JpaRepository<SourceEntity, Long> {
 
     /**
-     * 문서 삭제
+     * 문서 조회
      *
      * @param collectionId 컬렉션 ID
-     * @param categoryCode 카테고리 코드
-     * @param version      버전 정보
+     * @param fileDetailIds 파일 상세 ID 목록
      */
-    List<SourceEntity> findByCollectionIdAndCategoryCodeAndVersion(String collectionId, String categoryCode, Long version);
+    List<SourceEntity> findByCollectionIdAndFileDetailIdNotIn(String collectionId, List<Long> fileDetailIds);
 
     /**
-     * 문서 삭제
+     * 문서 조회
      *
      * @param collectionId 컬렉션 ID
-     * @param categoryCode 카테고리 코드
+     * @param fileDetailIds 파일 상세 ID 목록
      */
-    List<SourceEntity> findByCollectionIdAndCategoryCode(String collectionId, String categoryCode);
+    List<SourceEntity> findByCollectionIdAndFileDetailIdIn(String collectionId, List<Long> fileDetailIds);
 }

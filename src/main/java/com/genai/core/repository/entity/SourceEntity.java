@@ -8,7 +8,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -70,6 +69,10 @@ public class SourceEntity {
     @Column(name = "is_auto")
     @Comment("자동화 처리 여부")
     private Boolean isAuto;
+
+    @Column(name = "is_batch")
+    @Comment("배치 처리 여부")
+    private Boolean isBatch;
 
     @CreatedDate
     @Column(name = "sys_create_dt")

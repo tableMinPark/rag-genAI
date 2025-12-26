@@ -4,7 +4,7 @@ public class SearchConst {
 
     // 래링킹 설정 옵션
     public static final String       RERANK_FIELD      = "context";
-    public static final double       RERANK_SCORE_MIN  = 0.05;
+    public static final double       RERANK_SCORE_MIN  = 0.02;
 
     // 검색 결과 상위 카운트 옵션
     public static final int          KEYWORD_TOP_K     = 5;

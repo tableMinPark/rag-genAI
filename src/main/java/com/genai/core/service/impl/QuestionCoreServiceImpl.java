@@ -1,32 +1,28 @@
 package com.genai.core.service.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.core.config.constant.PromptConst;
 import com.genai.core.config.constant.QuestionConst;
 import com.genai.core.config.constant.SearchConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
+import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.repository.wrapper.Rerank;
 import com.genai.core.repository.wrapper.Search;
 import com.genai.core.service.QuestionCoreService;
 import com.genai.core.service.vo.AnswerVO;
-import com.genai.core.service.vo.ContextVO;
 import com.genai.core.service.vo.DocumentVO;
 import com.genai.core.service.vo.QuestionVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -40,7 +36,67 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     private final ChatDetailRepository chatDetailRepository;
     private final ChatPassageRepository chatPassageRepository;
     private final CollectionTypeFactory collectionTypeFactory;
-    private final ObjectMapper objectMapper;
+
+    /**
+     * 질문 재작성
+     *
+     * @param query     질문
+     * @param sessionId 세션 ID
+     * @return 재작성 질문
+     */
+    @Transactional
+    public String rewriteQuery(String query, long chatId, String sessionId) {
+
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities =
+                chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS));
+
+        PromptEntity promptEntity = PromptEntity.builder()
+                .promptContent(QuestionConst.REWRITE_QUERY_PROMPT)
+                .temperature(QuestionConst.REWRITE_QUERY_TEMPERATURE)
+                .topP(QuestionConst.REWRITE_QUERY_TOP_P)
+                .maximumTokens(QuestionConst.REWRITE_QUERY_MAXIMUM_TOKENS)
+                .build();
+
+        String rewriteQuery = query;
+        if (!chatDetailEntities.isEmpty()) {
+            List<ConversationVO> conversationVos = chatDetailEntities.stream()
+                    .map(chatDetailEntity -> ConversationVO.builder()
+                            .query(chatDetailEntity.getRewriteQuery())
+                            .answer(chatDetailEntity.getAnswer())
+                            .build())
+                    .toList();
+
+            // 질의 재작성
+            rewriteQuery = modelRepository.generateAnswerStr(query, null, null, conversationVos, sessionId, promptEntity);
+        }
+
+        return rewriteQuery.trim();
+    }
+
+    /**
+     * 답변 요약
+     *
+     * @param sessionId        세션 ID
+     * @return 요약 답변 문자열
+     */
+    @Transactional
+    public String summaryAnswer(String query, String answer, String sessionId) {
+
+        PromptEntity promptEntity = PromptEntity.builder()
+                .promptContent(QuestionConst.SUMMARY_UPDATE_PROMPT)
+                .temperature(QuestionConst.SUMMARY_UPDATE_TEMPERATURE)
+                .topP(QuestionConst.SUMMARY_UPDATE_TOP_P)
+                .maximumTokens(QuestionConst.SUMMARY_UPDATE_MAXIMUM_TOKENS)
+                .build();
+
+        ConversationVO conversationVo = ConversationVO.builder()
+                .query(query)
+                .answer(answer)
+                .build();
+
+        return modelRepository.generateAnswerStr(null, null, null, List.of(conversationVo), sessionId, promptEntity);
+    }
 
     /**
      * AI 질문 & 답변
@@ -53,107 +109,23 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      */
     @Transactional
     @Override
-    public QuestionVO questionAi(String query, String sessionId, long chatId, List<String> categoryCodes) {
-        return this.questionByCollectionId(query, sessionId, chatId, PromptConst.QUESTION_AI_PROMPT_ID, collectionTypeFactory.ai(), categoryCodes);
+    public QuestionVO questionAi(String query, String sessionId, long chatId, long promptId, List<String> categoryCodes) {
+        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.ai(), categoryCodes);
     }
 
     /**
-     * 나만의 AI 질문 & 답변
+     * AI 질문 & 답변
      *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @param promptId  프롬프트 ID
+     * @param query        질의문
+     * @param sessionId    사용자 ID
+     * @param chatId       대화 ID
+     * @param categoryCode 카테고리 코드
      * @return 답변 VO
      */
     @Transactional
     @Override
-    public QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId) {
-        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.myai(), Collections.emptyList());
-    }
-
-    /**
-     * LLM 질문 & 답변
-     *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @return 답변 VO
-     */
-    @Transactional
-    @Override
-    public QuestionVO questionLlm(String query, String sessionId, long chatId) {
-        return this.questionLlm(query, sessionId, chatId, PromptConst.QUESTION_PROMPT_ID);
-    }
-
-    /**
-     * LLM 질문 & 답변
-     *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @param promptId  프롬프트 ID
-     * @return 답변 VO
-     */
-    @Transactional
-    @Override
-    public QuestionVO questionLlm(String query, String sessionId, long chatId, long promptId) {
-        // 시스템 프롬 프트 조회
-        PromptEntity promptEntity = promptRepository.findByPromptId(promptId)
-                .orElseThrow(() -> new NotFoundException("프롬프트"));
-
-        ChatEntity chatEntity = chatRepository.findById(chatId)
-                .orElseThrow(() -> new NotFoundException("대화 이력"));
-
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(query)
-                .build());
-
-        // 답변 이력 생성
-        ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content("")
-                .build());
-
-        // LLM 답변 스트림 요청
-        Flux<List<AnswerVO>> answerStream = modelRepository
-                .generateStreamAnswer(query, sessionId, promptEntity)
-                .map(answerEntities -> answerEntities.stream()
-                        .map(answerEntity -> AnswerVO.builder()
-                                .id(answerEntity.getId())
-                                .content(answerEntity.getConvertContent())
-                                .finishReason(answerEntity.getFinishReason())
-                                .isInference(answerEntity.getIsInference())
-                                .build())
-                        .toList())
-                .publish()
-                .refCount(2);
-
-        StringBuilder answerBuilder = new StringBuilder();
-        answerStream
-                .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
-                .subscribe(answerVos -> {
-                    for (AnswerVO answerVo : answerVos) {
-                        if (!answerVo.getIsInference()) {
-                            answerBuilder.append(answerVo.getContent());
-                        }
-                    }
-                }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
-                    // 답변 저장
-                    chatDetailEntity.setContent(answerBuilder.toString());
-                    chatDetailRepository.save(chatDetailEntity);
-                    log.info("대화 이력 스트림 정상 종료");
-                });
-
-        return QuestionVO.builder()
-                .answerStream(answerStream)
-                .documents(Collections.emptyList())
-                .msgId(chatDetailEntity.getMsgId())
-                .build();
+    public QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId, String categoryCode) {
+        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.myai(), List.of(categoryCode));
     }
 
     /**
@@ -172,69 +144,79 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     public QuestionVO questionByCollectionId(String query, String sessionId, long chatId, long promptId, CollectionType collectionType, List<String> categoryCodes) {
 
         // 시스템 프롬 프트 조회
-        PromptEntity promptEntity = promptRepository.findByPromptId(promptId)
+        PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
+        // 질의 재작성 (멀티턴)
+        String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
+
+        // ####################################
+        // RAG Context 정리
+        // ####################################
         // 검색 결과 목록 (key 를 통한 중복 제거)
         Map<String, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
-
         // 키워드 검색
-        List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, query, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
+        List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
         keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
-
         // 벡터 검색
-        List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, query, SearchConst.VECTOR_TOP_K, categoryCodes);
+        List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, SearchConst.VECTOR_TOP_K, categoryCodes);
         vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
-
         // 키워드 검색 결과, 벡터 검색 결과 변환
-        List<Rerank> rerankEntities = searchRepository.rerank(query, searchEntityMap.values().stream()
+        List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
                 .map(searchEntity -> Rerank.builder()
                         .document(searchEntity.getFields())
                         .build())
                 .toList());
-
         // 리랭킹
         List<Rerank> topRerankEntities = rerankEntities.stream()
                 .filter(rerankEntity -> rerankEntity.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
                 .toList();
-
         // 상위 RERANK_TOP_K 개 추출
         List<Rerank> finalTopRerankEntities = topRerankEntities
                 .subList(0, Math.min(SearchConst.RERANK_TOP_K, topRerankEntities.size()));
 
         // Context 생성
-        List<ContextVO> contextVos = finalTopRerankEntities.stream()
-                .map(rerank -> ContextVO.builder()
-                        .title(rerank.getDocument().getTitle())
-                        .subTitle(rerank.getDocument().getSubTitle())
-                        .thirdTitle(rerank.getDocument().getThirdTitle())
-                        .content(rerank.getDocument().getCompactContent())
-                        .subContent(rerank.getDocument().getSubContent())
-                        .build())
-                .toList();
-
-        // TODO: 멀티턴 로직 추가
-
-        // Context Json 직렬화
-        String contextJson;
-        try {
-            contextJson = objectMapper.writeValueAsString(contextVos);
-        } catch (JsonProcessingException e) {
-            // 직렬화 실패 경우
-            StringBuilder contextBuilder = new StringBuilder();
-            for (Rerank rerank : rerankEntities) {
-                contextBuilder.append(rerank.getDocument().getContext());
-            }
-            contextJson = contextBuilder.toString();
+        StringBuilder contextBuilder = new StringBuilder();
+        for (Rerank rerank : finalTopRerankEntities) {
+            contextBuilder.append("# ").append(rerank.getDocument().getTitle()).append("\n");
+            contextBuilder.append("## ").append(rerank.getDocument().getSubTitle()).append("\n");
+            contextBuilder.append("### ").append(rerank.getDocument().getThirdTitle()).append("\n");
+            contextBuilder.append(rerank.getDocument().getCompactContent()).append("\n");
+            contextBuilder.append(rerank.getDocument().getSubContent()).append("\n");
         }
 
+        // ####################################
+        // 이전 대화 조회 및 정리
+        // ####################################
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS));
+        // 이전 대화 요약 문자열
+        final String summaryAnswer;
+        // 이전 대화 목록 Vo 목록
+        List<ConversationVO> conversations;
+        if (!chatDetailEntities.isEmpty()) {
+            summaryAnswer = chatDetailEntities.getLast().getSummaryAnswer();
+            conversations = chatDetailEntities.stream()
+                    .map(chatDetailEntity -> ConversationVO.builder()
+                            .query(chatDetailEntity.getRewriteQuery())
+                            .answer(chatDetailEntity.getAnswer())
+                            .build())
+                    .toList();
+        } else {
+            summaryAnswer = "";
+            conversations = Collections.emptyList();
+        }
+
+        // ####################################
+        // 답변 요청
+        // ####################################
         // LLM 답변 스트림 요청 (Hot Stream)
         Flux<List<AnswerVO>> answerStream = modelRepository
-                .generateStreamAnswer(query, contextJson.trim(), sessionId, promptEntity)
+                .generateStreamAnswer(rewriteQuery, contextBuilder.toString().trim(), summaryAnswer, conversations, sessionId, promptEntity)
                 .map(answerEntities -> answerEntities.stream()
                         .map(answerEntity -> AnswerVO.builder()
                                 .id(answerEntity.getId())
-                                .content(answerEntity.getConvertContent())
+                                .content(answerEntity.getContent())
                                 .finishReason(answerEntity.getFinishReason())
                                 .isInference(answerEntity.getIsInference())
                                 .build())
@@ -244,26 +226,28 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .publish()
                 .refCount(2);
 
+        // ####################################
+        // 답변 이전 처리
+        // ####################################
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
-
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(query)
-                .build());
 
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content("")
+                .query(query)
+                .rewriteQuery(rewriteQuery)
+                .answer("")
+                .summaryAnswer("")
                 .build());
 
+        // ####################################
+        // 답변 이후 처리
+        // ####################################
         StringBuilder answerBuilder = new StringBuilder();
         answerStream
                 .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
+                .publishOn(Schedulers.boundedElastic())
                 .subscribe(answerVos -> {
                     for (AnswerVO answerVo : answerVos) {
                         if (!answerVo.getIsInference()) {
@@ -271,8 +255,20 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         }
                     }
                 }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
-                    // 답변 저장
-                    chatDetailEntity.setContent(answerBuilder.toString());
+                    String answer = answerBuilder.toString().trim();
+                    // 답변 요약 생성
+                    Optional<ChatDetailEntity> chatDetailEntityOptional = chatDetailRepository.findTopByChatId(chatId);
+                    String newSummaryAnswer = chatDetailEntityOptional.isPresent() ? chatDetailEntityOptional.get().getSummaryAnswer() : "";
+                    if (chatDetailRepository.countByChatId(chatId) % QuestionConst.SUMMARY_UPDATE_TURNS == 1) {
+                        newSummaryAnswer = this.summaryAnswer(rewriteQuery, answer, sessionId);
+                    }
+                    // 답변 요약이 있는 경우 등록
+                    if (!newSummaryAnswer.isBlank()) {
+                        chatDetailEntity.setSummaryAnswer(newSummaryAnswer);
+                    }
+                    // 답변 등록
+                    chatDetailEntity.setAnswer(answer);
+                    // 대화 이력 저장
                     chatDetailRepository.save(chatDetailEntity);
 
                     // 참고 문서 목록
@@ -299,7 +295,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
                     // 참고 문서 등록
                     chatPassageRepository.saveAll(chatPassageEntities);
-                    log.info("대화 이력 스트림 정상 종료");
+                    log.debug("대화 이력 스트림 정상 종료");
                 });
 
         return QuestionVO.builder()
@@ -318,6 +314,109 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                 .ext(rerank.getDocument().getExt())
                                 .build())
                         .toList())
+                .msgId(chatDetailEntity.getMsgId())
+                .build();
+    }
+
+    /**
+     * LLM 질문 & 답변
+     *
+     * @param query     질의문
+     * @param sessionId 사용자 ID
+     * @param chatId    대화 ID
+     * @param promptId  프롬프트 ID
+     * @return 답변 VO
+     */
+    @Transactional
+    @Override
+    public QuestionVO questionLlm(String query, String sessionId, long chatId, long promptId) {
+        // 시스템 프롬 프트 조회
+        PromptEntity promptEntity = promptRepository.findById(promptId)
+                .orElseThrow(() -> new NotFoundException("프롬프트"));
+
+        // 질의 재작성 (멀티턴)
+        String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
+
+        // ####################################
+        // 이전 대화 조회 및 정리
+        // ####################################
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS));
+        // 이전 대화 요약 문자열
+        final String summaryAnswer;
+        // 이전 대화 목록 Vo 목록
+        List<ConversationVO> conversations;
+        if (!chatDetailEntities.isEmpty()) {
+            summaryAnswer = chatDetailEntities.getLast().getSummaryAnswer();
+            conversations = chatDetailEntities.stream()
+                    .map(chatDetailEntity -> ConversationVO.builder()
+                            .query(chatDetailEntity.getRewriteQuery())
+                            .answer(chatDetailEntity.getAnswer())
+                            .build())
+                    .toList();
+        } else {
+            summaryAnswer = "";
+            conversations = Collections.emptyList();
+        }
+
+        ChatEntity chatEntity = chatRepository.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("대화 이력"));
+
+        // 답변 이력 생성
+        ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
+                .chatId(chatEntity.getChatId())
+                .query(query)
+                .rewriteQuery(rewriteQuery)
+                .answer("")
+                .summaryAnswer("")
+                .build());
+
+        // LLM 답변 스트림 요청
+        Flux<List<AnswerVO>> answerStream = modelRepository
+                .generateStreamAnswer(rewriteQuery, summaryAnswer, conversations, sessionId, promptEntity)
+                .map(answerEntities -> answerEntities.stream()
+                        .map(answerEntity -> AnswerVO.builder()
+                                .id(answerEntity.getId())
+                                .content(answerEntity.getContent())
+                                .finishReason(answerEntity.getFinishReason())
+                                .isInference(answerEntity.getIsInference())
+                                .build())
+                        .toList())
+                .publish()
+                .refCount(2);
+
+        StringBuilder answerBuilder = new StringBuilder();
+        answerStream
+                .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
+                .publishOn(Schedulers.boundedElastic())
+                .subscribe(answerVos -> {
+                    for (AnswerVO answerVo : answerVos) {
+                        if (!answerVo.getIsInference()) {
+                            answerBuilder.append(answerVo.getContent());
+                        }
+                    }
+                }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
+                    String answer = answerBuilder.toString().trim();
+                    // 답변 요약 생성
+                    Optional<ChatDetailEntity> chatDetailEntityOptional = chatDetailRepository.findTopByChatId(chatId);
+                    String newSummaryAnswer = chatDetailEntityOptional.isPresent() ? chatDetailEntityOptional.get().getSummaryAnswer() : "";
+                    if (chatDetailRepository.countByChatId(chatId) % QuestionConst.SUMMARY_UPDATE_TURNS == 1) {
+                        newSummaryAnswer = this.summaryAnswer(rewriteQuery, answer, sessionId);
+                    }
+                    // 답변 요약이 있는 경우 등록
+                    if (!newSummaryAnswer.isBlank()) {
+                        chatDetailEntity.setSummaryAnswer(newSummaryAnswer);
+                    }
+                    // 답변 등록
+                    chatDetailEntity.setAnswer(answer);
+                    // 대화 이력 저장
+                    chatDetailRepository.save(chatDetailEntity);
+                    log.debug("대화 이력 스트림 정상 종료");
+                });
+
+        return QuestionVO.builder()
+                .answerStream(answerStream)
+                .documents(Collections.emptyList())
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
@@ -351,27 +450,22 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(query)
-                .build());
-
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content("")
+                .query(query)
+                .rewriteQuery(query)
+                .answer("")
+                .summaryAnswer("")
                 .build());
 
         // LLM 답변 스트림 요청
         Flux<List<AnswerVO>> answerStream = modelRepository
-                .generateStreamAnswer(query, context, sessionId, promptEntity)
+                .generateStreamAnswer(query, context, null, Collections.emptyList(), sessionId, promptEntity)
                 .map(answerEntities -> answerEntities.stream()
                         .map(answerEntity -> AnswerVO.builder()
                                 .id(answerEntity.getId())
-                                .content(answerEntity.getConvertContent())
+                                .content(answerEntity.getContent())
                                 .finishReason(answerEntity.getFinishReason())
                                 .isInference(answerEntity.getIsInference())
                                 .build())
@@ -390,9 +484,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
                 }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
                     // 답변 저장
-                    chatDetailEntity.setContent(answerBuilder.toString());
+                    String answer = answerBuilder.toString().trim();
+                    chatDetailEntity.setAnswer(answer);
+                    chatDetailEntity.setSummaryAnswer(answer);
                     chatDetailRepository.save(chatDetailEntity);
-                    log.info("대화 이력 스트림 정상 종료");
+                    log.debug("대화 이력 스트림 정상 종료");
                 });
 
         return QuestionVO.builder()
@@ -401,5 +497,4 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
-
 }

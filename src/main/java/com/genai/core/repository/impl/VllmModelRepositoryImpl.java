@@ -2,15 +2,17 @@ package com.genai.core.repository.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.genai.core.config.constant.ModelConst;
 import com.genai.core.config.properties.LlmProperty;
+import com.genai.core.exception.ModelErrorException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.request.VllmAnswerRequest;
 import com.genai.core.repository.response.VllmAnswerResponse;
 import com.genai.core.repository.response.VllmAnswerStreamResponse;
-import com.genai.core.exception.ModelErrorException;
-import lombok.extern.slf4j.Slf4j;
+import com.genai.core.repository.vo.ConversationVO;
+import com.genai.core.utils.TokenCalculateUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -23,19 +25,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-@Slf4j
 @Component
 public class VllmModelRepositoryImpl implements ModelRepository {
 
+    private final TokenCalculateUtil tokenCalculateUtil;
     private final WebClient webClient;
     private final LlmProperty llmProperty;
     private final ObjectMapper objectMapper;
 
     public VllmModelRepositoryImpl(
+            @Autowired TokenCalculateUtil tokenCalculateUtil,
             @Autowired LlmProperty llmProperty,
             @Qualifier("llmWebClient") WebClient webClient,
             @Autowired ObjectMapper objectMapper
     ) {
+        this.tokenCalculateUtil = tokenCalculateUtil;
         this.llmProperty = llmProperty;
         this.webClient = webClient;
         this.objectMapper = objectMapper;
@@ -48,23 +52,71 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @param context      검색 결과 데이터
      * @param sessionId    세션 식별자
      * @param promptEntity 프롬 프트
+     * @return 답변 응답 문자열
+     */
+    @Override
+    public String generateAnswerStr(String query, String context, String sessionId, PromptEntity promptEntity) {
+
+        StringBuilder answerBuilder = new StringBuilder();
+        this.generateAnswer(query, context, null, Collections.emptyList(), sessionId, promptEntity).forEach(answerEntity -> {
+            if (!answerEntity.getIsInference()) {
+                answerBuilder.append(answerEntity.getContent());
+            }
+        });
+
+        return answerBuilder.toString().trim();
+    }
+
+    /**
+     * 답변 생성 요청
+     *
+     * @param query        질의문
+     * @param context      검색 결과 데이터
+     * @param sessionId    세션 식별자
+     * @param promptEntity 프롬 프트
+     * @return 답변 응답 문자열
+     */
+    @Override
+    public String generateAnswerStr(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+
+        StringBuilder answerBuilder = new StringBuilder();
+        this.generateAnswer(query, context, summaryAnswer, conversations, sessionId, promptEntity).forEach(answerEntity -> {
+            if (!answerEntity.getIsInference()) {
+                answerBuilder.append(answerEntity.getContent());
+            }
+        });
+
+        return answerBuilder.toString().trim();
+    }
+
+    /**
+     * 답변 생성 요청
+     *
+     * @param query        질의문
+     * @param context      검색 결과 데이터
+     * @param sessionId    세션 식별자
+     * @param promptEntity 프롬 프트
      * @return 답변 응답
      */
     @Override
-    public List<AnswerEntity> generateAnswer(String query, String context, String sessionId, PromptEntity promptEntity) {
+    public List<AnswerEntity> generateAnswer(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+
+        int nowTokenSize = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, summaryAnswer, conversations, context);
 
         VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
-                .prompt(promptEntity.getPromptContent())
-                .userInput(query)
                 .temperature(promptEntity.getTemperature())
                 .topP(promptEntity.getTopP())
-                .maxTokens(promptEntity.getMaximumTokens())
+                .minP(0)
+                .topK(20)
+                .maxTokens(Math.min(ModelConst.MAXIMUM_TOKEN_SIZE, promptEntity.getMaximumTokens() + nowTokenSize))
                 .stream(false)
+                .prompt(promptEntity.getPromptContent())
+                .summaryAnswer(summaryAnswer)
+                .conversations(conversations)
                 .context(context)
+                .query(query)
                 .build();
-
-        log.info("LLM 답변 요청({}) | {}", sessionId, requestBody);
 
         ResponseEntity<VllmAnswerResponse> responseBody = webClient.post()
                 .uri(llmProperty.getUrl())
@@ -102,8 +154,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String sessionId, PromptEntity promptEntity) {
-        return this.generateStreamAnswer(query, null, sessionId, promptEntity);
+    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+        return this.generateStreamAnswer(query, null, null, Collections.emptyList(), sessionId, promptEntity);
     }
 
     /**
@@ -116,22 +168,24 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String sessionId, PromptEntity promptEntity) {
+    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+
+        int nowTokenSize = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, summaryAnswer, conversations, context);
 
         VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
-                .prompt(promptEntity.getPromptContent())
-                .userInput(query)
                 .temperature(promptEntity.getTemperature())
                 .topP(promptEntity.getTopP())
                 .minP(0)
                 .topK(20)
-                .maxTokens(promptEntity.getMaximumTokens())
+                .maxTokens(Math.min(ModelConst.MAXIMUM_TOKEN_SIZE, promptEntity.getMaximumTokens() + nowTokenSize))
                 .stream(true)
+                .prompt(promptEntity.getPromptContent())
+                .summaryAnswer(summaryAnswer)
+                .conversations(conversations)
                 .context(context)
+                .query(query)
                 .build();
-
-        log.info("LLM 답변 요청({}) | {}", sessionId, requestBody);
 
         return webClient.post()
                 .uri(llmProperty.getUrl())
@@ -140,7 +194,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(String.class)
-                .mapNotNull(raw ->  raw.replaceFirst("^data:", "").trim())
+                .mapNotNull(raw -> raw.replaceFirst("^data:", "").trim())
                 .filter(raw -> !raw.equals("[DONE]"))
                 .filter(raw -> !raw.isEmpty())
                 .mapNotNull(json -> {

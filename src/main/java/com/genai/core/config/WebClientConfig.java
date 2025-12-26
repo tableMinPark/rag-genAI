@@ -1,5 +1,6 @@
 package com.genai.core.config;
 
+import com.genai.core.config.properties.CollectionProperty;
 import com.genai.core.config.properties.LlmProperty;
 import com.genai.core.config.properties.RerankerProperty;
 import com.genai.core.config.properties.SearchProperty;
@@ -42,7 +43,7 @@ public class WebClientConfig {
     }
 
     @Bean(name = "collectionWebClient")
-    public WebClient collectionWebClient(SearchProperty property) {
+    public WebClient collectionWebClient(CollectionProperty property) {
 
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, property.getConnectTimeout())

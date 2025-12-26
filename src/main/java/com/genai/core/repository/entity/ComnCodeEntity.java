@@ -35,5 +35,4 @@ public class ComnCodeEntity {
     @Comment("정렬 필드")
     private Integer sortOrder;
 
-
 }

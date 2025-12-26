@@ -2,16 +2,15 @@ package com.genai.core.service.impl;
 
 import com.genai.core.config.constant.ComnConst;
 import com.genai.core.config.constant.PromptConst;
-import com.genai.core.config.constant.QuestionConst;
-import com.genai.core.config.properties.EmbedProperty;
+import com.genai.core.config.properties.FileProperty;
+import com.genai.core.exception.NotFoundException;
+import com.genai.core.exception.TranslateErrorException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
 import com.genai.core.service.TranslateCoreService;
 import com.genai.core.service.vo.TranslateVO;
 import com.genai.core.utils.CommonUtil;
 import com.genai.core.utils.ExtractUtil;
-import com.genai.core.exception.NotFoundException;
-import com.genai.core.exception.TranslateErrorException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,7 +36,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final ChatDetailRepository chatDetailRepository;
     private final DictionaryRepository dictionaryRepository;
     private final ExtractUtil extractUtil;
-    private final EmbedProperty embedProperty;
+    private final FileProperty fileProperty;
 
     /**
      * 파일 번역
@@ -56,7 +55,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
 
         String originFileName = file.getOriginalFilename();
         String fileName = CommonUtil.generateRandomId();
-        Path fullPath = Paths.get(embedProperty.getFileStorePath(), embedProperty.getTempDir(), fileName);
+        Path fullPath = Paths.get(fileProperty.getFileStorePath(), fileProperty.getTempDir(), fileName);
 
         if (fullPath.toFile().exists()) {
             throw new TranslateErrorException(originFileName);
@@ -108,7 +107,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
 
         String beforeLangName = comnCodeEntityMap.get(beforeLang).getCodeName();
         String afterLangName = comnCodeEntityMap.get(afterLang).getCodeName();
-        String userInput = String.format("""
+        String query = String.format("""
         > 컨텍스트의 문서를 %s에서 %s로 번역 해줘.
         """, beforeLangName, afterLangName);
 
@@ -136,39 +135,27 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                         .append("|\n");
             });
 
-            userInput = userInput + "\n\n" + dictionaryContentBuilder.toString().trim();
+            query = query + "\n\n" + dictionaryContentBuilder.toString().trim();
         }
 
-        PromptEntity promptEntity = promptRepository.findByPromptId(PromptConst.TRANSLATE_PROMPT_ID)
+        PromptEntity promptEntity = promptRepository.findById(PromptConst.TRANSLATE_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        StringBuilder translateContentBuilder = new StringBuilder();
-
-        modelRepository.generateAnswer(userInput, content, CommonUtil.generateRandomId(), promptEntity).forEach(answer -> {
-            if (!answer.getIsInference()) {
-                translateContentBuilder.append(answer.getContent());
-            }
-        });
-
         // 번역 결과 답변
-        String translateContent = translateContentBuilder.toString();
-
-        // 질의 이력 생성
-        chatDetailRepository.save(ChatDetailEntity.builder()
-                .chatId(chatEntity.getChatId())
-                .speaker(sessionId)
-                .content(userInput)
-                .build());
+        String translateContent = modelRepository.generateAnswerStr(query, content, CommonUtil.generateRandomId(), promptEntity);
 
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .speaker(QuestionConst.CHAT_HISTORY_SYSTEM_NAME)
-                .content(translateContent)
+                .query(query)
+                .rewriteQuery(query)
+                .answer(translateContent)
+                .summaryAnswer(translateContent)
                 .build());
 
+
         return TranslateVO.builder()
-                .chatId(chatId)
+                .chatId(chatEntity.getChatId())
                 .msgId(chatDetailEntity.getMsgId())
                 .content(translateContent)
                 .build();

@@ -28,14 +28,23 @@ public class ChatDetailEntity {
     @Comment("대화 ID")
     private Long chatId;
 
-    @Column(name = "speaker")
-    @Comment("발화자 ID")
-    private String speaker;
+    @Column(name = "query")
+    @Comment("질문")
+    private String query;
+
+    @Column(name = "rewrite_query")
+    @Comment("질문")
+    private String rewriteQuery;
 
     @Lob
-    @Column(name = "content")
+    @Column(name = "answer")
     @Comment("대화 내용")
-    private String content;
+    private String answer;
+
+    @Lob
+    @Column(name = "summary_answer")
+    @Comment("대화 내용 요약")
+    private String summaryAnswer;
 
     @CreatedDate
     @Column(name = "sys_create_dt")
@@ -47,10 +56,17 @@ public class ChatDetailEntity {
     @Comment("수정 일자")
     private LocalDateTime sysModifyDt;
 
-    public void setContent(String content) {
-        this.content = content;
-        this.content = this.content.replace("&nbsp", " ");
-        this.content = this.content.replace("\\n", "\n");
-        this.content = this.content.trim();
+    public void setAnswer(String answer) {
+        this.answer = answer;
+        this.answer = this.answer.replace("&nbsp", " ");
+        this.answer = this.answer.replace("\\n", "\n");
+        this.answer = this.answer.trim();
+    }
+
+    public void setSummaryAnswer(String summaryAnswer) {
+        this.summaryAnswer = summaryAnswer;
+        this.summaryAnswer = this.summaryAnswer.replace("&nbsp", " ");
+        this.summaryAnswer = this.summaryAnswer.replace("\\n", "\n");
+        this.summaryAnswer = this.summaryAnswer.trim();
     }
 }

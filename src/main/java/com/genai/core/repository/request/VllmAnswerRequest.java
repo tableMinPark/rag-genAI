@@ -2,6 +2,7 @@ package com.genai.core.repository.request;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.genai.core.repository.vo.ConversationVO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,7 +48,8 @@ public class VllmAnswerRequest {
     private final List<Message> messages;
 
     @Builder
-    public VllmAnswerRequest(String prompt, String modelName, String userInput, double temperature, double topP, double minP, double topK, int maxTokens, boolean stream, String context) {
+    public VllmAnswerRequest(String modelName, double temperature, double topP, double minP, double topK, int maxTokens, boolean stream,
+                             String prompt, String summaryAnswer, List<ConversationVO> conversations, String context, String query) {
         this.stream = stream;
         this.maxTokens = maxTokens;
         this.topP = topP;
@@ -57,11 +59,25 @@ public class VllmAnswerRequest {
         this.model = modelName;
         this.messages = new ArrayList<>();
 
+        // 시스템 프롬프트
         this.messages.add(Message.builder().role("system").content(prompt).build());
-        this.messages.add(Message.builder().role("user").name("context").content(userInput).build());
-
-        if (context != null) {
-            this.messages.add(Message.builder().role("user").name("context").content(context).build());
+        // 장기 기억 (이전 대화 요약)
+        if (summaryAnswer != null && !summaryAnswer.isBlank()) {
+            this.messages.add(Message.builder().role("system").content("대화 요약:\n" + summaryAnswer).build());
+        }
+        // 이전 대화 원본 목록
+        if (conversations != null && !conversations.isEmpty()) {
+            for (int index = 0; index < conversations.size(); index++) {
+                ConversationVO conversation = conversations.get(index);
+                this.messages.add(Message.builder().role("user").name("Q" + index + ".").content(conversation.getQuery()).build());
+                this.messages.add(Message.builder().role("assistant").name("A" + index + ".").content(conversation.getAnswer()).build());
+            }
+        }
+        if (context != null && !context.isBlank()) {
+            this.messages.add(Message.builder().role("system").content("참고 문서:\n\n" + context).build());
+        }
+        if (query != null && !query.isBlank()) {
+            this.messages.add(Message.builder().role("user").name("query").content(query).build());
         }
     }
 

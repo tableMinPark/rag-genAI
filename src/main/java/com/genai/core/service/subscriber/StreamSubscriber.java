@@ -49,7 +49,7 @@ public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
                             // 추론 이벤트 전송
                             stream.getEmitter().send(SseEmitter.event()
                                     .name(StreamConst.INFERENCE)
-                                    .data(answer.getContent()));
+                                    .data(answer.getConvertContent()));
                         }
                     } else {
                         synchronized (StreamSubscriber.this) {
@@ -67,7 +67,7 @@ public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
                             // 답변 이벤트 전송
                             stream.getEmitter().send(SseEmitter.event()
                                     .name(StreamConst.ANSWER)
-                                    .data(answer.getContent()));
+                                    .data(answer.getConvertContent()));
                         }
                     }
                 }

@@ -1,21 +1,16 @@
 package com.genai.core.service.impl;
 
 import com.genai.core.config.constant.PromptConst;
+import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
-import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.PromptCoreService;
 import com.genai.core.utils.CommonUtil;
-import com.genai.core.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PromptCoreServiceImpl implements PromptCoreService {
@@ -76,19 +71,9 @@ public class PromptCoreServiceImpl implements PromptCoreService {
         %s
         """, content);
 
-        PromptEntity promptEntity = promptRepository.findByPromptId(promptId)
+        PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        StringBuilder promptContentBuilder = new StringBuilder();
-
-        List<AnswerEntity> answerEntities = modelRepository.generateAnswer(userInput, context, CommonUtil.generateRandomId(), promptEntity);
-
-        answerEntities.forEach(answer -> {
-            if (!answer.getIsInference()) {
-                promptContentBuilder.append(answer.getContent());
-            }
-        });
-
-        return promptContentBuilder.toString();
+        return modelRepository.generateAnswerStr(userInput, context, CommonUtil.generateRandomId(), promptEntity);
     }
 }

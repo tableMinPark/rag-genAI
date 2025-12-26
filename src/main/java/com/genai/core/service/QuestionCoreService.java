@@ -16,31 +16,23 @@ public interface QuestionCoreService {
      * @param query         질의문
      * @param sessionId     사용자 ID
      * @param chatId        대화 ID
+     * @param promptId      프롬프트 ID
      * @param categoryCodes 카테고리 코드 목록
      * @return 답변 VO
      */
-    QuestionVO questionAi(String query, String sessionId, long chatId, List<String> categoryCodes);
+    QuestionVO questionAi(String query, String sessionId, long chatId, long promptId, List<String> categoryCodes);
 
     /**
-     * 나만의 AI 질문 & 답변
+     * AI 질문 & 답변
      *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @param promptId  프롬프트 ID
+     * @param query         질의문
+     * @param sessionId     사용자 ID
+     * @param chatId        대화 ID
+     * @param promptId      프롬프트 ID
+     * @param categoryCode  카테고리 코드
      * @return 답변 VO
      */
-    QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId);
-
-    /**
-     * LLM 질문 & 답변
-     *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @return 답변 VO
-     */
-    QuestionVO questionLlm(String query, String sessionId, long chatId);
+    QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId, String categoryCode);
 
     /**
      * LLM 질문 & 답변

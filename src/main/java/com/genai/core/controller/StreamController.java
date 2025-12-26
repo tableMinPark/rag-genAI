@@ -4,6 +4,7 @@ import com.genai.core.controller.dto.response.ResponseDto;
 import com.genai.core.controller.dto.response.StreamCancelResponseDto;
 import com.genai.core.service.StreamCoreService;
 import com.genai.core.service.subscriber.StreamSubscriber;
+import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -63,13 +64,8 @@ public class StreamController {
         // 답변 스트림 삭제
         streamCoreService.deleteStream(sessionId);
 
-        return ResponseEntity.ok()
-                .body(ResponseDto.<StreamCancelResponseDto>builder()
-                        .status("SUCCESS")
-                        .message("스트림 중지 요청 성공")
-                        .data(StreamCancelResponseDto.builder()
-                                .sessionId(sessionId)
-                                .build())
-                        .build());
+        return ResponseEntity.ok().body(Response.CANCEL_STREAM_SUCCESS.toResponseDto(StreamCancelResponseDto.builder()
+                .sessionId(sessionId)
+                .build()));
     }
 }

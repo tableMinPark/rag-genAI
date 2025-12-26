@@ -18,4 +18,7 @@ public class ReportFileRequestDto {
 
     @NotBlank
     private String prompt;
+
+    @NotBlank
+    private String title;
 }

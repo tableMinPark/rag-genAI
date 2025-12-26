@@ -19,5 +19,8 @@ public class ReportTextRequestDto {
     @NotBlank
     private String prompt;
 
+    @NotBlank
+    private String title;
+
     private String context;
 }

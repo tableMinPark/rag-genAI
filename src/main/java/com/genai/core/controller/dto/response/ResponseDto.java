@@ -9,9 +9,11 @@ import lombok.*;
 @AllArgsConstructor
 public class ResponseDto<T> {
 
+    private Integer code;
+
     private String status;
 
     private String message;
 
-    private T data;
+    private T result;
 }

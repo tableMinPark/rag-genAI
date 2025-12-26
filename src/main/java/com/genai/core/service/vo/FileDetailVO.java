@@ -7,19 +7,13 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class SourceVO {
+public class FileDetailVO {
 
-    private long fileDetailId;
+    private Long fileDetailId;
 
     private String fileOriginName;
 
-    private String url;
-
     private String ext;
 
-    private String sourceType;
-
-    private String categoryCode;
-
-    private String content;
+    private Integer fileSize;
 }
