@@ -51,6 +51,9 @@ dependencies {
     runtimeOnly 'org.postgresql:postgresql'
     runtimeOnly 'com.h2database:h2'
 
+    // tokenizer
+    implementation 'com.knuddels:jtokkit:0.6.1'
+
     // test
     testImplementation "org.springframework.boot:spring-boot-starter-test"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${jupiterVersion}"
