@@ -28,7 +28,7 @@ public class QuestionConst {
     """;
 
     // 멀티턴 답변 요약 관련 설정
-    public static final int    SUMMARY_UPDATE_TURNS          = 3;
+    public static final int    SUMMARY_UPDATE_TURNS          = 2;
     public static final double SUMMARY_UPDATE_TEMPERATURE    = 0.2;
     public static final double SUMMARY_UPDATE_TOP_P          = 0.9;
     public static final int    SUMMARY_UPDATE_MAXIMUM_TOKENS = 512;
