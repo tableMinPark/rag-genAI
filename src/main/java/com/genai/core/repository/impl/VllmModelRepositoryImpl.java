@@ -2,7 +2,6 @@ package com.genai.core.repository.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.core.config.constant.ModelConst;
 import com.genai.core.config.properties.LlmProperty;
 import com.genai.core.exception.ModelErrorException;
 import com.genai.core.repository.ModelRepository;
@@ -13,6 +12,7 @@ import com.genai.core.repository.response.VllmAnswerResponse;
 import com.genai.core.repository.response.VllmAnswerStreamResponse;
 import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.utils.TokenCalculateUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+@Slf4j
 @Component
 public class VllmModelRepositoryImpl implements ModelRepository {
 
@@ -77,10 +78,10 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 응답 문자열
      */
     @Override
-    public String generateAnswerStr(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public String generateAnswerStr(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
         StringBuilder answerBuilder = new StringBuilder();
-        this.generateAnswer(query, context, summaryAnswer, conversations, sessionId, promptEntity).forEach(answerEntity -> {
+        this.generateAnswer(query, context, chatState, conversations, sessionId, promptEntity).forEach(answerEntity -> {
             if (!answerEntity.getIsInference()) {
                 answerBuilder.append(answerEntity.getContent());
             }
@@ -99,9 +100,9 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 응답
      */
     @Override
-    public List<AnswerEntity> generateAnswer(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public List<AnswerEntity> generateAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
-        int nowTokenSize = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, summaryAnswer, conversations, context);
+        int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
         VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
@@ -109,14 +110,18 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .topP(promptEntity.getTopP())
                 .minP(0)
                 .topK(20)
-                .maxTokens(Math.min(ModelConst.MAXIMUM_TOKEN_SIZE, promptEntity.getMaximumTokens() + nowTokenSize))
+                .maxTokens(maxTokens)
                 .stream(false)
                 .prompt(promptEntity.getPromptContent())
-                .summaryAnswer(summaryAnswer)
+                .chatState(chatState)
                 .conversations(conversations)
                 .context(context)
                 .query(query)
                 .build();
+
+        try {
+            log.info("{}", objectMapper.writeValueAsString(requestBody));
+        } catch (JsonProcessingException ignored) {}
 
         ResponseEntity<VllmAnswerResponse> responseBody = webClient.post()
                 .uri(llmProperty.getUrl())
@@ -154,8 +159,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-        return this.generateStreamAnswer(query, null, null, Collections.emptyList(), sessionId, promptEntity);
+    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+        return this.generateStreamAnswer(query, null, null, conversations, sessionId, promptEntity);
     }
 
     /**
@@ -168,9 +173,9 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String summaryAnswer, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
-        int nowTokenSize = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, summaryAnswer, conversations, context);
+        int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
         VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
@@ -178,14 +183,18 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .topP(promptEntity.getTopP())
                 .minP(0)
                 .topK(20)
-                .maxTokens(Math.min(ModelConst.MAXIMUM_TOKEN_SIZE, promptEntity.getMaximumTokens() + nowTokenSize))
+                .maxTokens(maxTokens)
                 .stream(true)
                 .prompt(promptEntity.getPromptContent())
-                .summaryAnswer(summaryAnswer)
+                .chatState(chatState)
                 .conversations(conversations)
                 .context(context)
                 .query(query)
                 .build();
+
+        try {
+            log.info("{}", objectMapper.writeValueAsString(requestBody));
+        } catch (JsonProcessingException ignored) {}
 
         return webClient.post()
                 .uri(llmProperty.getUrl())

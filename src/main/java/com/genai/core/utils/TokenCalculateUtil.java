@@ -26,13 +26,13 @@ public class TokenCalculateUtil {
         this.llmProperty = llmProperty;
     }
 
-    public int calculateMaxTokens(String prompt, String query, String summaryAnswer, List<ConversationVO> conversations, String context) {
+    public int calculateMaxTokens(String prompt, String query, String chatState, List<ConversationVO> conversations, String context) {
 
         int inputTokens = 0;
 
         inputTokens += count(prompt);
         inputTokens += count(query);
-        inputTokens += count(summaryAnswer);
+        inputTokens += count(chatState);
         inputTokens += count(context);
 
         if (conversations != null) {

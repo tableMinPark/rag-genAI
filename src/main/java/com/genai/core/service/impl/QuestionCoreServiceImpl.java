@@ -14,6 +14,7 @@ import com.genai.core.service.vo.DocumentVO;
 import com.genai.core.service.vo.QuestionVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
+import com.genai.core.utils.DecisionDetectUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -48,8 +49,9 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     public String rewriteQuery(String query, long chatId, String sessionId) {
 
         // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities =
-                chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS));
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS)).stream()
+                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
+                .toList();
 
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(QuestionConst.REWRITE_QUERY_PROMPT)
@@ -75,13 +77,18 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     }
 
     /**
-     * 답변 요약
+     * 대화 상태 요약
      *
      * @param sessionId        세션 ID
      * @return 요약 답변 문자열
      */
     @Transactional
-    public String summaryAnswer(String query, String answer, String sessionId) {
+    public String summaryState(String chatState, long chatId, String sessionId) {
+
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.SUMMARY_UPDATE_TURNS)).stream()
+                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
+                .toList();
 
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(QuestionConst.SUMMARY_UPDATE_PROMPT)
@@ -90,12 +97,14 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .maximumTokens(QuestionConst.SUMMARY_UPDATE_MAXIMUM_TOKENS)
                 .build();
 
-        ConversationVO conversationVo = ConversationVO.builder()
-                .query(query)
-                .answer(answer)
-                .build();
+        List<ConversationVO> conversationVos = chatDetailEntities.stream()
+                .map(chatDetailEntity -> ConversationVO.builder()
+                        .query(chatDetailEntity.getRewriteQuery())
+                        .answer(chatDetailEntity.getAnswer())
+                        .build())
+                .toList();
 
-        return modelRepository.generateAnswerStr(null, null, null, List.of(conversationVo), sessionId, promptEntity);
+        return modelRepository.generateAnswerStr(null, null, chatState, conversationVos, sessionId, promptEntity);
     }
 
     /**
@@ -147,8 +156,33 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
+        ChatEntity chatEntity = chatRepository.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("대화 이력"));
+
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
+                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
+                .toList();
+
         // 질의 재작성 (멀티턴)
         String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
+        if (rewriteQuery.trim().isBlank()) rewriteQuery = query;
+
+        // ####################################
+        // 이전 대화 조회 및 정리
+        // ####################################
+        // 이전 대화 요약 문자열
+        String chatState = chatEntity.getState();;
+        // 이전 대화 목록 Vo 목록
+        List<ConversationVO> conversations = Collections.emptyList();
+        if (!chatDetailEntities.isEmpty()) {
+            conversations = chatDetailEntities.stream()
+                    .map(chatDetailEntity -> ConversationVO.builder()
+                            .query(chatDetailEntity.getRewriteQuery())
+                            .answer(chatDetailEntity.getAnswer())
+                            .build())
+                    .toList();
+        }
 
         // ####################################
         // RAG Context 정리
@@ -186,33 +220,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         }
 
         // ####################################
-        // 이전 대화 조회 및 정리
-        // ####################################
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS));
-        // 이전 대화 요약 문자열
-        final String summaryAnswer;
-        // 이전 대화 목록 Vo 목록
-        List<ConversationVO> conversations;
-        if (!chatDetailEntities.isEmpty()) {
-            summaryAnswer = chatDetailEntities.getLast().getSummaryAnswer();
-            conversations = chatDetailEntities.stream()
-                    .map(chatDetailEntity -> ConversationVO.builder()
-                            .query(chatDetailEntity.getRewriteQuery())
-                            .answer(chatDetailEntity.getAnswer())
-                            .build())
-                    .toList();
-        } else {
-            summaryAnswer = "";
-            conversations = Collections.emptyList();
-        }
-
-        // ####################################
         // 답변 요청
         // ####################################
         // LLM 답변 스트림 요청 (Hot Stream)
         Flux<List<AnswerVO>> answerStream = modelRepository
-                .generateStreamAnswer(rewriteQuery, contextBuilder.toString().trim(), summaryAnswer, conversations, sessionId, promptEntity)
+                .generateStreamAnswer(rewriteQuery, contextBuilder.toString().trim(), chatState, conversations, sessionId, promptEntity)
                 .map(answerEntities -> answerEntities.stream()
                         .map(answerEntity -> AnswerVO.builder()
                                 .id(answerEntity.getId())
@@ -229,16 +241,12 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         // ####################################
         // 답변 이전 처리
         // ####################################
-        ChatEntity chatEntity = chatRepository.findById(chatId)
-                .orElseThrow(() -> new NotFoundException("대화 이력"));
-
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
                 .query(query)
                 .rewriteQuery(rewriteQuery)
                 .answer("")
-                .summaryAnswer("")
                 .build());
 
         // ####################################
@@ -247,7 +255,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         StringBuilder answerBuilder = new StringBuilder();
         answerStream
                 .onErrorContinue((throwable, o) -> log.error("대화 이력 스트림 실시간 예외 발생 : {}", throwable.getMessage()))
-                .publishOn(Schedulers.boundedElastic())
                 .subscribe(answerVos -> {
                     for (AnswerVO answerVo : answerVos) {
                         if (!answerVo.getIsInference()) {
@@ -256,25 +263,13 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
                 }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
                     String answer = answerBuilder.toString().trim();
-                    // 답변 요약 생성
-                    Optional<ChatDetailEntity> chatDetailEntityOptional = chatDetailRepository.findTopByChatId(chatId);
-                    String newSummaryAnswer = chatDetailEntityOptional.isPresent() ? chatDetailEntityOptional.get().getSummaryAnswer() : "";
-                    if (chatDetailRepository.countByChatId(chatId) % QuestionConst.SUMMARY_UPDATE_TURNS == 1) {
-                        newSummaryAnswer = this.summaryAnswer(rewriteQuery, answer, sessionId);
-                    }
-                    // 답변 요약이 있는 경우 등록
-                    if (!newSummaryAnswer.isBlank()) {
-                        chatDetailEntity.setSummaryAnswer(newSummaryAnswer);
-                    }
                     // 답변 등록
                     chatDetailEntity.setAnswer(answer);
                     // 대화 이력 저장
                     chatDetailRepository.save(chatDetailEntity);
-
                     // 참고 문서 목록
                     List<ChatPassageEntity> chatPassageEntities = finalTopRerankEntities.stream()
                             .map(rerankEntity -> {
-
                                 String context = rerankEntity.getDocument().getTitle() + "\n" +
                                         rerankEntity.getDocument().getSubTitle() + "\n" +
                                         rerankEntity.getDocument().getThirdTitle() + "\n" +
@@ -292,9 +287,16 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                         .build();
                             })
                             .toList();
-
                     // 참고 문서 등록
                     chatPassageRepository.saveAll(chatPassageEntities);
+
+                    if (DecisionDetectUtil.detect(query, answer)) {
+                        String newChatState = this.summaryState(chatState, chatId, sessionId);
+                        if (!newChatState.isBlank()) {
+                            chatEntity.setState(newChatState);
+                            chatRepository.save(chatEntity);
+                        }
+                    }
                     log.debug("대화 이력 스트림 정상 종료");
                 });
 
@@ -334,33 +336,33 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
+        ChatEntity chatEntity = chatRepository.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("대화 이력"));
+
+        // 이전 대화 목록 조회
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
+                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
+                .toList();
+
         // 질의 재작성 (멀티턴)
         String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
+        if (rewriteQuery.trim().isBlank()) rewriteQuery = query;
 
         // ####################################
         // 이전 대화 조회 및 정리
-        // ####################################
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS));
+        // ####################################;
         // 이전 대화 요약 문자열
-        final String summaryAnswer;
+        String chatState = chatEntity.getState();
         // 이전 대화 목록 Vo 목록
-        List<ConversationVO> conversations;
+        List<ConversationVO> conversations = Collections.emptyList();
         if (!chatDetailEntities.isEmpty()) {
-            summaryAnswer = chatDetailEntities.getLast().getSummaryAnswer();
             conversations = chatDetailEntities.stream()
                     .map(chatDetailEntity -> ConversationVO.builder()
                             .query(chatDetailEntity.getRewriteQuery())
                             .answer(chatDetailEntity.getAnswer())
                             .build())
                     .toList();
-        } else {
-            summaryAnswer = "";
-            conversations = Collections.emptyList();
         }
-
-        ChatEntity chatEntity = chatRepository.findById(chatId)
-                .orElseThrow(() -> new NotFoundException("대화 이력"));
 
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
@@ -368,12 +370,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .query(query)
                 .rewriteQuery(rewriteQuery)
                 .answer("")
-                .summaryAnswer("")
                 .build());
 
         // LLM 답변 스트림 요청
         Flux<List<AnswerVO>> answerStream = modelRepository
-                .generateStreamAnswer(rewriteQuery, summaryAnswer, conversations, sessionId, promptEntity)
+                .generateStreamAnswer(rewriteQuery, chatState, conversations, sessionId, promptEntity)
                 .map(answerEntities -> answerEntities.stream()
                         .map(answerEntity -> AnswerVO.builder()
                                 .id(answerEntity.getId())
@@ -397,20 +398,19 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
                 }, throwable -> log.error("대화 이력 스트림 비정상 종료 : {}", throwable.getMessage()), () -> {
                     String answer = answerBuilder.toString().trim();
-                    // 답변 요약 생성
-                    Optional<ChatDetailEntity> chatDetailEntityOptional = chatDetailRepository.findTopByChatId(chatId);
-                    String newSummaryAnswer = chatDetailEntityOptional.isPresent() ? chatDetailEntityOptional.get().getSummaryAnswer() : "";
-                    if (chatDetailRepository.countByChatId(chatId) % QuestionConst.SUMMARY_UPDATE_TURNS == 1) {
-                        newSummaryAnswer = this.summaryAnswer(rewriteQuery, answer, sessionId);
-                    }
-                    // 답변 요약이 있는 경우 등록
-                    if (!newSummaryAnswer.isBlank()) {
-                        chatDetailEntity.setSummaryAnswer(newSummaryAnswer);
-                    }
+
                     // 답변 등록
                     chatDetailEntity.setAnswer(answer);
                     // 대화 이력 저장
                     chatDetailRepository.save(chatDetailEntity);
+
+                    if (DecisionDetectUtil.detect(query, answer)) {
+                        String newChatState = this.summaryState(chatState, chatId, sessionId);
+                        if (!newChatState.isBlank()) {
+                            chatEntity.setState(newChatState);
+                            chatRepository.save(chatEntity);
+                        }
+                    }
                     log.debug("대화 이력 스트림 정상 종료");
                 });
 
@@ -456,7 +456,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .query(query)
                 .rewriteQuery(query)
                 .answer("")
-                .summaryAnswer("")
                 .build());
 
         // LLM 답변 스트림 요청
@@ -486,7 +485,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     // 답변 저장
                     String answer = answerBuilder.toString().trim();
                     chatDetailEntity.setAnswer(answer);
-                    chatDetailEntity.setSummaryAnswer(answer);
                     chatDetailRepository.save(chatDetailEntity);
                     log.debug("대화 이력 스트림 정상 종료");
                 });

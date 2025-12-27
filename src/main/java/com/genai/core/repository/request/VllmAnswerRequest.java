@@ -49,7 +49,7 @@ public class VllmAnswerRequest {
 
     @Builder
     public VllmAnswerRequest(String modelName, double temperature, double topP, double minP, double topK, int maxTokens, boolean stream,
-                             String prompt, String summaryAnswer, List<ConversationVO> conversations, String context, String query) {
+                             String prompt, String chatState, List<ConversationVO> conversations, String context, String query) {
         this.stream = stream;
         this.maxTokens = maxTokens;
         this.topP = topP;
@@ -62,19 +62,19 @@ public class VllmAnswerRequest {
         // 시스템 프롬프트
         this.messages.add(Message.builder().role("system").content(prompt).build());
         // 장기 기억 (이전 대화 요약)
-        if (summaryAnswer != null && !summaryAnswer.isBlank()) {
-            this.messages.add(Message.builder().role("system").content("대화 요약:\n" + summaryAnswer).build());
-        }
-        // 이전 대화 원본 목록
-        if (conversations != null && !conversations.isEmpty()) {
-            for (int index = 0; index < conversations.size(); index++) {
-                ConversationVO conversation = conversations.get(index);
-                this.messages.add(Message.builder().role("user").name("Q" + index + ".").content(conversation.getQuery()).build());
-                this.messages.add(Message.builder().role("assistant").name("A" + index + ".").content(conversation.getAnswer()).build());
-            }
+        if (chatState != null && !chatState.isBlank()) {
+            this.messages.add(Message.builder().role("system").content("이전 대화 요약:\n" + chatState).build());
         }
         if (context != null && !context.isBlank()) {
             this.messages.add(Message.builder().role("system").content("참고 문서:\n\n" + context).build());
+        }
+        // 이전 대화 목록
+        if (conversations != null && !conversations.isEmpty()) {
+            for (int index = 0; index < conversations.size(); index++) {
+                ConversationVO conversation = conversations.get(index);
+                this.messages.add(Message.builder().role("user").name("Q" + (index + 1)).content(conversation.getQuery()).build());
+                this.messages.add(Message.builder().role("assistant").name("A" + (index + 1)).content(conversation.getAnswer()).build());
+            }
         }
         if (query != null && !query.isBlank()) {
             this.messages.add(Message.builder().role("user").name("query").content(query).build());

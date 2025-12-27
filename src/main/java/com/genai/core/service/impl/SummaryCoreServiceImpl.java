@@ -99,7 +99,6 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                 .query(query)
                 .rewriteQuery(query)
                 .answer(summaryContent)
-                .summaryAnswer(summaryContent)
                 .build());
 
         return SummaryVO.builder()

@@ -110,7 +110,6 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .query(query)
                 .rewriteQuery(query)
                 .answer(reportContent)
-                .summaryAnswer(reportContent)
                 .build());
 
         return ReportVO.builder()

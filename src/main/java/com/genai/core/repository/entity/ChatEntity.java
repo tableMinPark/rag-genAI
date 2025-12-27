@@ -29,6 +29,12 @@ public class ChatEntity {
     @Comment("대화 제목")
     private String title;
 
+    @Setter
+    @Lob
+    @Column(name = "state")
+    @Comment("대화 상태")
+    private String state;
+
     @CreatedDate
     @Column(name = "sys_create_dt")
     @Comment("생성 일자")

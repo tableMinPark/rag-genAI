@@ -36,15 +36,11 @@ public class ChatDetailEntity {
     @Comment("질문")
     private String rewriteQuery;
 
+    @Setter
     @Lob
     @Column(name = "answer")
     @Comment("대화 내용")
     private String answer;
-
-    @Lob
-    @Column(name = "summary_answer")
-    @Comment("대화 내용 요약")
-    private String summaryAnswer;
 
     @CreatedDate
     @Column(name = "sys_create_dt")
@@ -55,18 +51,4 @@ public class ChatDetailEntity {
     @Column(name = "sys_modify_dt")
     @Comment("수정 일자")
     private LocalDateTime sysModifyDt;
-
-    public void setAnswer(String answer) {
-        this.answer = answer;
-        this.answer = this.answer.replace("&nbsp", " ");
-        this.answer = this.answer.replace("\\n", "\n");
-        this.answer = this.answer.trim();
-    }
-
-    public void setSummaryAnswer(String summaryAnswer) {
-        this.summaryAnswer = summaryAnswer;
-        this.summaryAnswer = this.summaryAnswer.replace("&nbsp", " ");
-        this.summaryAnswer = this.summaryAnswer.replace("\\n", "\n");
-        this.summaryAnswer = this.summaryAnswer.trim();
-    }
 }

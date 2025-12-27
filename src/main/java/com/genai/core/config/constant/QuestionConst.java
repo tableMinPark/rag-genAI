@@ -28,34 +28,31 @@ public class QuestionConst {
     """;
 
     // 멀티턴 답변 요약 관련 설정
-    public static final int    SUMMARY_UPDATE_TURNS   = 3;
+    public static final int    SUMMARY_UPDATE_TURNS          = 3;
     public static final double SUMMARY_UPDATE_TEMPERATURE    = 0.2;
     public static final double SUMMARY_UPDATE_TOP_P          = 0.9;
     public static final int    SUMMARY_UPDATE_MAXIMUM_TOKENS = 512;
     public static final String SUMMARY_UPDATE_PROMPT  = """
-    너는 멀티턴 RAG 시스템의 "대화 요약기"이다.
+    You are a conversation state manager.
     
-    목표:
-    - 최근 대화 내용을 바탕으로 세션의 상태를 간결하게 갱신한다.
+    Your task is to update the conversation state summary.
     
-    포함할 것:
-    - 사용자의 질문 목적
-    - 답변에서 문서로 확인된 사실
-    - 문서에서 확인되지 않았다고 명시된 사항
-    - 이후 질문에 영향을 줄 전제 조건
+    Input:
+    - Previous Conversation State Summary
+    - Latest user question
+    - Latest assistant answer
     
-    제외할 것:
-    - 문서의 세부 내용
-    - 추론, 해석, 조언
-    - 답변자의 의견
-    - 일반 상식
+    Output format (keep exactly):
+    - User Goal:
+    - Constraints:
+    - Decisions Made:
+    - Open Questions:
     
-    규칙:
-    - 사실만 기록할 것
-    - 불확실한 사항은 "확인되지 않음"으로 명시
-    - 불릿 리스트 형식 유지
-    - 요약은 최대 8개 불릿을 넘지 말 것.
-    - 각 불릿은 한 문장을 넘지 말 것.
-    - 기존 요약과 충돌 시 최신 정보를 우선
+    Rules:
+    - Only include information explicitly stated.
+    - Do NOT infer or guess.
+    - Preserve previous content unless it is clearly updated.
+    - If nothing changes, return the previous summary unchanged.
+    - This summary is authoritative and higher priority than retrieved documents.
     """;
 }

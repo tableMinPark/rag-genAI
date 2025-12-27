@@ -150,7 +150,6 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                 .query(query)
                 .rewriteQuery(query)
                 .answer(translateContent)
-                .summaryAnswer(translateContent)
                 .build());
 
 
