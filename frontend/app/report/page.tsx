@@ -24,6 +24,7 @@ export default function ReportPage() {
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 입력 텍스트
+  const [title, setTitle] = useState('')
   const [promptText, setPromptText] = useState('')
   const [contextText, setContextText] = useState('')
   // 출력 텍스트
@@ -79,18 +80,18 @@ export default function ReportPage() {
    * 보고서 생성 핸들러
    */
   const handleGenerate = async () => {
-    if (!promptText || (!contextText && !selectedFile)) {
-      alert('보고서 양식과 참고 자료를 모두 입력해주세요.')
+    if (!title || !promptText || (!contextText && !selectedFile)) {
+      alert('보고서 제목 및 양식과 참고 자료를 모두 입력해주세요.')
       return
     }
 
     setIsGenerating(true)
 
     if (!selectedFile) {
-      await generateReportTextApi(sessionId, promptText, contextText)
+      await generateReportTextApi(sessionId, promptText, title, contextText)
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)
@@ -100,10 +101,10 @@ export default function ReportPage() {
           setIsGenerating(false)
         })
     } else {
-      await generateReportFileApi(sessionId, promptText, selectedFile)
+      await generateReportFileApi(sessionId, promptText, title, selectedFile)
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)
@@ -141,6 +142,18 @@ export default function ReportPage() {
       <div className="flex min-h-0 flex-1 gap-4">
         {/* [왼쪽] 입력 영역 컨테이너 (위/아래 2개 박스) */}
         <div className="flex flex-1 flex-col gap-4">
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              보고서 제목 (Report title)
+            </label>
+            <input
+              type="text"
+              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
+              placeholder="보고서 제목을 입력하세요."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
           {/* 1. 보고서 양식/프롬프트 입력 (상단) */}
           <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">

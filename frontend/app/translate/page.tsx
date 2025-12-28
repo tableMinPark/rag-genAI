@@ -50,16 +50,16 @@ export default function TranslatePage() {
     try {
       await getTranslateLanguagesApi().then((response) => {
         console.log(`📡 ${response.message}`)
-        setLanguages(response.data)
+        setLanguages(response.result)
 
-        if (response.data.length == 0) {
+        if (response.result.length == 0) {
           setError('번역 가능 언어가 없습니다.')
         } else {
-          setSourceLang(response.data[0].code)
+          setSourceLang(response.result[0].code)
           setTargetLang(
-            response.data.length > 1
-              ? response.data[1].code
-              : response.data[0].code,
+            response.result.length > 1
+              ? response.result[1].code
+              : response.result[0].code,
           )
         }
       })
@@ -134,7 +134,7 @@ export default function TranslatePage() {
       )
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)
@@ -153,7 +153,7 @@ export default function TranslatePage() {
       )
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)

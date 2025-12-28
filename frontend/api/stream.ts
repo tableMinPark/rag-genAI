@@ -8,9 +8,7 @@ import { config } from '@/public/ts/config'
  * @param sessionId 세션 ID
  */
 export const streamApi = (sessionId: string): EventSource => {
-  return new EventSource(
-    `${config.streamUrl}/api/rag-genai/stream/${sessionId}`,
-  )
+  return new EventSource(`${config.apiBasePath}/stream/${sessionId}`)
 }
 
 /**

@@ -13,6 +13,12 @@ export interface ChatLlmResponse {
   sessionId: string
 }
 
+export interface ChatMyAiResponse {
+  query: string
+  sessionId: string
+  documents?: Document[]
+}
+
 export interface ChatSimulationResponse {
   query: string
   sessionId: string
@@ -92,6 +98,30 @@ export const chatSimulateionApi = async (
       maxTokens,
       temperature,
       topP,
+    },
+  )
+
+  return response.data
+}
+
+/**
+ * 나만의 AI 답변 요청 API
+ *
+ * @param query 질의문
+ * @param sessionId 세션 ID
+ * @param projectId 프로젝트 ID
+ */
+export const chatMyAiApi = async (
+  query: string,
+  sessionId: string,
+  projectId: number,
+): Promise<ApiResponse<ChatMyAiResponse>> => {
+  const response = await client.post<ApiResponse<ChatMyAiResponse>>(
+    `/chat/myai`,
+    {
+      query,
+      sessionId,
+      projectId,
     },
   )
 

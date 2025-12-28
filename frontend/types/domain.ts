@@ -13,74 +13,23 @@ export interface Document {
   ext: string
 }
 
-// 정규식 패턴 타입
-export interface RegexPattern {
-  prefix: string
-  isTitle: boolean
+// 나만의 AI 프로젝트
+export interface Project {
+  projectId: number
+  projectName: string
+  projectDesc: string
+  sysCreateDt: string
+  sysModifyDt: string
+  sourceCount: number
+  chunkCount: number
 }
 
-// Repo 리소스 타입
-export interface RepoResource {
-  originFileName: string
-  fileName: string
+// 파일 상세
+export interface FileDetail {
+  fileDetailId: number
+  fileOriginName: string
   ext: string
-  path: string
-  urn: string
-}
-
-// 문서
-export interface Source {
-  sourceId: number
-  version: string
-  sourceType: string
-  sourceTypeName: string
-  categoryCode: string
-  categoryName: string
-  name: string
-  collectionId: string
-  selectType: string
-  selectTypeName: string
-  isAuto: boolean
-  isBatch: boolean
-  sysCreateDt: string
-  sysModifyDt: string
-}
-
-// 패시지
-export interface Passage {
-  passageId: number
-  sourceId: number
-  version: number
-  title: string
-  subTitle: string
-  thirdTitle: string
-  content: string
-  subContent: string
-  contentTokenSize: number
-  subContentTokenSize: number
-  sysCreateDt: string
-  sysModifyDt: string
-  updateState: string
-  sortOrder: number
-  parentSortOrder: number
-}
-
-// 청크
-export interface Chunk {
-  chunkId: number
-  passageId: number
-  version: number
-  title: string
-  subTitle: string
-  thirdTitle: string
-  content: string
-  compactContent: string
-  subContent: string
-  contentTokenSize: number
-  compactContentTokenSize: number
-  subContentTokenSize: number
-  sysCreateDt: string
-  sysModifyDt: string
+  fileSize: number
 }
 
 // 번역 언어

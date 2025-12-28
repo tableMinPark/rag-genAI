@@ -12,11 +12,13 @@ export interface GenerateReportResponse {
  *
  * @param sessionId 세션 ID
  * @param prompt 프롬프트
+ * @param title 보고서 제목
  * @param context 참고문서
  */
 export const generateReportTextApi = async (
   sessionId: string,
   prompt: string,
+  title: string,
   context: string,
 ): Promise<ApiResponse<GenerateReportResponse>> => {
   const response = await client.post<ApiResponse<GenerateReportResponse>>(
@@ -24,6 +26,7 @@ export const generateReportTextApi = async (
     {
       sessionId,
       prompt,
+      title,
       context,
     },
   )
@@ -36,18 +39,20 @@ export const generateReportTextApi = async (
  *
  * @param sessionId 세션 ID
  * @param prompt 프롬프트
+ * @param title 보고서 제목
  * @param uploadFile 참고문서
  */
 export const generateReportFileApi = async (
   sessionId: string,
   prompt: string,
+  title: string,
   uploadFile: File,
 ): Promise<ApiResponse<GenerateReportResponse>> => {
   const formData = new FormData()
   formData.append('uploadFile', uploadFile)
   formData.append(
     'requestDto',
-    new Blob([JSON.stringify({ sessionId, prompt })], {
+    new Blob([JSON.stringify({ sessionId, prompt, title })], {
       type: 'application/json',
     }),
   )

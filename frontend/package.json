@@ -1,11 +1,11 @@
 {
   "name": "frontend",
-  "version": "0.1.0",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "dotenv -e .env.development next dev",
+    "build": "dotenv -e .env.production next build",
+    "start": "dotenv -e .env.production next start",
     "lint": "eslint . --ext .js,.ts,.tsx --fix",
     "prettier": "prettier --write ."
   },
@@ -31,6 +31,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/turndown": "^5.0.6",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "eslint-config-prettier": "^10.1.8",

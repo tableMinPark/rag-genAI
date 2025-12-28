@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -20,13 +19,13 @@ interface SidebarProps {
 }
 
 export const MENU_ITEMS = [
-  { name: 'RAG', path: '/ai', icon: Bot },
-  // { name: '나만의AI (개발중), path: '/myai', icon: FileSearch },
+  { name: 'AI', path: '/ai', icon: Bot },
   { name: 'LLM', path: '/llm', icon: Brain },
-  { name: '번역', path: '/translate', icon: Languages },
-  { name: '요약', path: '/summary', icon: FileText },
-  { name: '보고서', path: '/report', icon: FileText },
   { name: '시뮬레이션', path: '/simulation', icon: FlaskConical },
+  { name: '나만의AI', path: '/myai', icon: FileSearch },
+  { name: '보고서', path: '/report', icon: FileText },
+  { name: '요약', path: '/summary', icon: FileText },
+  { name: '번역', path: '/translate', icon: Languages },
 ]
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {

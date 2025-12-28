@@ -92,7 +92,7 @@ export default function SummaryPage() {
       await summaryTextApi(sessionId, lengthRatio, inputText)
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)
@@ -105,7 +105,7 @@ export default function SummaryPage() {
       await summaryFileApi(sessionId, lengthRatio, selectedFile)
         .then((response) => {
           console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.data.content))
+          setOutputText(replaceEventDataToText(response.result.content))
         })
         .catch((reason) => {
           console.error(reason)
