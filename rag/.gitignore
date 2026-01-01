@@ -17,5 +17,4 @@ out/
 ### VS Code ###
 .vscode/
 
-### file ###
-fileStore/
+volume/
