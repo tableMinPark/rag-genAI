@@ -3,7 +3,7 @@ package com.genai.core.repository.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.core.config.constant.SearchConst;
+import com.genai.core.constant.SearchConst;
 import com.genai.core.config.properties.RerankerProperty;
 import com.genai.core.config.properties.SearchProperty;
 import com.genai.core.repository.SearchRepository;

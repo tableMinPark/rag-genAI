@@ -1,0 +1,19 @@
+package com.genai.core.service.business.vo;
+
+import lombok.*;
+
+@ToString
+@Builder
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+public class FileDetailVO {
+
+    private Long fileDetailId;
+
+    private String fileOriginName;
+
+    private String ext;
+
+    private Integer fileSize;
+}

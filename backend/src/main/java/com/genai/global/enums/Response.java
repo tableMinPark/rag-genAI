@@ -1,6 +1,6 @@
 package com.genai.global.enums;
 
-import com.genai.core.controller.dto.response.ResponseDto;
+import com.genai.global.dto.ResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
