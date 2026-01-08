@@ -61,7 +61,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .promptContent(QuestionConst.REWRITE_QUERY_PROMPT)
                 .temperature(QuestionConst.REWRITE_QUERY_TEMPERATURE)
                 .topP(QuestionConst.REWRITE_QUERY_TOP_P)
-                .maximumTokens(QuestionConst.REWRITE_QUERY_MAXIMUM_TOKENS)
                 .build();
 
         String rewriteQuery = query;
@@ -98,7 +97,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .promptContent(QuestionConst.SUMMARY_UPDATE_PROMPT)
                 .temperature(QuestionConst.SUMMARY_UPDATE_TEMPERATURE)
                 .topP(QuestionConst.SUMMARY_UPDATE_TOP_P)
-                .maximumTokens(QuestionConst.SUMMARY_UPDATE_MAXIMUM_TOKENS)
                 .build();
 
         List<ConversationVO> conversationVos = chatDetailEntities == null
@@ -434,7 +432,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .promptContent(promptContent)
                 .temperature(temperature)
                 .topP(topP)
-                .maximumTokens(maximumTokens)
                 .build();
 
         ChatEntity chatEntity = chatRepository.findById(chatId)

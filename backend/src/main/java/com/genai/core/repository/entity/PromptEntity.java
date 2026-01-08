@@ -34,8 +34,4 @@ public class PromptEntity {
     @Column(name = "top_p")
     @Comment("일관성")
     private Double topP;
-
-    @Column(name = "maximum_tokens")
-    @Comment("최대 토큰 수")
-    private Integer maximumTokens;
 }
