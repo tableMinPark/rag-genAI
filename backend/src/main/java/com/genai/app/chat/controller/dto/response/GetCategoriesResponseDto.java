@@ -1,6 +1,6 @@
 package com.genai.app.chat.controller.dto.response;
 
-import com.genai.core.service.module.vo.ComnCodeVO;
+import com.genai.core.service.module.vo.CommonCodeVO;
 import lombok.*;
 
 import java.util.List;
@@ -16,14 +16,14 @@ public class GetCategoriesResponseDto {
 
     private String name;
 
-    public static GetCategoriesResponseDto of(ComnCodeVO comnCode) {
+    public static GetCategoriesResponseDto of(CommonCodeVO comnCode) {
         return GetCategoriesResponseDto.builder()
                 .code(comnCode.getCode())
                 .name(comnCode.getCodeName())
                 .build();
     }
 
-    public static List<GetCategoriesResponseDto> toList(List<ComnCodeVO> comnCodes) {
+    public static List<GetCategoriesResponseDto> toList(List<CommonCodeVO> comnCodes) {
         return comnCodes.stream()
                 .map(GetCategoriesResponseDto::of)
                 .toList();

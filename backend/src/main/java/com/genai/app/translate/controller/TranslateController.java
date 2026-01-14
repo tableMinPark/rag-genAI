@@ -2,9 +2,9 @@ package com.genai.app.translate.controller;
 
 import com.genai.core.constant.ComnConst;
 import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.module.ComnCodeModuleService;
+import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.business.TranslateCoreService;
-import com.genai.core.service.module.vo.ComnCodeVO;
+import com.genai.core.service.module.vo.CommonCodeVO;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.global.enums.Response;
 import com.genai.app.translate.controller.dto.request.TranslateFileRequestDto;
@@ -28,7 +28,7 @@ import java.util.List;
 public class TranslateController {
 
     private final TranslateCoreService translateCoreService;
-    private final ComnCodeModuleService comnCodeModuleService;
+    private final CommonCodeModuleService commonCodeModuleService;
 
     /**
      * 번역 요청
@@ -88,7 +88,7 @@ public class TranslateController {
     @GetMapping("/language")
     public ResponseEntity<ResponseDto<List<GetTranslateLanguageResponseDto>>> getTranslateLanguages() {
 
-        List<ComnCodeVO> translateLanguageComnCodes = comnCodeModuleService.getComnCodes(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP);
+        List<CommonCodeVO> translateLanguageComnCodes = commonCodeModuleService.getCommonCodes(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_TRANSLATE_LANGUAGES.toResponseDto(GetTranslateLanguageResponseDto
                 .toList(translateLanguageComnCodes)));

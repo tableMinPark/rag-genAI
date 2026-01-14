@@ -1,10 +1,10 @@
 package com.genai.core.service.module;
 
-import com.genai.core.service.module.vo.ComnCodeVO;
+import com.genai.core.service.module.vo.CommonCodeVO;
 
 import java.util.List;
 
-public interface ComnCodeModuleService {
+public interface CommonCodeModuleService {
 
     /**
      * 공통 코드 조회
@@ -12,7 +12,7 @@ public interface ComnCodeModuleService {
      * @param code 공통 코드
      * @return 공통 코드
      */
-    ComnCodeVO getComnCode(String code);
+    CommonCodeVO getCommonCode(String code);
 
     /**
      * 공통 코드 목록 조회
@@ -20,5 +20,5 @@ public interface ComnCodeModuleService {
      * @param codeGroup 그룹 코드
      * @return 공통 코드 목록
      */
-    List<ComnCodeVO> getComnCodes(String codeGroup);
+    List<CommonCodeVO> getCommonCodes(String codeGroup);
 }

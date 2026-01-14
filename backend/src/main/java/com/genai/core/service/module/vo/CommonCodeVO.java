@@ -7,7 +7,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class ComnCodeVO {
+public class CommonCodeVO {
 
     private Long codeId;
 

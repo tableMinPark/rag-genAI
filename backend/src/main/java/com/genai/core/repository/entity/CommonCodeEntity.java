@@ -10,8 +10,8 @@ import javax.persistence.*;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
-@Table(name = "GEN_COMN_CODE")
-public class ComnCodeEntity {
+@Table(name = "GEN_COMMON_CODE")
+public class CommonCodeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

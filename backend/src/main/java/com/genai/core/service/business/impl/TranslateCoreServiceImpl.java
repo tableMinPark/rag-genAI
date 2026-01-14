@@ -31,7 +31,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
 
     private final PromptRepository promptRepository;
     private final ModelRepository modelRepository;
-    private final ComnCodeRepository comnCodeRepository;
+    private final CommonCodeRepository commonCodeRepository;
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final DictionaryRepository dictionaryRepository;
@@ -93,9 +93,9 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        Map<String, ComnCodeEntity> comnCodeEntityMap = comnCodeRepository
+        Map<String, CommonCodeEntity> comnCodeEntityMap = commonCodeRepository
                 .findComnCodeByCodeGroupOrderBySortOrder(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP)
-                .stream().collect(Collectors.toMap(ComnCodeEntity::getCode, v -> v));
+                .stream().collect(Collectors.toMap(CommonCodeEntity::getCode, v -> v));
 
         if (!comnCodeEntityMap.containsKey(beforeLang)) {
             throw new TranslateErrorException(beforeLang);

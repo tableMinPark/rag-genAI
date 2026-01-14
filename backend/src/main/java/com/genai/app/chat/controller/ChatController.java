@@ -10,11 +10,11 @@ import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
 import com.genai.core.constant.ComnConst;
 import com.genai.core.constant.PromptConst;
 import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.module.ComnCodeModuleService;
+import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.business.QuestionCoreService;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.subscriber.StreamSubscriber;
-import com.genai.core.service.module.vo.ComnCodeVO;
+import com.genai.core.service.module.vo.CommonCodeVO;
 import com.genai.core.service.business.vo.QuestionVO;
 import com.genai.global.enums.Response;
 import com.genai.app.myai.constant.MyAiConst;
@@ -37,7 +37,7 @@ public class ChatController {
 
     private final QuestionCoreService questionCoreService;
     private final StreamCoreService streamCoreService;
-    private final ComnCodeModuleService comnCodeModuleService;
+    private final CommonCodeModuleService commonCodeModuleService;
     private final MyAiService myAiService;
 
     /**
@@ -159,7 +159,7 @@ public class ChatController {
     @GetMapping("/category")
     public ResponseEntity<ResponseDto<List<GetCategoriesResponseDto>>> getCategories() {
 
-        List<ComnCodeVO> categoryCodes = comnCodeModuleService.getComnCodes(ComnConst.CHUNK_CODE_GROUP);
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(ComnConst.CHUNK_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.CHAT_CATEGORIES_SUCCESS.toResponseDto(GetCategoriesResponseDto.toList(categoryCodes)));
     }
