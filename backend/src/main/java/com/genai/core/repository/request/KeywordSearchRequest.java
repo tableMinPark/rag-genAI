@@ -1,57 +1,47 @@
 package com.genai.core.repository.request;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.genai.core.repository.vo.SearchPageVO;
-import com.genai.core.repository.vo.SearchSortVO;
-import com.genai.core.repository.vo.SearchTraceInfoVO;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.List;
+import java.util.Map;
 
 @ToString
+@Builder
 @Getter
+@AllArgsConstructor
 public class KeywordSearchRequest {
 
-    private final int searchMode;
+    private final int size;
 
-    private final int useLa;
+    private final Map<SortField, Order> sort;
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final String filterQuery;
+    private final Map<QueryField, Query> query;
 
-    private final List<String> searchField;
+    public static Map<SortField, Order> sort(SortField sortField, String direction) {
+        return Map.of(sortField, Order.builder().order(direction).build());
+    }
 
-    private final String commonQuery;
-
-    private final SearchPageVO paging;
-
-    private final List<SearchSortVO> sorting;
-
-    private final SearchTraceInfoVO traceInfo;
-
-    private final List<String> sessionInfo;
-
-    private final int synonymExpansion;
-
-    private final int useSynonym;
-
-    private final boolean hideQueryLog;
+    public static Map<QueryField, Query> query(QueryField queryField, QueryType queryType, String query, List<String> fields) {
+        return Map.of(queryField, Query.builder()
+                .type(queryType.name())
+                .query(query)
+                .fields(fields)
+                .build());
+    }
 
     @Builder
-    public KeywordSearchRequest(String filterQuery, int topK, List<String> searchField, String commonQuery, List<String> sessionInfo, List<SearchSortVO> sorting, boolean hideQueryLog, int useSynonym, int synonymExpansion) {
-        this.searchMode = 1;
-        this.useLa = 1;
-        this.filterQuery = filterQuery;
-        this.searchField = searchField;
-        this.commonQuery = commonQuery;
-        this.paging = new SearchPageVO(0, topK);
-        this.sessionInfo = sessionInfo;
-        this.sorting = sorting;
-        this.traceInfo = new SearchTraceInfoVO(true, 0.0);
-        this.hideQueryLog = hideQueryLog;
-        this.useSynonym = useSynonym;
-        this.synonymExpansion = synonymExpansion;
+    public record Order(String order) {}
+    @Builder
+    public record Query(String query, List<String> fields, String type) {}
+
+    public enum SortField {
+        _score
+    }
+
+    public enum QueryField {
+        multi_match
+    }
+    public enum QueryType {
+        best_fields
     }
 }

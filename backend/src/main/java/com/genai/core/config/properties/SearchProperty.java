@@ -23,15 +23,12 @@ public class SearchProperty {
 
     private int port;
 
-    private String path;
-
     /**
      * 검색 요청 URL 조회
      *
-     * @param collectionId 컬렉션 ID
      * @return 검색 요청 URL
      */
-    public String getUrl(String collectionId) {
-        return String.format("http://%s:%d/%s/%s", host, port, path, collectionId);
+    public String getUrl() {
+        return String.format("http://%s:%d", host, port);
     }
 }

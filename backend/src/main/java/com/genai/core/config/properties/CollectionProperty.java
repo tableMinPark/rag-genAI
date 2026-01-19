@@ -23,35 +23,12 @@ public class CollectionProperty {
 
     private int port;
 
-    private String path;
-
     /**
-     * 컬렉션 조회 URL 조회
+     * 컬렉션 요청 URL 조회
      *
-     * @param collectionId 컬렉션 ID
-     * @return 컬렉션 조회 URL
+     * @return 컬렉션 요청 URL
      */
-    public String getSelectUrl(String collectionId) {
-        return String.format("http://%s:%d/%s/%s", host, port, path, collectionId);
-    }
-
-    /**
-     * 컬렉션 생성 URL 조회
-     *
-     * @param collectionId 컬렉션 ID
-     * @return 컬렉션 생성 URL
-     */
-    public String getCreateUrl(String collectionId) {
-        return String.format("http://%s:%d/%s/%s", host, port, path, collectionId);
-    }
-
-    /**
-     * 컬렉션 삭제 URL 조회
-     *
-     * @param collectionId 컬렉션 ID
-     * @return 컬렉션 삭제 URL
-     */
-    public String getDeleteUrl(String collectionId) {
-        return String.format("http://%s:%d/%s/%s/delete", host, port, path, collectionId);
+    public String getUrl() {
+        return String.format("http://%s:%d", host, port);
     }
 }

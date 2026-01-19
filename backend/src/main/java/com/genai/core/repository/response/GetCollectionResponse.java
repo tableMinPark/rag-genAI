@@ -1,13 +1,8 @@
 package com.genai.core.repository.response;
 
-import com.genai.core.repository.vo.CollectionSettingsVO;
-import com.genai.core.repository.vo.IndexFieldVO;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
 
-import java.util.List;
 import java.util.Map;
 
 @ToString
@@ -16,27 +11,65 @@ import java.util.Map;
 @AllArgsConstructor
 public class GetCollectionResponse {
 
-    private String collectionId;
+    private Mappings mappings;
 
-    private int numOfShards;
+    private Settings settings;
 
-    private int numOfReplication;
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Mappings {
+        @JsonProperty("properties")
+        private Map<String, Map<String, Object>> properties;
+    }
 
-    private int numOfIndexThreads;
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Settings {
 
-    private String searchRoutingStrategy;
+        private Index index;
 
-    private int recentQuery;
+        @Getter
+        @Setter
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class Index {
+            @JsonProperty("replication")
+            private Replication replication;
+            @JsonProperty("number_of_shards")
+            private String numberOfShards;
+            @JsonProperty("provided_name")
+            private String providedName;
+            @JsonProperty("knn")
+            private String knn;
+            @JsonProperty("creation_date")
+            private String creationDate;
+            @JsonProperty("number_of_replicas")
+            private String numberOfReplicas;
+            @JsonProperty("uuid")
+            private String uuid;
+            @JsonProperty("version")
+            private Version version;
 
-    private int maxQueryCacheCount;
+            @Getter
+            @Setter
+            @NoArgsConstructor
+            @AllArgsConstructor
+            public static class Replication {
+                private String type;
+            }
 
-    private int maxQueryCacheRamBytesUsed;
+            @Getter
+            @Setter
+            @NoArgsConstructor
+            @AllArgsConstructor
+            public static class Version {
+                private String created;
+            }
+        }
 
-    private String mappingTableId;
-
-    private List<String> fields;
-
-    private Map<String, IndexFieldVO> indexFields;
-
-    private CollectionSettingsVO advancedSettings;
+    }
 }

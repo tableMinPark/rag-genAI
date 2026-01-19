@@ -25,14 +25,12 @@ public class RerankerProperty {
 
     private String path;
 
-    private String modelName;
-
     /**
      * 리랭킹 요청 URL 조회
      *
      * @return 리랭킹 요청 URL
      */
     public String getUrl() {
-        return String.format("http://%s:%d/%s/%s", host, port, path, modelName);
+        return String.format("http://%s:%d/%s", host, port, path);
     }
 }

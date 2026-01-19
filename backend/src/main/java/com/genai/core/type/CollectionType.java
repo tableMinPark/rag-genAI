@@ -13,15 +13,13 @@ public class CollectionType {
     private final String collectionId;
     private final List<String> keywordSearchFields;
     private final List<String> vectorSearchFields;
-    private final List<String> sortFields;
 
     @Builder
-    private CollectionType(Class<?> mappingClass, String collectionId, List<String> keywordSearchFields, List<String> vectorSearchFields, List<String> sortFields) {
+    private CollectionType(Class<?> mappingClass, String collectionId, List<String> keywordSearchFields, List<String> vectorSearchFields) {
         this.mappingClass = mappingClass;
         this.collectionId = collectionId;
         this.keywordSearchFields = keywordSearchFields;
         this.vectorSearchFields = vectorSearchFields;
-        this.sortFields = sortFields;
     }
 
     /**
@@ -32,10 +30,9 @@ public class CollectionType {
     public static CollectionType ai() {
         return CollectionType.builder()
                 .mappingClass(DocumentEntity.class)
-                .collectionId("nhis_ai")
+                .collectionId("gen_ai")
                 .keywordSearchFields(List.of("title", "sub_title", "third_title", "content"))
-                .vectorSearchFields(List.of("context"))
-                .sortFields(List.of("score"))
+                .vectorSearchFields(List.of("vector-context"))
                 .build();
     }
 
@@ -49,8 +46,7 @@ public class CollectionType {
                 .mappingClass(DocumentEntity.class)
                 .collectionId("gen_myai")
                 .keywordSearchFields(List.of("title", "sub_title", "third_title", "content"))
-                .vectorSearchFields(List.of("context"))
-                .sortFields(List.of("score"))
+                .vectorSearchFields(List.of("vector-context"))
                 .build();
     }
 }

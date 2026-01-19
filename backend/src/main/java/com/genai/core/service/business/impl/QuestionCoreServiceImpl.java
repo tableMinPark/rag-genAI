@@ -192,26 +192,26 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         // RAG Context 정리
         // ####################################
         // 검색 결과 목록 (key 를 통한 중복 제거)
-        Map<String, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
+        Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
+
         // 키워드 검색
         List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
         keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+
         // 벡터 검색
         List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, SearchConst.VECTOR_TOP_K, categoryCodes);
         vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+
         // 키워드 검색 결과, 벡터 검색 결과 변환
         List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
+                .filter(searchEntity -> searchEntity.getScore() >= SearchConst.SEARCH_SCORE_MIN)
                 .map(searchEntity -> Rerank.builder()
                         .document(searchEntity.getFields())
                         .build())
                 .toList());
-        // 리랭킹
-        List<Rerank> topRerankEntities = rerankEntities.stream()
-                .filter(rerankEntity -> rerankEntity.getRerankScore() >= SearchConst.RERANK_SCORE_MIN)
-                .toList();
+
         // 상위 RERANK_TOP_K 개 추출
-        List<Rerank> finalTopRerankEntities = topRerankEntities
-                .subList(0, Math.min(SearchConst.RERANK_TOP_K, topRerankEntities.size()));
+        List<Rerank> finalTopRerankEntities = rerankEntities.subList(0, Math.min(SearchConst.RERANK_TOP_K, rerankEntities.size()));
 
         // Context 생성
         StringBuilder contextBuilder = new StringBuilder();

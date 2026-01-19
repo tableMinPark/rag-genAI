@@ -1,12 +1,7 @@
 package com.genai.core.repository.response;
 
-import com.genai.core.repository.wrapper.Rerank;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 
-import java.util.Collections;
 import java.util.List;
 
 @ToString
@@ -15,9 +10,11 @@ import java.util.List;
 @AllArgsConstructor
 public class RerankResponse {
 
-    private String status;
+    private List<Document> documents;
 
-    private String message;
-
-    private List<Rerank> data = Collections.emptyList();
+    public record Document(
+        String id,
+        String content,
+        float score
+    ) {}
 }

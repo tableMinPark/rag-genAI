@@ -1,26 +1,23 @@
 package com.genai.core.repository.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
-
-import java.util.List;
 
 @ToString
 @Builder
 @Getter
 @AllArgsConstructor
-public class RerankRequest {
+public class DeleteIndexBulkRequest {
 
-    private final String query;
-
-    private final List<Document> documents;
+    private final Delete delete;
 
     @Builder
     @Getter
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class Document {
+    public static class Delete {
+        @JsonProperty("_id")
         private String id;
-        private String content;
     }
 }

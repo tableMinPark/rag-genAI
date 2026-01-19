@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
 import com.genai.core.constant.EmbedConst;
-import com.genai.core.config.properties.EmbedProperty;
+import com.genai.core.config.properties.ChunkProperty;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;
 import com.genai.core.repository.FileRepository;
@@ -11,6 +11,7 @@ import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.type.CollectionType;
 import com.genai.global.utils.ExtractUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmbedCoreServiceImpl implements EmbedCoreService {
@@ -27,7 +29,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
     private final SourceRepository sourceRepository;
     private final CollectionRepository collectionRepository;
     private final ExtractUtil extractUtil;
-    private final EmbedProperty embedProperty;
+    private final ChunkProperty chunkProperty;
 
     /**
      * 임베딩 문서 동기화
@@ -65,10 +67,10 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
             // SNF 문자열 추출
             String content = extractUtil.extract(fullPath);
 
-            int step = embedProperty.getTokenSize() - embedProperty.getOverlapSize();
+            int step = chunkProperty.getTokenSize() - chunkProperty.getOverlapSize();
             List<String> chunks = IntStream.iterate(0, i -> i + step)
                     .limit((content.length() + step - 1) / step)
-                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + embedProperty.getTokenSize())))
+                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + chunkProperty.getTokenSize())))
                     .toList();
 
             // 패시지 목록
@@ -111,8 +113,8 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                     .content(content)
                     .collectionId(collectionType.getCollectionId())
                     .fileDetailId(fileDetailEntity.getFileDetailId())
-                    .maxTokenSize(embedProperty.getTokenSize())
-                    .overlapSize(embedProperty.getOverlapSize())
+                    .maxTokenSize(chunkProperty.getTokenSize())
+                    .overlapSize(chunkProperty.getOverlapSize())
                     .isAuto(false)
                     .isBatch(false)
                     .passages(passageEntities)
@@ -129,8 +131,11 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                             chunkEntity.getSubContent()     + "\n";
 
                     documentEntities.add(DocumentEntity.builder()
-                            .chunkId(String.valueOf(chunkEntity.getChunkId()))
-                            .sourceId(String.valueOf(sourceEntity.getSourceId()))
+                            .chunkId(chunkEntity.getChunkId())
+                            .passageId(passageEntity.getPassageId())
+                            .sourceId(sourceEntity.getSourceId())
+                            .fileDetailId(sourceEntity.getFileDetailId())
+                            .originFileName(fileDetailEntity.getFileOriginName())
                             .name(sourceEntity.getName())
                             .title(chunkEntity.getTitle())
                             .subTitle(chunkEntity.getSubTitle())
@@ -138,18 +143,14 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                             .compactContent(chunkEntity.getContent())
                             .content(chunkEntity.getContent())
                             .subContent(chunkEntity.getSubContent())
+                            .context(context.trim())
+                            .url(fileDetailEntity.getUrl())
                             .categoryCode(sourceEntity.getCategoryCode())
                             .sourceType(sourceEntity.getSourceType())
-                            .version(sourceEntity.getVersion())
-                            .tokenSize(chunkEntity.getTokenSize())
-                            .fileDetailId(sourceEntity.getFileDetailId())
-                            .originFileName(fileDetailEntity.getFileOriginName())
-                            .url(fileDetailEntity.getUrl())
                             .ext(fileDetailEntity.getExt())
                             .sysCreateDt(chunkEntity.getSysCreateDt())
                             .sysModifyDt(chunkEntity.getSysModifyDt())
                             .alias(sourceEntity.getCategoryCode())
-                            .context(context.trim())
                             .build());
                 }
             }
@@ -159,7 +160,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
         }
 
         // 멀티플 색인
-        collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities, false);
+        collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities);
 
         // 현재 문서 파일 상세 ID 목록
         List<Long> fileDetailIds = fileDetailEntities.stream()

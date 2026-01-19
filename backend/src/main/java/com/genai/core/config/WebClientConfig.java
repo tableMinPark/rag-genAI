@@ -1,9 +1,6 @@
 package com.genai.core.config;
 
-import com.genai.core.config.properties.CollectionProperty;
-import com.genai.core.config.properties.LlmProperty;
-import com.genai.core.config.properties.RerankerProperty;
-import com.genai.core.config.properties.SearchProperty;
+import com.genai.core.config.properties.*;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
@@ -60,7 +57,45 @@ public class WebClientConfig {
                 .build();
     }
 
-    @Bean(name = "rerankWebClient")
+    @Bean(name = "indexerWebClient")
+    public WebClient indexerWebClient(IndexerProperty property) {
+
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, property.getConnectTimeout())
+                .responseTimeout(Duration.ofMillis(property.getResponseTimeout()))
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(property.getReadTimeout(), TimeUnit.MILLISECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(property.getWriteTimeout(), TimeUnit.MILLISECONDS)));
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024)) // 100MB
+                        .build())
+                .build();
+    }
+
+    @Bean(name = "embedWebClient")
+    public WebClient embedWebClient(EmbedProperty property) {
+
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, property.getConnectTimeout())
+                .responseTimeout(Duration.ofMillis(property.getResponseTimeout()))
+                .doOnConnected(conn ->
+                        conn.addHandlerLast(new ReadTimeoutHandler(property.getReadTimeout(), TimeUnit.MILLISECONDS))
+                                .addHandlerLast(new WriteTimeoutHandler(property.getWriteTimeout(), TimeUnit.MILLISECONDS)));
+
+        return WebClient.builder()
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(100 * 1024 * 1024)) // 100MB
+                        .build())
+                .build();
+    }
+
+    @Bean(name = "rerankerWebClient")
     public WebClient rerankerWebClient(RerankerProperty property) {
 
         HttpClient httpClient = HttpClient.create()
