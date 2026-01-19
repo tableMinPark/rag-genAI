@@ -53,7 +53,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 목록 조회
         List<ChatDetailEntity> chatDetailEntities = transactionTemplate.execute(status ->
-                chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS)).stream()
+                chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS)).stream()
                         .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
                         .toList());
 
@@ -89,7 +89,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 목록 조회
         List<ChatDetailEntity> chatDetailEntities = transactionTemplate.execute(status ->
-                chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.SUMMARY_UPDATE_TURNS)).stream()
+                chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.SUMMARY_UPDATE_TURNS)).stream()
                 .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
                 .toList());
 
@@ -164,7 +164,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
         // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
                 .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
                 .toList();
 
@@ -231,7 +231,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .chatId(chatEntity.getChatId())
                 .query(query)
                 .rewriteQuery(rewriteQuery)
-                .answer("")
                 .build());
 
         // LLM 답변 스트림 요청
@@ -335,7 +334,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
         // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
+        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
                 .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
                 .toList();
 
@@ -364,7 +363,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .chatId(chatEntity.getChatId())
                 .query(query)
                 .rewriteQuery(rewriteQuery)
-                .answer("")
                 .build());
 
         // LLM 답변 스트림 요청
@@ -442,7 +440,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .chatId(chatEntity.getChatId())
                 .query(query)
                 .rewriteQuery(query)
-                .answer("")
                 .build());
 
         // LLM 답변 스트림 요청
