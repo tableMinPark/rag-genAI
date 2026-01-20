@@ -1,6 +1,5 @@
 package com.genai.core.repository.request;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.genai.core.repository.vo.ConversationVO;
 import lombok.AllArgsConstructor;
@@ -70,14 +69,16 @@ public class VllmAnswerRequest {
         }
         // 이전 대화 목록
         if (conversations != null && !conversations.isEmpty()) {
+            StringBuilder conversionsBuilder = new StringBuilder();
             for (int index = 0; index < conversations.size(); index++) {
                 ConversationVO conversation = conversations.get(index);
-                this.messages.add(Message.builder().role("user").name("Q" + (index + 1)).content(conversation.getQuery()).build());
-                this.messages.add(Message.builder().role("assistant").name("A" + (index + 1)).content(conversation.getAnswer()).build());
+                conversionsBuilder.append("Q").append(index).append(": ").append(conversation.getQuery()).append("\n");
+                conversionsBuilder.append("A").append(index).append(": ").append(conversation.getAnswer()).append("\n");
             }
+            this.messages.add(Message.builder().role("system").content("이전 대화 내역:\n" + conversionsBuilder.toString().trim()).build());
         }
         if (query != null && !query.isBlank()) {
-            this.messages.add(Message.builder().role("user").name("query").content(query).build());
+            this.messages.add(Message.builder().role("user").content(query).build());
         }
     }
 
@@ -88,9 +89,6 @@ public class VllmAnswerRequest {
     public static class Message {
 
         private final String role;
-
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        private final String name;
 
         private final String content;
     }

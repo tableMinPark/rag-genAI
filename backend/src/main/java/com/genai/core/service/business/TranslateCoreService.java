@@ -3,6 +3,8 @@ package com.genai.core.service.business;
 import com.genai.core.service.business.vo.TranslateVO;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 /**
  * 번역 서비스
  */
@@ -32,5 +34,4 @@ public interface TranslateCoreService {
      * @return 번역 결과 문자열
      */
     TranslateVO translate(String beforeLang, String afterLang, String content, String sessionId, long chatId, boolean containDic);
-
 }
