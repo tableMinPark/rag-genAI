@@ -5,9 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/**
- * 보고서 생성 서비스
- */
 public interface ReportCoreService {
 
     /**

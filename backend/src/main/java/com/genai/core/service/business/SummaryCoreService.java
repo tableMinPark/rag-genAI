@@ -3,9 +3,6 @@ package com.genai.core.service.business;
 import com.genai.core.service.business.vo.SummaryVO;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * 요약 서비스
- */
 public interface SummaryCoreService {
 
     /**

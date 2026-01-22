@@ -47,7 +47,7 @@ public class SummaryController {
     }
 
     /**
-     * 번역 요청
+     * 요약 요청
      *
      * @param summaryFileRequestDto 번역 요청 정보
      * @param multipartFile 번역 문서 파일

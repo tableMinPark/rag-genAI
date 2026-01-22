@@ -2,9 +2,6 @@ package com.genai.core.service.business;
 
 import com.genai.core.type.CollectionType;
 
-/**
- * 문서 임베딩 서비스
- */
 public interface EmbedCoreService {
 
     /**

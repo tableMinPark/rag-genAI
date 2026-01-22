@@ -1,16 +1,16 @@
 package com.genai.app.translate.controller;
 
-import com.genai.core.constant.ComnConst;
-import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.module.CommonCodeModuleService;
-import com.genai.core.service.business.TranslateCoreService;
-import com.genai.core.service.module.vo.CommonCodeVO;
-import com.genai.core.service.business.vo.TranslateVO;
-import com.genai.global.enums.Response;
 import com.genai.app.translate.controller.dto.request.TranslateFileRequestDto;
 import com.genai.app.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.app.translate.controller.dto.response.GetTranslateLanguageResponseDto;
 import com.genai.app.translate.controller.dto.response.TranslateResponseDto;
+import com.genai.core.constant.CommonConst;
+import com.genai.core.service.business.TranslateCoreService;
+import com.genai.core.service.business.vo.TranslateVO;
+import com.genai.core.service.module.CommonCodeModuleService;
+import com.genai.core.service.module.vo.CommonCodeVO;
+import com.genai.global.dto.ResponseDto;
+import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -88,7 +88,7 @@ public class TranslateController {
     @GetMapping("/language")
     public ResponseEntity<ResponseDto<List<GetTranslateLanguageResponseDto>>> getTranslateLanguages() {
 
-        List<CommonCodeVO> translateLanguageComnCodes = commonCodeModuleService.getCommonCodes(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP);
+        List<CommonCodeVO> translateLanguageComnCodes = commonCodeModuleService.getCommonCodes(CommonConst.TRANSLATE_LANGUAGE_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_TRANSLATE_LANGUAGES.toResponseDto(GetTranslateLanguageResponseDto
                 .toList(translateLanguageComnCodes)));

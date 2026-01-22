@@ -1,8 +1,5 @@
 package com.genai.core.service.business;
 
-/**
- * 프롬프트 서비스
- */
 public interface PromptCoreService {
 
     /**

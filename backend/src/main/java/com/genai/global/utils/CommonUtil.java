@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 public class CommonUtil {
 
     // 정규식 패턴 정의
-    private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^]]+)]\\([^)]*\\)");
+    private static final Pattern LINK_PATTERN  = Pattern.compile("\\[([^]]+)]\\([^)]*\\)");
     private static final Pattern IMAGE_PATTERN = Pattern.compile("!\\[([^]]+)]\\([^)]*\\)");
 
     /**
@@ -20,7 +20,7 @@ public class CommonUtil {
     }
 
     /**
-     * 마크다운 링크 및 이미지 링크 제거 후 텍스트만 반환
+     * 마크다운 링크 및 이미지 링크 제거 후 텍스트 반환
      *
      * @param input 입력 문자열
      * @return 치환된 텍스트

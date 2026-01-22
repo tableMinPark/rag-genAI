@@ -1,6 +1,6 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.constant.ComnConst;
+import com.genai.core.constant.CommonConst;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.constant.TranslateConst;
@@ -117,7 +117,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
         Map<String, CommonCodeEntity> comnCodeEntityMap = commonCodeRepository
-                .findComnCodeByCodeGroupOrderBySortOrder(ComnConst.TRANSLATE_LANGUAGE_CODE_GROUP)
+                .findComnCodeByCodeGroupOrderBySortOrder(CommonConst.TRANSLATE_LANGUAGE_CODE_GROUP)
                 .stream().collect(Collectors.toMap(CommonCodeEntity::getCode, v -> v));
 
         if (!comnCodeEntityMap.containsKey(beforeLang)) {

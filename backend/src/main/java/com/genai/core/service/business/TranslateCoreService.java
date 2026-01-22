@@ -5,9 +5,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/**
- * 번역 서비스
- */
 public interface TranslateCoreService {
 
     /**

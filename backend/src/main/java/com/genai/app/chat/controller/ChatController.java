@@ -7,7 +7,7 @@ import com.genai.app.chat.controller.dto.request.ChatSimulationRequestDto;
 import com.genai.app.chat.controller.dto.response.ChatAiResponseDto;
 import com.genai.app.chat.controller.dto.response.ChatMyAiResponseDto;
 import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
-import com.genai.core.constant.ComnConst;
+import com.genai.core.constant.CommonConst;
 import com.genai.core.constant.PromptConst;
 import com.genai.global.dto.ResponseDto;
 import com.genai.core.service.module.CommonCodeModuleService;
@@ -159,7 +159,7 @@ public class ChatController {
     @GetMapping("/category")
     public ResponseEntity<ResponseDto<List<GetCategoriesResponseDto>>> getCategories() {
 
-        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(ComnConst.CHUNK_CODE_GROUP);
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(CommonConst.CHUNK_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.CHAT_CATEGORIES_SUCCESS.toResponseDto(GetCategoriesResponseDto.toList(categoryCodes)));
     }

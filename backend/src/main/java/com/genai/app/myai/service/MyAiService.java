@@ -1,8 +1,8 @@
 package com.genai.app.myai.service;
 
+import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.global.wrapper.PageWrapper;
-import com.genai.app.myai.service.vo.ProjectVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
