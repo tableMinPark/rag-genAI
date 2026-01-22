@@ -6,13 +6,7 @@ import QueryMessage from '@/components/chat/QueryMessage'
 import AnswerMessage from '@/components/chat/AnswerMessage'
 import InputBox from '@/components/chat/InputBox'
 import { Document } from '@/types/domain'
-
-export interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  inference?: string
-  documents?: Document[]
-}
+import { Message } from '@/types/chat'
 
 interface ChatAreaProps {
   messages: Message[]

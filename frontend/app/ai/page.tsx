@@ -1,29 +1,26 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import ChatArea, { Message } from '@/components/ChatArea'
+import ChatArea from '@/components/ChatArea'
 import { AlertCircle, Bot, Loader2, RefreshCw } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatAiApi, getCategoriesApi } from '@/api/chat'
 import { Category, Document } from '@/types/domain'
 import { useSearchParams } from 'next/navigation'
+import { StreamEvent } from '@/types/streamEvent'
+import { GreetingMessage } from '@/public/ts/greeting'
+import { createAnswerMessage, Message } from '@/types/chat'
 
 function AiContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('query')
-  // ###################################################
-  // 상태 정의 (State)
-  // ###################################################
+
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 대화 내역 목록 상태
   const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content:
-        '안녕하세요. **AI MATE** 입니다.\n\n질의를 작성해주시면 문서를 기반으로 답변 드리겠습니다.',
-    },
+    createAnswerMessage(GreetingMessage.ai),
   ])
   // 프로세스 상태
   const [isLoading, setIsLoading] = useState(true)
@@ -94,107 +91,85 @@ function AiContent() {
     let inference = ''
     let documents: Document[] | undefined
     // 세션 기반 SSE 연결
-    const eventSource = streamApi(sessionId)
-    // SSE 연결 이벤트
-    eventSource.addEventListener('connect', async (event) => {
-      console.log(`📡 스트림 연결`)
-      console.log(`📡 질의 등록 : ${query}`)
+    streamApi(
+      sessionId,
+      new StreamEvent({
+        onConnect: async (_) => {
+          console.log(`📡 질의 요청 : ${query}`)
+          await chatAiApi(query, sessionId, selectedCategories)
+            .then((response) => {
+              console.log(`📡 ${response.message}`)
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: content,
+                  inference: inference,
+                },
+              ])
+            })
+            .catch((reason) => {
+              console.error(reason)
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content:
+                    '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+                  inference: '',
+                },
+              ])
+              setIsStreaming(false)
+            })
+        },
+        onInference: (event) => {
+          setMessages((prev) => {
+            const newMsgs = [...prev]
+            const lastMsgIndex = newMsgs.length - 1
 
-      console.log(`📡 질의 요청 : ${query}`)
-      await chatAiApi(query, sessionId, selectedCategories)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          documents = response.result.documents
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: content,
-              inference: inference,
-            },
-          ])
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content:
-                '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-              inference: '',
-            },
-          ])
+            const updatedLastMsg = {
+              ...newMsgs[lastMsgIndex],
+              inference: replaceEventDataToText(
+                newMsgs[lastMsgIndex].inference + event.data,
+              ),
+            }
+
+            newMsgs[lastMsgIndex] = updatedLastMsg
+            return newMsgs
+          })
+        },
+        onAnswer: (event) => {
+          setMessages((prev) => {
+            const newMsgs = [...prev]
+            const lastMsgIndex = newMsgs.length - 1
+
+            const updatedLastMsg = {
+              ...newMsgs[lastMsgIndex],
+              content: replaceEventDataToText(
+                newMsgs[lastMsgIndex].content + event.data,
+              ),
+            }
+
+            newMsgs[lastMsgIndex] = updatedLastMsg
+            return newMsgs
+          })
+        },
+        onReference: (event) => {
+          setMessages((prev) => {
+            const documents = JSON.parse(event.data).documents as Document[]
+            const newMsgs = [...prev]
+            newMsgs[newMsgs.length - 1].documents = documents ? documents : []
+            return newMsgs
+          })
+        },
+        onDisconnect: (_) => {
           setIsStreaming(false)
-        })
-    })
-    // SSE 추론 시작 이벤트
-    eventSource.addEventListener('inference-start', (_) => {
-      console.log('📋 추론 과정 표출 시작')
-    })
-    // SSE 추론 이벤트
-    eventSource.addEventListener('inference', (event) => {
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        const lastMsgIndex = newMsgs.length - 1
-
-        const updatedLastMsg = {
-          ...newMsgs[lastMsgIndex],
-          inference: replaceEventDataToText(
-            newMsgs[lastMsgIndex].inference + event.data,
-          ),
-        }
-
-        newMsgs[lastMsgIndex] = updatedLastMsg
-        return newMsgs
-      })
-    })
-    // SSE 추론 종료 이벤트
-    eventSource.addEventListener('inference-done', (_) => {
-      console.log('📋 추론 과정 표출 종료')
-    })
-    // SSE 답변 시작 이벤트
-    eventSource.addEventListener('answer-start', (_) => {
-      console.log('📋 답변 시작')
-    })
-    // SSE 답변 이벤트
-    eventSource.addEventListener('answer', (event) => {
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        const lastMsgIndex = newMsgs.length - 1
-
-        const updatedLastMsg = {
-          ...newMsgs[lastMsgIndex],
-          content: replaceEventDataToText(
-            newMsgs[lastMsgIndex].content + event.data,
-          ),
-        }
-
-        newMsgs[lastMsgIndex] = updatedLastMsg
-        return newMsgs
-      })
-    })
-    // SSE 답변 종료 이벤트
-    eventSource.addEventListener('answer-done', (_) => {
-      console.log(`📋 답변 종료`)
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        newMsgs[newMsgs.length - 1].documents = documents ? documents : []
-        return newMsgs
-      })
-    })
-    // SSE 연결 종료 이벤트
-    eventSource.addEventListener('disconnect', (_) => {
-      eventSource.close()
-      console.log(`❌ 스트림 닫힘`)
-      setIsStreaming(false)
-    })
-    // SSE 예외 이벤트
-    eventSource.addEventListener('exception', (_) => {
-      eventSource.close()
-      console.log(`❌ 예외 발생`)
-      setIsStreaming(false)
-    })
+        },
+        onException: (_) => {
+          setIsStreaming(false)
+        },
+      }),
+    )
   }
 
   /**
