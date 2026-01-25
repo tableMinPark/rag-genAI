@@ -1,17 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import MarkdownIt from 'markdown-it'
-import { Play, Square, RotateCcw, Settings2 } from 'lucide-react'
+import { Play, Square, RotateCcw, Settings2, FlaskConical } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatSimulateionApi } from '@/api/chat'
+import { StreamEvent } from '@/types/streamEvent'
+import { useModalStore } from '@/stores/modalStore'
 
-// ###################################################
-// 상수 정의 (Const)
-// ###################################################
-// Markdown 파서 설정
 const md = new MarkdownIt({
   html: true,
   breaks: true,
@@ -25,8 +23,10 @@ const DEFAULT_TOP_P = 0.95
 const DEFAULT_MAX_TOKENS = 1200
 
 export default function SimulationPage() {
+  const modalStore = useModalStore()
+
   // ###################################################
-  // 상태 정의 (State)
+  // 상태 관리
   // ###################################################
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
@@ -40,16 +40,15 @@ export default function SimulationPage() {
   const [temperature, setTemperature] = useState(DEFAULT_TEMPERATURE)
   // TopP 입력 상태
   const [topP, setTopP] = useState(DEFAULT_TOP_P)
-  // TopP 입력 상태
+  // MaxTokens
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
   // 실행 및 결과 상태
-  const [result, setResult] = useState('')
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const [output, setOutput] = useState('')
 
   // ###################################################
-  // 핸들러 (Handler)
+  // 핸들러
   // ###################################################
   /**
    * 입력값 초기화 핸들러
@@ -60,122 +59,85 @@ export default function SimulationPage() {
     setContext('')
     setTemperature(DEFAULT_TEMPERATURE)
     setTopP(DEFAULT_TOP_P)
-    setResult('')
+    setMaxTokens(DEFAULT_MAX_TOKENS)
+    setOutput('')
   }
 
   /**
    * 시뮬레이션 실행 핸들러
    */
-  const handleSend = (
+  const handleSendQuery = async (
     query: string,
-    sessionId: string,
+    prompt: string,
     context: string,
-    promptContext: string,
-    maxTokens: number,
     temperature: number,
     topP: number,
-  ): void => {
-    if (!query.trim()) {
-      alert('질의문을 입력해주세요.')
-      return
-    }
-
+    maxTokens: number,
+  ) => {
+    // 스트림 상태 체크
+    if (isStreaming) return
+    // 스트림 시작 상태 변경
     setIsStreaming(true)
-    setResult('')
-    abortControllerRef.current = new AbortController()
-
-    let answer = `### 시뮬레이션 결과\n**설정된 파라미터:**\n- Temperature: \`${temperature}\`\n- Top P: \`${topP}\`\n- Token Size: \`${maxTokens}\`\n\n**System Prompt:**\n> ${promptContext}\n\n**Reference Context:**\n${context ? `\`\`\`text\n${context.substring(0, 50)}...\n\`\`\`` : '(참고 문서 없음)'}`
-
-    // 스트리밍 효과 메타 데이터 표출
-    const chars = answer.split('')
-    for (let i = 0; i < chars.length; i++) {
-      if (abortControllerRef.current?.signal.aborted) break
-      new Promise((resolve) => setTimeout(resolve, 20))
-      setResult((prev) => prev + chars[i])
-    }
-
+    // 결과 값 초기화
+    setOutput(
+      `**설정된 파라미터:**\n- Temperature: \`${temperature}\`\n- Top P: \`${topP}\`\n- Max Tokens: \`${maxTokens}\`\n\n**System Prompt:**\n\`\`\`text\n${prompt.trim()}\n\`\`\`\n\n**Reference Context:**\n${context ? `\`\`\`text\n${context.trim()}\n\`\`\`` : '(참고 문서 없음)'}`,
+    )
     // 세션 기반 SSE 연결
-    const eventSource = streamApi(sessionId)
-
-    // SSE 연결 이벤트
-    eventSource.addEventListener('connect', async (event) => {
-      console.log(`📡 스트림 연결`)
-      console.log(`📡 질의 요청 : ${query}`)
-      await chatSimulateionApi(
-        query,
-        sessionId,
-        context,
-        promptContext,
-        maxTokens,
-        temperature,
-        topP,
-      )
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setResult(
-            '**서버 통신**이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+    await streamApi(
+      sessionId,
+      new StreamEvent({
+        onConnect: async (_) => {
+          console.log(`📡 질의 요청 : ${query}`)
+          await chatSimulateionApi(
+            query,
+            sessionId,
+            context,
+            prompt,
+            maxTokens,
+            temperature,
+            topP,
           )
+            .then((response) => {
+              console.log(`📡 ${response.message}`)
+            })
+            .catch((reason) => {
+              console.error(reason)
+              modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+              setIsStreaming(false)
+            })
+        },
+        onDisconnect: (_) => {
           setIsStreaming(false)
-        })
-    })
-    // SSE 추론 시작 이벤트
-    eventSource.addEventListener('inference-start', (_) => {
-      console.log('📋 추론 과정 표출 시작')
-      setResult((prev) => {
-        answer = replaceEventDataToText(prev + `\n\n---\n\n**추론:**\n`)
-        return answer
-      })
-    })
-    // SSE 추론 이벤트
-    eventSource.addEventListener('inference', (event) => {
-      setResult((prev) => {
-        answer = replaceEventDataToText(prev + event.data)
-        return answer
-      })
-    })
-    // SSE 추론 종료 이벤트
-    eventSource.addEventListener('inference-done', (_) => {
-      console.log('📋 추론 과정 표출 종료')
-    })
-    // SSE 답변 시작 이벤트
-    eventSource.addEventListener('answer-start', (_) => {
-      console.log('📋 답변 시작')
-      setResult((prev) => {
-        answer = replaceEventDataToText(prev + `\n\n---\n\n**답변:**\n`)
-        return answer
-      })
-    })
-    // SSE 답변 이벤트
-    eventSource.addEventListener('answer', (event) => {
-      setResult((prev) => {
-        answer = replaceEventDataToText(prev + event.data)
-        return answer
-      })
-    })
-    // SSE 답변 종료 이벤트
-    eventSource.addEventListener('answer-done', (_) => {
-      console.log(`📋 답변 종료`)
-    })
-    // SSE 연결 종료 이벤트
-    eventSource.addEventListener('disconnect', (_) => {
-      eventSource.close()
-      console.log(`❌ 스트림 닫힘`)
-      setIsStreaming(false)
-    })
-    // SSE 예외 이벤트
-    eventSource.addEventListener('exception', (event) => {
-      eventSource.close()
-      console.log(event.data)
-      console.log(`❌ 예외 발생`)
-      setIsStreaming(false)
-    })
+        },
+        onException: (_) => {
+          setIsStreaming(false)
+        },
+        onError: (_) => {
+          modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+          setIsStreaming(false)
+        },
+        onInferenceStart: (_) => {
+          setOutput((prev) =>
+            replaceEventDataToText(prev + `\n\n---\n\n**추론:**\n`),
+          )
+        },
+        onInference: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+        onAnswerStart: (_) => {
+          setOutput((prev) =>
+            replaceEventDataToText(prev + `\n\n---\n\n**답변:**\n`),
+          )
+        },
+        onAnswer: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+      }),
+    )
   }
 
   /**
-   * 생성 중단 핸들러
+   * 스트림 중단 핸들러
    */
   const handleStop = async () => {
     await cancelStreamApi(sessionId)
@@ -196,7 +158,7 @@ export default function SimulationPage() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <Settings2 className="text-primary h-6 w-6" />
+              <FlaskConical className="text-primary h-6 w-6" />
               LLM 시뮬레이션
             </h2>
             <p className="mt-1 text-xs text-gray-500">
@@ -205,7 +167,6 @@ export default function SimulationPage() {
           </div>
         </div>
       </div>
-
       {/* 메인 컨텐츠 (좌우 분할) */}
       <div className="flex min-h-0 flex-1 gap-6">
         {/* [왼쪽] 입력 폼 영역 */}
@@ -213,7 +174,7 @@ export default function SimulationPage() {
           {/* 1. 질의문 (Input) */}
           <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              사용자 질의 (User Query)
+              사용자 질의 (Query)
             </label>
             <input
               type="text"
@@ -223,11 +184,10 @@ export default function SimulationPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-
           {/* 2. 시스템 프롬프트 (Textarea) */}
           <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              시스템 프롬프트 (System Prompt)
+              시스템 프롬프트 (Prompt)
             </label>
             <textarea
               className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
@@ -236,11 +196,10 @@ export default function SimulationPage() {
               onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
-
           {/* 3. 참고 문서 (Textarea) */}
-          <div className="flex min-h-[150px] flex-1 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              참고 문서 (RAG Context)
+              참고 문서 (Context)
             </label>
             <textarea
               className="focus:border-primary focus:ring-primary w-full flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
@@ -249,7 +208,6 @@ export default function SimulationPage() {
               onChange={(e) => setContext(e.target.value)}
             />
           </div>
-
           {/* 4. 파라미터 설정 */}
           <div className="grid shrink-0 grid-cols-3 gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             {/* Temperature */}
@@ -272,7 +230,6 @@ export default function SimulationPage() {
                 className="accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
               />
             </div>
-
             {/* Top P */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
@@ -289,12 +246,11 @@ export default function SimulationPage() {
                 className="accent-primary h-2 w-full cursor-pointer appearance-none rounded-lg bg-gray-200"
               />
             </div>
-
             {/* Max Tokens */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <label className="text-xs font-bold text-gray-600">
-                  Token Size
+                  Max Tokens
                 </label>
                 <span className="text-primary text-xs font-bold">
                   {maxTokens}
@@ -302,8 +258,8 @@ export default function SimulationPage() {
               </div>
               <input
                 type="range"
-                min="1000"
-                max="2000"
+                min="10"
+                max="4096"
                 step="1"
                 value={maxTokens}
                 onChange={(e) => setMaxTokens(parseFloat(e.target.value))}
@@ -311,7 +267,6 @@ export default function SimulationPage() {
               />
             </div>
           </div>
-
           {/* 5. 버튼 그룹 */}
           <div className="flex shrink-0 gap-3 pt-2">
             <button
@@ -322,7 +277,6 @@ export default function SimulationPage() {
               <RotateCcw className="h-4 w-4" />
               초기화
             </button>
-
             {isStreaming ? (
               <button
                 onClick={handleStop}
@@ -334,14 +288,13 @@ export default function SimulationPage() {
             ) : (
               <button
                 onClick={(e) =>
-                  handleSend(
+                  handleSendQuery(
                     query,
-                    sessionId,
-                    context,
                     prompt,
-                    maxTokens,
+                    context,
                     temperature,
                     topP,
+                    maxTokens,
                   )
                 }
                 className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-95"
@@ -366,11 +319,10 @@ export default function SimulationPage() {
                 </span>
               )}
             </span>
-
-            {result && (
+            {output && (
               <button
                 className="hover:text-primary text-gray-400 transition-colors"
-                onClick={() => navigator.clipboard.writeText(result)}
+                onClick={() => navigator.clipboard.writeText(output)}
                 title="결과 복사"
               >
                 <svg
@@ -390,13 +342,12 @@ export default function SimulationPage() {
               </button>
             )}
           </div>
-
           {/* 결과 뷰어 */}
           <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
-            {result ? (
+            {output ? (
               <div
                 className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
-                dangerouslySetInnerHTML={{ __html: md.render(result) }}
+                dangerouslySetInnerHTML={{ __html: md.render(output) }}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">

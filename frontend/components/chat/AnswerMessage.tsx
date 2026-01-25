@@ -6,6 +6,47 @@ import InferenceAccordion from './InferenceAccordion'
 import styles from '@/public/css/markdown.module.css'
 import { Document } from '@/types/domain'
 
+/**
+ * Mermaid 초기화
+ */
+if (typeof window !== 'undefined') {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'default',
+    securityLevel: 'loose',
+    suppressErrorRendering: true,
+  })
+}
+
+/**
+ * Markdown-It 인스턴스 생성 및 Mermaid 블록 처리 규칙 추가
+ */
+const md = new MarkdownIt({
+  html: true,
+  breaks: true,
+  linkify: true,
+})
+
+/**
+ * 기본 펜스 렌더러 저장
+ */
+const defaultFence =
+  md.renderer.rules.fence ||
+  function (tokens, idx, options, env, self) {
+    return self.renderToken(tokens, idx, options)
+  }
+
+md.renderer.rules.fence = function (tokens, idx, options, env, self) {
+  const token = tokens[idx]
+  const info = token.info ? token.info.trim() : ''
+
+  if (info === 'mermaid') {
+    return `<div class="mermaid-block" data-processed="false">${token.content}</div>`
+  }
+
+  return defaultFence(tokens, idx, options, env, self)
+}
+
 interface AnswerMessageProps {
   content: string
   inference?: string
@@ -22,12 +63,10 @@ export default React.memo(function AnswerMessage({
   const containerRef = useRef<HTMLDivElement>(null)
   const [uid] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`)
 
-  // Mermaid 문법 오류 방지 전처리 로직 적용 content가 바뀔 때마다 실행되며, 결과를 processedContent에 저장
   const convertContent = useMemo(() => {
     if (!content) return ''
 
     return content.replace(/```mermaid([\s\S]*?)```/g, (match, code) => {
-      // 대괄호 [] 내부 텍스트를 쌍따옴표 ["..."] 로 감싸서 특수문자 오류 방지
       const converted = code.replace(/\[([^\[\]]+)\]/g, '["$1"]')
       return `\`\`\`mermaid${converted}\`\`\``
     })
@@ -107,43 +146,3 @@ export default React.memo(function AnswerMessage({
     </div>
   )
 })
-
-/**
- * Mermaid 초기화
- */
-if (typeof window !== 'undefined') {
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-    securityLevel: 'loose',
-    suppressErrorRendering: true,
-  })
-}
-/**
- * Markdown-It 인스턴스 생성 및 Mermaid 블록 처리 규칙 추가
- */
-const md = new MarkdownIt({
-  html: true,
-  breaks: true,
-  linkify: true,
-})
-
-/**
- * 기본 펜스 렌더러 저장
- */
-const defaultFence =
-  md.renderer.rules.fence ||
-  function (tokens, idx, options, env, self) {
-    return self.renderToken(tokens, idx, options)
-  }
-
-md.renderer.rules.fence = function (tokens, idx, options, env, self) {
-  const token = tokens[idx]
-  const info = token.info ? token.info.trim() : ''
-
-  if (info === 'mermaid') {
-    return `<div class="mermaid-block" data-processed="false">${token.content}</div>`
-  }
-
-  return defaultFence(tokens, idx, options, env, self)
-}

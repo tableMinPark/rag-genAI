@@ -88,6 +88,11 @@ export const streamApi = async (
     eventSource.close()
     streamEvent.onException(event)
   })
+  eventSource.addEventListener('error', (event: MessageEvent) => {
+    console.log(`❌ 스트림 에러`)
+    eventSource.close()
+    streamEvent.onError(event)
+  })
   return Promise.resolve()
 }
 

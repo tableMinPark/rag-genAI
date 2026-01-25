@@ -16,6 +16,7 @@ export type StreamEventHandlers = Partial<{
   onReferenceDone: StreamEventHandler
   onDisconnect: StreamEventHandler
   onException: StreamEventHandler
+  onError: StreamEventHandler
 }>
 
 const noop: StreamEventHandler = () => {}
@@ -36,6 +37,7 @@ export class StreamEvent {
   onReferenceDone = noop
   onDisconnect = noop
   onException = noop
+  onError = noop
 
   constructor(handlers: StreamEventHandlers = {}) {
     Object.assign(this, handlers)
