@@ -1,41 +1,65 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import ChatArea from '@/components/ChatArea'
-import { AlertCircle, Bot, Loader2, RefreshCw } from 'lucide-react'
+import ChatArea from '@/components/chat/ChatArea'
+import { Bot } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatAiApi, getCategoriesApi } from '@/api/chat'
-import { Category, Document } from '@/types/domain'
+import { Category } from '@/types/domain'
 import { useSearchParams } from 'next/navigation'
 import { StreamEvent } from '@/types/streamEvent'
 import { GreetingMessage } from '@/public/ts/greeting'
-import { createAnswerMessage, Message } from '@/types/chat'
+import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
+import { useUiStore } from '@/stores/uiStore'
+import NotFound from '@/components/common/NotFound'
+import { useModalStore } from '@/stores/modalStore'
 
 function AiContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get('query')
+  const uiStore = useUiStore()
+  const modalStore = useModalStore()
 
+  // ###################################################
+  // 상태 관리
+  // ###################################################
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 대화 내역 목록 상태
   const [messages, setMessages] = useState<Message[]>([
     createAnswerMessage(GreetingMessage.ai),
   ])
-  // 프로세스 상태
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  // 카테고리 목록
   const [categories, setCategories] = useState<Category[]>([])
-  // 선택 카테고리 목록 상태
+  // 선택한 카테고리 목록
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
-  const loadData = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      await getCategoriesApi().then((response) => {
+  // ###################################################
+  // 랜더링 이펙트
+  // ###################################################
+  useEffect(() => {
+    if (initialQuery) {
+      handleSendQuery(initialQuery, true)
+    }
+  }, [initialQuery])
+
+  useEffect(() => {
+    handleGetCategories()
+  }, [])
+
+  // ###################################################
+  // 핸들러
+  // ###################################################
+  /**
+   * 카테고리 목록 조회
+   */
+  const handleGetCategories = async () => {
+    uiStore.setLoading('카테고리 목록을 불러오는 중입니다')
+    await getCategoriesApi()
+      .then((response) => {
         console.log(`📡 ${response.message}`)
         setCategories(() => {
           setSelectedCategories(() =>
@@ -43,55 +67,39 @@ function AiContent() {
           )
           return response.result
         })
+        uiStore.reset()
       })
-    } catch (err) {
-      console.error(err)
-      setError('질문 가능한 카테고리가 없습니다.')
-    } finally {
-      setIsLoading(false)
-    }
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError(
+          '질문 가능한 카테고리가 없습니다.',
+          handleGetCategories,
+        )
+      })
   }
 
-  useEffect(() => {
-    if (initialQuery) {
-      handleSendMessage(initialQuery, true)
-    }
-  }, [initialQuery])
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  // ###################################################
-  // 핸들러 (Handler)
-  // ###################################################
   /**
    * 답변 요청 핸들러
-   *
    * @param query 사용자 질의
    */
-  const handleSendMessage = async (
+  const handleSendQuery = async (
     query: string,
     isInitQuery: boolean = false,
   ) => {
     // 입력 값 체크
     if (!isInitQuery && selectedCategories.length === 0) {
-      alert('최소 하나의 카테고리를 선택해주세요.')
+      modalStore.setInfo(
+        '카테고리 선택 필요',
+        '최소 하나의 카테고리를 선택해주세요.',
+      )
       return
     }
-
     // 질의 등록
-    const userMessage: Message = { role: 'user', content: query }
-    setMessages((prev) => [...prev, userMessage])
-
+    setMessages((prev) => [...prev, createQueryMessage(query)])
     // 스트림 시작 상태 변경
     setIsStreaming(true)
-
-    let content = ''
-    let inference = ''
-    let documents: Document[] | undefined
     // 세션 기반 SSE 연결
-    streamApi(
+    await streamApi(
       sessionId,
       new StreamEvent({
         onConnect: async (_) => {
@@ -99,67 +107,57 @@ function AiContent() {
           await chatAiApi(query, sessionId, selectedCategories)
             .then((response) => {
               console.log(`📡 ${response.message}`)
-              setMessages((prev) => [
-                ...prev,
-                {
-                  role: 'assistant',
-                  content: content,
-                  inference: inference,
-                },
-              ])
+              setMessages((prev) => [...prev, createAnswerMessage('', '', [])])
             })
             .catch((reason) => {
               console.error(reason)
               setMessages((prev) => [
                 ...prev,
-                {
-                  role: 'assistant',
-                  content:
-                    '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-                  inference: '',
-                },
+                createAnswerMessage(
+                  '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
+                ),
               ])
               setIsStreaming(false)
             })
         },
         onInference: (event) => {
           setMessages((prev) => {
-            const newMsgs = [...prev]
-            const lastMsgIndex = newMsgs.length - 1
-
-            const updatedLastMsg = {
-              ...newMsgs[lastMsgIndex],
+            const messages = [...prev]
+            const currentMessageIndex = messages.length - 1
+            const currentMessage = messages[currentMessageIndex]
+            messages[currentMessageIndex] = {
+              ...currentMessage,
               inference: replaceEventDataToText(
-                newMsgs[lastMsgIndex].inference + event.data,
+                currentMessage.inference + event.data,
               ),
             }
-
-            newMsgs[lastMsgIndex] = updatedLastMsg
-            return newMsgs
+            return messages
           })
         },
         onAnswer: (event) => {
           setMessages((prev) => {
-            const newMsgs = [...prev]
-            const lastMsgIndex = newMsgs.length - 1
-
-            const updatedLastMsg = {
-              ...newMsgs[lastMsgIndex],
+            const messages = [...prev]
+            const currentMessageIndex = messages.length - 1
+            const currentMessage = messages[currentMessageIndex]
+            messages[currentMessageIndex] = {
+              ...currentMessage,
               content: replaceEventDataToText(
-                newMsgs[lastMsgIndex].content + event.data,
+                currentMessage.content + event.data,
               ),
             }
-
-            newMsgs[lastMsgIndex] = updatedLastMsg
-            return newMsgs
+            return messages
           })
         },
         onReference: (event) => {
           setMessages((prev) => {
-            const documents = JSON.parse(event.data).documents as Document[]
-            const newMsgs = [...prev]
-            newMsgs[newMsgs.length - 1].documents = documents ? documents : []
-            return newMsgs
+            const messages = [...prev]
+            const currentMessageIndex = messages.length - 1
+            const currentMessage = messages[currentMessageIndex]
+            messages[currentMessageIndex] = {
+              ...currentMessage,
+              documents: JSON.parse(event.data).documents,
+            }
+            return messages
           })
         },
         onDisconnect: (_) => {
@@ -188,14 +186,10 @@ function AiContent() {
    * 카테고리 토글 핸들러
    * @param code 카테고리 코드
    */
-  const toggleCategory = (code: string) => {
+  const handleToggleCategory = (code: string) => {
     setSelectedCategories((prev) =>
       prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code],
     )
-  }
-
-  const handleRefresh = () => {
-    loadData()
   }
 
   // ###################################################
@@ -214,17 +208,16 @@ function AiContent() {
             <p className="mt-1 text-xs text-gray-500">검색 기반 질문 & 답변</p>
           </div>
         </div>
-
-        {!isLoading && !error && (
+        {categories.length > 0 && (
           <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
             <span className="mr-2 text-xs font-bold text-gray-500">
               검색 범위:
             </span>
-            {categories.map((cat) => (
+            {categories.map((category) => (
               <label
-                key={cat.code}
+                key={category.code}
                 className={`flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-bold transition-all ${
-                  selectedCategories.includes(cat.code)
+                  selectedCategories.includes(category.code)
                     ? 'bg-primary hover:bg-primary-hover text-white shadow-sm'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
@@ -232,10 +225,10 @@ function AiContent() {
                 <input
                   type="checkbox"
                   className="hidden"
-                  checked={selectedCategories.includes(cat.code)}
-                  onChange={() => toggleCategory(cat.code)}
+                  checked={selectedCategories.includes(category.code)}
+                  onChange={() => handleToggleCategory(category.code)}
                 />
-                {selectedCategories.includes(cat.code) && (
+                {selectedCategories.includes(category.code) && (
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 20 20"
@@ -249,46 +242,20 @@ function AiContent() {
                     />
                   </svg>
                 )}
-                {cat.name}
+                {category.name}
               </label>
             ))}
           </div>
         )}
       </div>
-
       {/* 채팅 영역 */}
       <div className="min-h-0 flex-1">
-        {isLoading && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3">
-            <Loader2 className="text-primary h-8 w-8 animate-spin" />
-            <p className="text-sm font-medium text-gray-500">
-              목록을 불러오는 중입니다...
-            </p>
-          </div>
-        )}
-
-        {!isLoading && error && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <p className="text-sm font-bold text-gray-700">{error}</p>
-            <button
-              onClick={handleRefresh}
-              className="flex items-center gap-2 rounded-md bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-200"
-            >
-              <RefreshCw className="h-3 w-3" />
-              다시 시도
-            </button>
-          </div>
-        )}
-
-        {!isLoading && !error && (
-          <ChatArea
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            onStop={handleStop}
-            isStreaming={isStreaming}
-          />
-        )}
+        <ChatArea
+          messages={messages}
+          onSendMessage={handleSendQuery}
+          onStop={handleStop}
+          isStreaming={isStreaming}
+        />
       </div>
     </div>
   )
@@ -296,13 +263,7 @@ function AiContent() {
 
 export default function AiPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex h-screen items-center justify-center">
-          <Loader2 className="h-10 w-10 animate-spin text-blue-500" />
-        </div>
-      }
-    >
+    <Suspense fallback={<NotFound />}>
       <AiContent />
     </Suspense>
   )

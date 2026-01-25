@@ -1,28 +1,28 @@
 import { create } from 'zustand'
 
-export type UIStatus = 'idle' | 'loading' | 'error' | 'success'
+export type UiStatus = 'idle' | 'loading' | 'error'
 
-type UIState = {
-  status: UIStatus
+type UiState = {
+  status: UiStatus
   message?: string
-  modalOpen: boolean
+  handleRefresh?: () => void
 
   setLoading: (message?: string) => void
-  setError: (message: string) => void
-  setSuccess: (message?: string) => void
+  setError: (message: string, handleRefresh: () => void) => void
   reset: () => void
 }
 
-export const useUIStore = create<UIState>((set) => ({
+/**
+ * UI 상태 관리 스토어
+ */
+export const useUiStore = create<UiState>((set) => ({
   status: 'idle',
   message: undefined,
-  modalOpen: false,
 
-  setLoading: (message) => set({ status: 'loading', message, modalOpen: true }),
-
-  setError: (message) => set({ status: 'error', message, modalOpen: true }),
-
-  setSuccess: (message) => set({ status: 'success', message, modalOpen: true }),
-
-  reset: () => set({ status: 'idle', message: undefined, modalOpen: false }),
+  setLoading: (message) =>
+    set({ status: 'loading', message, handleRefresh: undefined }),
+  setError: (message, handleRefresh) =>
+    set({ status: 'error', message, handleRefresh: handleRefresh }),
+  reset: () =>
+    set({ status: 'idle', message: undefined, handleRefresh: undefined }),
 }))

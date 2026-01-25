@@ -1,20 +1,21 @@
+import { Document } from './domain'
+
 export interface Message {
   role: 'user' | 'assistant'
   content: string
   inference?: string
-  documents?: Document[]
+  documents?: Document[] | undefined
 }
 
 /**
  * 모델 답변 메시지 생성
- *
  * @param answer 모델 답변
  * @returns 모델 답변 메시지
  */
 export const createAnswerMessage = (
   answer: string,
   inference: string = '',
-  documents: Document[] = [],
+  documents?: Document[],
 ): Message => {
   return {
     role: 'assistant',

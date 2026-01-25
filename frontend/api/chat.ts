@@ -5,7 +5,6 @@ import { Category, Document } from '@/types/domain'
 export interface ChatAiResponse {
   query: string
   sessionId: string
-  documents?: Document[]
 }
 
 export interface ChatLlmResponse {

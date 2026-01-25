@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import ChatArea, { Message } from '@/components/ChatArea'
+import { useEffect, useState } from 'react'
+import ChatArea, { Message } from '@/components/chat/ChatArea'
 import { Brain } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatLlmApi } from '@/api/chat'
+import { useUiStore } from '@/stores/uiStore'
 
 export default function LlmPage() {
   // ###################################################

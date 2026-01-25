@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import ChatArea, { Message } from '@/components/ChatArea'
+import ChatArea, { Message } from '@/components/chat/ChatArea'
 import { AlertCircle, Bot, Loader2, RefreshCw } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
