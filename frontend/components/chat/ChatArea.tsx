@@ -6,7 +6,7 @@ import AnswerMessage from '@/components/chat/AnswerMessage'
 import InputBox from '@/components/chat/InputBox'
 import { Document } from '@/types/domain'
 import { Message } from '@/types/chat'
-import ModalChatDocument from '@/components/modal/ModalChatDocument'
+import ModalChatDocument from '@/app/ai/ModalChatDocument'
 import { useModalStore } from '@/stores/modalStore'
 
 interface ChatAreaProps {

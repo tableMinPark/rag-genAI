@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import MarkdownIt from 'markdown-it'
-import { Play, Square, RotateCcw, Settings2, FlaskConical } from 'lucide-react'
+import { Play, Square, RotateCcw } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatSimulateionApi } from '@/api/chat'
 import { StreamEvent } from '@/types/streamEvent'
 import { useModalStore } from '@/stores/modalStore'
+import { menuInfos } from '@/public/const/menu'
 
 const md = new MarkdownIt({
   html: true,
@@ -23,6 +24,7 @@ const DEFAULT_TOP_P = 0.95
 const DEFAULT_MAX_TOKENS = 1200
 
 export default function SimulationPage() {
+  const menuInfo = menuInfos.simulation
   const modalStore = useModalStore()
 
   // ###################################################
@@ -102,7 +104,7 @@ export default function SimulationPage() {
             })
             .catch((reason) => {
               console.error(reason)
-              modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+              modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
             })
         },
@@ -113,7 +115,7 @@ export default function SimulationPage() {
           setIsStreaming(false)
         },
         onError: (_) => {
-          modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+          modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
         },
         onInferenceStart: (_) => {
@@ -158,12 +160,10 @@ export default function SimulationPage() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <FlaskConical className="text-primary h-6 w-6" />
-              LLM 시뮬레이션
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              RAG 기반 질문 & 답변 시뮬레이션
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
       </div>
@@ -305,11 +305,10 @@ export default function SimulationPage() {
             )}
           </div>
         </div>
-
         {/* [오른쪽] 답변 출력 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* 헤더 */}
-          <div className="flex h-[56px] items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-3">
+          <div className="flex h-14 items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-3">
             <span className="flex items-center gap-2 text-sm font-bold text-gray-700">
               시뮬레이션 결과 (Output)
               {isStreaming && (

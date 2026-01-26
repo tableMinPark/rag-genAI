@@ -13,6 +13,7 @@ type ModalState = {
 
   closeModal: () => void
   setInfo: (title: string, message: string, handleConfirm?: () => void) => void
+  setError: (title: string, message: string, handleConfirm?: () => void) => void
   setConfirm: (
     title: string,
     message: string,
@@ -35,6 +36,20 @@ export const useModalStore = create<ModalState>((set) => ({
   closeModal: () => set({ isOpen: false }),
   // 정보 모달 설정
   setInfo: (title, message, handleConfirm = () => {}) =>
+    set({
+      type: 'info',
+      title,
+      message,
+      isOpen: true,
+      handleConfirm: async () => {
+        set({ isLoading: true })
+        await handleConfirm()
+        set({ isLoading: false, isOpen: false })
+      },
+      handleCancel: () => set({ isOpen: false }),
+    }),
+  // 정보 모달 설정
+  setError: (title, message, handleConfirm = () => {}) =>
     set({
       type: 'info',
       title,

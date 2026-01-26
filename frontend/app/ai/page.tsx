@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
-import { Bot } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatAiApi, getCategoriesApi } from '@/api/chat'
@@ -14,8 +13,10 @@ import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { useUiStore } from '@/stores/uiStore'
 import NotFound from '@/components/common/NotFound'
 import { useModalStore } from '@/stores/modalStore'
+import { menuInfos } from '@/public/const/menu'
 
 function AiContent() {
+  const menuInfo = menuInfos.ai
   const uiStore = useUiStore()
   const modalStore = useModalStore()
   const searchParams = useSearchParams()
@@ -34,11 +35,11 @@ function AiContent() {
   const [categories, setCategories] = useState<Category[]>([])
   // 선택한 카테고리 목록
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+  const sentQueryRef = useRef<Set<string>>(new Set())
 
   // ###################################################
   // 랜더링 이펙트
   // ###################################################
-  const sentQueryRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!outerQuery) return
     const queryKey = JSON.stringify({
@@ -74,7 +75,6 @@ function AiContent() {
         greetingMessageIndex++
       }
     }, 10)
-
     return () => clearInterval(greetingMessageInterval)
   }, [])
 
@@ -106,7 +106,7 @@ function AiContent() {
             })
             .catch((reason) => {
               console.error(reason)
-              modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+              modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
             })
         },
@@ -117,7 +117,7 @@ function AiContent() {
           setIsStreaming(false)
         },
         onError: (_) => {
-          modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+          modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
         },
         onInference: (event) => {
@@ -220,10 +220,10 @@ function AiContent() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <Bot className="text-primary h-6 w-6" />
-              RAG Chat
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">검색 기반 질문 & 답변</p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
         {categories.length > 0 && (

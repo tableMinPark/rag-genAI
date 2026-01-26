@@ -2,19 +2,18 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
-import { Brain } from 'lucide-react'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatLlmApi } from '@/api/chat'
-import { useUiStore } from '@/stores/uiStore'
 import { useModalStore } from '@/stores/modalStore'
 import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { StreamEvent } from '@/types/streamEvent'
 import NotFound from '@/components/common/NotFound'
+import { menuInfos } from '@/public/const/menu'
 
 function LlmContent() {
-  const uiStore = useUiStore()
+  const menuInfo = menuInfos.llm
   const modalStore = useModalStore()
 
   // ###################################################
@@ -27,6 +26,9 @@ function LlmContent() {
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
 
+  // ###################################################
+  // 랜더링 이펙트
+  // ###################################################
   useEffect(() => {
     setMessages([createAnswerMessage('', '')])
     let greetingMessageIndex = 0
@@ -81,7 +83,7 @@ function LlmContent() {
             })
             .catch((reason) => {
               console.error(reason)
-              modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+              modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
             })
         },
@@ -92,7 +94,7 @@ function LlmContent() {
           setIsStreaming(false)
         },
         onError: (_) => {
-          modalStore.setInfo('서버 통신 에러', '답변 생성에 실패했습니다.')
+          modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
         },
         onInference: (event) => {
@@ -149,10 +151,10 @@ function LlmContent() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <Brain className="text-primary h-6 w-6" />
-              LLM Chat
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">일반 질문 & 답변</p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
       </div>
