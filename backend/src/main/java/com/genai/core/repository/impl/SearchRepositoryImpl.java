@@ -71,19 +71,16 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @param query          질의문
      * @param topK           top K
      * @param sessionId      세션 식별자
-     * @param alias          필터 코드 목록
+     * @param aliases          필터 코드 목록
      * @return 키워드 검색 결과 목록
      */
     @Override
-    public <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, String sessionId, List<String> alias) {
+    public <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, String sessionId, List<String> aliases) {
 
         KeywordSearchRequest keywordSearchRequest = KeywordSearchRequest.builder()
                 .size(topK)
-                .sort(KeywordSearchRequest.sort(KeywordSearchRequest.SortField._score, "desc"))
-                .query(KeywordSearchRequest.query(
-                        KeywordSearchRequest.QueryField.multi_match,
-                        KeywordSearchRequest.QueryType.best_fields,
-                        query, collectionType.getKeywordSearchFields()))
+                .sort(List.of(KeywordSearchRequest.sort(KeywordSearchRequest.SortField._score, "desc")))
+                .query(KeywordSearchRequest.query(KeywordSearchRequest.QueryType.best_fields, query, collectionType.getKeywordSearchFields(), aliases))
                 .build();
 
         ResponseEntity<String> responseEntity = searchWebClient.post()
@@ -123,11 +120,11 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @param collectionType 컬렉션 타입
      * @param query          질의문
      * @param topK           top K
-     * @param alias          필터 코드 목록
+     * @param aliases          필터 코드 목록
      * @return 벡터 검색 결과 목록
      */
     @Override
-    public <T extends DocumentEntity> List<Search<T>> vectorSearch(CollectionType collectionType, String query, int topK, List<String> alias) {
+    public <T extends DocumentEntity> List<Search<T>> vectorSearch(CollectionType collectionType, String query, int topK, List<String> aliases) {
 
         ConvertVectorVO convertVectorVO = ConvertVectorVO.builder()
                 .id(Long.MIN_VALUE)
@@ -152,9 +149,9 @@ public class SearchRepositoryImpl implements SearchRepository {
         VectorSearchRequest vectorSearchRequest = VectorSearchRequest.builder()
                 .size(topK)
                 .query(VectorSearchRequest.query(
-                        VectorSearchRequest.QueryField.knn,
                         collectionType.getVectorSearchFields(),
-                        convertVectorVO.getVector()))
+                        convertVectorVO.getVector(),
+                        aliases))
                 .build();
 
         ResponseEntity<String> responseEntity = searchWebClient.post()

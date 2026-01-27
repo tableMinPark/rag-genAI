@@ -10,7 +10,7 @@ const DEFAULT_RECOMMEND_QUERY = [
   '프로젝트 관리 규정',
 ]
 
-export default function ChatMainPage() {
+export default function MainPage() {
   const router = useRouter()
   const [input, setInput] = useState('')
 
@@ -78,8 +78,9 @@ export default function ChatMainPage() {
           </div>
 
           <div className="mt-4 flex justify-center gap-4 text-xs font-medium text-gray-400">
-            {DEFAULT_RECOMMEND_QUERY.map((recommendQuery) => (
+            {DEFAULT_RECOMMEND_QUERY.map((recommendQuery, index) => (
               <span
+                key={index}
                 onClick={() => router.push(`/ai?query=${recommendQuery}`)}
                 className="hover:text-primary cursor-pointer transition-colors"
               >

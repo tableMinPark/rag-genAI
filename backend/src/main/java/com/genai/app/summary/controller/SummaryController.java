@@ -36,7 +36,7 @@ public class SummaryController {
         float lengthRatio = summaryTextRequestDto.getLengthRatio();
         String context = summaryTextRequestDto.getContext();
 
-        long chatId = 6L;
+        long chatId = 3L;
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, context, sessionId, chatId);
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_TEXT_SUCCESS.toResponseDto(SummaryResponseDto.builder()
@@ -62,7 +62,7 @@ public class SummaryController {
         String sessionId = summaryFileRequestDto.getSessionId();
         float lengthRatio = summaryFileRequestDto.getLengthRatio();
 
-        long chatId = 6L;
+        long chatId = 3L;
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, multipartFile, sessionId, chatId);
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_FILE_SUCCESS.toResponseDto(SummaryResponseDto.builder()

@@ -1,16 +1,16 @@
 package com.genai.app.myai.controller;
 
-import com.genai.global.dto.PageResponseDto;
-import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.global.wrapper.PageWrapper;
-import com.genai.global.enums.Response;
 import com.genai.app.myai.controller.dto.request.CreateProjectRequestDto;
 import com.genai.app.myai.controller.dto.request.UpdateProjectSourcesRequestDto;
 import com.genai.app.myai.controller.dto.response.GetProjectResponseDto;
 import com.genai.app.myai.controller.dto.response.GetProjectSourceResponseDto;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.core.service.business.vo.FileDetailVO;
+import com.genai.global.dto.PageResponseDto;
+import com.genai.global.dto.ResponseDto;
+import com.genai.global.enums.Response;
+import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +31,19 @@ import java.util.Map;
 public class MyAiController {
 
     private final MyAiService myAiService;
+
+    /**
+     * 프로젝트 조회
+     *
+     * @param projectId 프로젝트 ID
+     */
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ResponseDto<GetProjectResponseDto>> getProject(@PathVariable("projectId") Long projectId) {
+
+        ProjectVO projectVo = myAiService.getProject(projectId);
+
+        return ResponseEntity.ok().body(Response.MYAI_GET_PROJECTS_SUCCESS.toResponseDto(GetProjectResponseDto.of(projectVo)));
+    }
 
     /**
      * 프로젝트 목록 조회
@@ -116,7 +129,7 @@ public class MyAiController {
     public ResponseEntity<ResponseDto<Map<String, Object>>> updateProjectSources(
             @PathVariable("projectId") Long projectId,
             @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
-            @RequestPart("uploadFiles") MultipartFile[] multipartFiles
+            @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles
     ) {
         List<Long> deleteFileDetailIds = updateProjectSourcesRequestDto.getDeleteFileDetailIds();
 

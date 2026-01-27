@@ -7,6 +7,7 @@ import com.genai.app.chat.controller.dto.request.ChatSimulationRequestDto;
 import com.genai.app.chat.controller.dto.response.ChatAiResponseDto;
 import com.genai.app.chat.controller.dto.response.ChatMyAiResponseDto;
 import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
+import com.genai.app.chat.service.ChatService;
 import com.genai.core.constant.CommonConst;
 import com.genai.core.constant.PromptConst;
 import com.genai.global.dto.ResponseDto;
@@ -38,6 +39,7 @@ public class ChatController {
     private final QuestionCoreService questionCoreService;
     private final StreamCoreService streamCoreService;
     private final CommonCodeModuleService commonCodeModuleService;
+    private final ChatService chatService;
     private final MyAiService myAiService;
 
     /**
@@ -53,7 +55,7 @@ public class ChatController {
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
-        long chatId = 1L;
+        long chatId = chatService.getChat(sessionId, query, "MENU-AI").getChatId();
         long promptId = PromptConst.QUESTION_AI_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatId, promptId, chatAiRequestDto.getCategoryCodes());
 
@@ -79,44 +81,13 @@ public class ChatController {
 
         StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
 
-        long chatId = 2L;
+        long chatId = chatService.getChat(sessionId, query, "MENU-LLM").getChatId();
         long promptId = PromptConst.QUESTION_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId, promptId);
 
         questionVO.answerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.CHAT_LLM_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
-                .query(query)
-                .sessionId(sessionId)
-                .documents(Collections.emptyList())
-                .build()));
-    }
-
-    /**
-     * LLM Simulation 질의 답변 요청
-     *
-     * @param chatSimulationRequestDto 질의 정보
-     */
-    @PostMapping("/simulation")
-    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
-
-        String sessionId = chatSimulationRequestDto.getSessionId();
-        String query = chatSimulationRequestDto.getQuery();
-        String context = chatSimulationRequestDto.getContext();
-        String promptContext = chatSimulationRequestDto.getPrompt();
-        int maxTokens = chatSimulationRequestDto.getMaxTokens();
-        double temperature = chatSimulationRequestDto.getTemperature();
-        double topP = chatSimulationRequestDto.getTopP();
-
-        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
-
-        long chatId = 3L;
-        QuestionVO questionVO = questionCoreService.questionSimulation(
-                query, sessionId, chatId, context, promptContext, temperature, topP, maxTokens);
-
-        questionVO.answerStream().subscribe(streamSubscriber);
-
-        return ResponseEntity.ok().body(Response.CHAT_SIMULATION_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
                 .query(query)
                 .sessionId(sessionId)
                 .documents(Collections.emptyList())
@@ -139,7 +110,7 @@ public class ChatController {
 
         ProjectVO projectVO = myAiService.getProject(projectId);
 
-        long chatId = 4L;
+        long chatId = chatService.getChat(sessionId, query, "MENU-MYAI").getChatId();
         long promptId = projectVO.getPromptId();
         String categoryCode = MyAiConst.MYAI_CATEGORY_CODE(projectId);
         QuestionVO questionVO = questionCoreService.questionMyAi(query, sessionId, chatId, promptId, categoryCode);
@@ -150,6 +121,37 @@ public class ChatController {
                 .query(query)
                 .sessionId(sessionId)
                 .documents(questionVO.documents())
+                .build()));
+    }
+
+    /**
+     * LLM Simulation 질의 답변 요청
+     *
+     * @param chatSimulationRequestDto 질의 정보
+     */
+    @PostMapping("/simulation")
+    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
+
+        String sessionId = chatSimulationRequestDto.getSessionId();
+        String query = chatSimulationRequestDto.getQuery();
+        String context = chatSimulationRequestDto.getContext();
+        String promptContext = chatSimulationRequestDto.getPrompt();
+        int maxTokens = chatSimulationRequestDto.getMaxTokens();
+        double temperature = chatSimulationRequestDto.getTemperature();
+        double topP = chatSimulationRequestDto.getTopP();
+
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
+        long chatId = 1;
+        QuestionVO questionVO = questionCoreService.questionSimulation(
+                query, sessionId, chatId, context, promptContext, temperature, topP, maxTokens);
+
+        questionVO.answerStream().subscribe(streamSubscriber);
+
+        return ResponseEntity.ok().body(Response.CHAT_SIMULATION_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
+                .query(query)
+                .sessionId(sessionId)
+                .documents(Collections.emptyList())
                 .build()));
     }
 

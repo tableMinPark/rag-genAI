@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.constant.EmbedConst;
 import com.genai.core.config.properties.ChunkProperty;
+import com.genai.core.constant.EmbedConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;
 import com.genai.core.repository.FileRepository;
@@ -42,9 +42,6 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
     @Override
     public void syncEmbedSources(CollectionType collectionType, long fileId, String categoryCode) {
 
-        // 버전 코드 생성
-        Long version = System.currentTimeMillis();
-
         // 컬렉션 존재 여부 확인
         collectionRepository.findCollectionByCollectionId(collectionType.getCollectionId())
                 .orElseThrow(() -> new NotFoundException(collectionType.getCollectionId()));
@@ -54,10 +51,30 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                 .orElseThrow(() -> new NotFoundException(String.valueOf(fileId)))
                 .getFileDetails();
 
+        // 현재 문서 파일 상세 ID 목록
+        List<Long> fileDetailIds = fileDetailEntities.stream()
+                .map(FileDetailEntity::getFileDetailId)
+                .toList();
+
+        // 삭제 예정 문서 목록 조회
+        List<SourceEntity> deleteSourceEntities = fileDetailIds.isEmpty()
+            ? sourceRepository.findByCollectionIdAndCategoryCode(collectionType.getCollectionId(), categoryCode)
+            : sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIsNotIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
+        List<SourceEntity> existSourceEntities = sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
+
+        List<Long> existsFileDetailIds = existSourceEntities.stream()
+                .map(SourceEntity::getFileDetailId)
+                .toList();
+
+        // 색인 대상 파일 목록
+        List<FileDetailEntity> targetFileDetailEntities = fileDetailEntities.stream()
+                .filter(fileDetailEntity -> !existsFileDetailIds.contains(fileDetailEntity.getFileDetailId()))
+                .toList();
+
         // 색인 대상 목록
         List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
-        for (FileDetailEntity fileDetailEntity : fileDetailEntities) {
-            String fullPath = fileDetailEntity.getUrl();
+        for (FileDetailEntity targetFileDetailEntity : targetFileDetailEntities) {
+            String fullPath = targetFileDetailEntity.getUrl();
 
             // 파일 존재 여부 체크
             if (!new File(fullPath).exists()) {
@@ -77,8 +94,8 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
             List<PassageEntity> passageEntities = new ArrayList<>();
             for (String chunk : chunks) {
                 ChunkEntity chunkEntity = ChunkEntity.builder()
-                        .version(version)
-                        .title(fileDetailEntity.getFileOriginName())
+                        .version(EmbedConst.EMBED_VERSION)
+                        .title(targetFileDetailEntity.getFileOriginName())
                         .subTitle("")
                         .thirdTitle("")
                         .content(chunk)
@@ -89,9 +106,9 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                         .build();
 
                 PassageEntity passageEntity = PassageEntity.builder()
-                        .version(version)
+                        .version(EmbedConst.EMBED_VERSION)
                         .sortOrder(passageEntities.size())
-                        .title(fileDetailEntity.getFileOriginName())
+                        .title(targetFileDetailEntity.getFileOriginName())
                         .subTitle("")
                         .thirdTitle("")
                         .content(chunk)
@@ -106,13 +123,14 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
             // 현재 문서 DB 등록
             SourceEntity sourceEntity = sourceRepository.save(SourceEntity.builder()
-                    .version(version)
+                    .version(EmbedConst.EMBED_VERSION)
                     .sourceType(EmbedConst.EMBED_SOURCE_TYPE)
+                    .selectType(EmbedConst.EMBED_SELECT_TYPE)
                     .categoryCode(categoryCode)
-                    .name(fileDetailEntity.getFileOriginName())
+                    .name(targetFileDetailEntity.getFileOriginName())
                     .content(content)
                     .collectionId(collectionType.getCollectionId())
-                    .fileDetailId(fileDetailEntity.getFileDetailId())
+                    .fileDetailId(targetFileDetailEntity.getFileDetailId())
                     .maxTokenSize(chunkProperty.getTokenSize())
                     .overlapSize(chunkProperty.getOverlapSize())
                     .isAuto(false)
@@ -135,7 +153,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                             .passageId(passageEntity.getPassageId())
                             .sourceId(sourceEntity.getSourceId())
                             .fileDetailId(sourceEntity.getFileDetailId())
-                            .originFileName(fileDetailEntity.getFileOriginName())
+                            .originFileName(targetFileDetailEntity.getFileOriginName())
                             .name(sourceEntity.getName())
                             .title(chunkEntity.getTitle())
                             .subTitle(chunkEntity.getSubTitle())
@@ -144,10 +162,10 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                             .content(chunkEntity.getContent())
                             .subContent(chunkEntity.getSubContent())
                             .context(context.trim())
-                            .url(fileDetailEntity.getUrl())
+                            .url(targetFileDetailEntity.getUrl())
                             .categoryCode(sourceEntity.getCategoryCode())
                             .sourceType(sourceEntity.getSourceType())
-                            .ext(fileDetailEntity.getExt())
+                            .ext(targetFileDetailEntity.getExt())
                             .sysCreateDt(chunkEntity.getSysCreateDt())
                             .sysModifyDt(chunkEntity.getSysModifyDt())
                             .alias(sourceEntity.getCategoryCode())
@@ -161,15 +179,6 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
         // 멀티플 색인
         collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities);
-
-        // 현재 문서 파일 상세 ID 목록
-        List<Long> fileDetailIds = fileDetailEntities.stream()
-                .map(FileDetailEntity::getFileDetailId)
-                .toList();
-
-        // 삭제 예정 문서 목록 조회
-        List<SourceEntity> deleteSourceEntities =
-                sourceRepository.findByCollectionIdAndFileDetailIdNotIn(collectionType.getCollectionId(), fileDetailIds);
 
         // 삭제 대상 ID 목록
         List<String> deleteDocumentIds = new ArrayList<>();
@@ -195,7 +204,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
      */
     @Transactional
     @Override
-    public void deleteEmbedSources(CollectionType collectionType, long fileId) {
+    public void deleteEmbedSources(CollectionType collectionType, long fileId, String categoryCode) {
 
         // 임베딩 삭제 대상 파일 목록 조회
         List<Long> fileDetailIds = fileRepository.findById(fileId)
@@ -206,7 +215,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
         // 삭제 예정 문서 목록 조회
         List<SourceEntity> sourceEntities =
-                sourceRepository.findByCollectionIdAndFileDetailIdIn(collectionType.getCollectionId(), fileDetailIds);
+                sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
 
         // 삭제 대상 ID 목록
         List<String> deleteDocumentIds = new ArrayList<>();

@@ -1,5 +1,6 @@
 'use client'
 
+import { KeyboardEvent } from 'react'
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -14,7 +15,7 @@ import {
   Layers,
 } from 'lucide-react'
 import { Project } from '@/types/domain'
-import { getProjectsApi } from '@/api/myai'
+import { deleteProjectApi, getProjectsApi } from '@/api/myai'
 import { formatDateToYYYYMMDD } from '@/public/ts/commonUtil'
 import { menuInfos } from '@/public/const/menu'
 import { useUiStore } from '@/stores/uiStore'
@@ -45,11 +46,30 @@ export default function MyAiPage() {
   const [createModalIsOpen, setCreateModalIsOpen] = useState(false)
   // 선택한 프로젝트 상태
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   // ###################################################
   // 랜더링 이펙트
   // ###################################################
+  /**
+   * 스크롤 하단 감지 이펙트
+   */
+  useEffect(() => {
+    if (!bottomRef.current) return
+    return observeScrollBottom(
+      bottomRef.current,
+      () => {
+        setPage((prev) => prev + 1)
+        handleGetProjects()
+      },
+      { rootMargin: '100px' },
+    )
+  }, [])
+
+  /**
+   * 초기 프로젝트 목록 조회 이펙트
+   */
   useEffect(() => {
     handleGetProjects()
   }, [])
@@ -72,6 +92,8 @@ export default function MyAiPage() {
           )
           return [...projects, ...prev]
         })
+        setPage(response.result.pageNo)
+        setSize(response.result.pageSize)
         uiStore.reset()
       })
       .catch((reason) => {
@@ -91,23 +113,42 @@ export default function MyAiPage() {
   }
 
   /**
-   * 프로젝트 삭제 핸들러
+   * 프로젝트 삭제 이벤트 핸들러
    * @param e 마우스 이벤트
    * @param project 프로젝트
    */
-  const handleDeleteProject = (e: React.MouseEvent, project: Project) => {
+  const handleDeleteProjectEvent = (e: React.MouseEvent, project: Project) => {
     e.stopPropagation()
     modalStore.setConfirm(
       '프로젝트 삭제',
       '정말로 이 프로젝트를 삭제하시겠습니까?',
-      () => {
-        // TODO: 프로젝트 삭제 API 호출
+      async () => {
+        setSelectedProject(null)
+        handleDeleteProject(project)
+      },
+    )
+  }
+
+  /**
+   * 프로젝트 삭제 핸들러
+   * @param project 프로젝트
+   */
+  const handleDeleteProject = async (project: Project) => {
+    uiStore.setLoading('프로젝트 삭제중 입니다.')
+    await deleteProjectApi(project.projectId)
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
         setProjects((prev) =>
           prev.filter((p) => p.projectId !== project.projectId),
         )
-        setSelectedProject(null)
-      },
-    )
+        uiStore.reset()
+      })
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError('프로젝트를 삭제할 수 없습니다.', () =>
+          handleDeleteProject(project),
+        )
+      })
   }
 
   /**
@@ -116,8 +157,48 @@ export default function MyAiPage() {
    */
   const handleOpenModifyModal = (e: React.MouseEvent) => {
     e.stopPropagation()
-    console.log(selectedProject)
     setModifyModalIsOpen(true)
+  }
+
+  /**
+   * 히딘 감지 핸들러
+   * @param target 하단 감지 Element
+   * @param onIntersect 핸들러
+   * @param options 옵션
+   */
+  const observeScrollBottom = (
+    target: Element,
+    onIntersect: () => void,
+    options?: IntersectionObserverInit,
+  ) => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          onIntersect()
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0,
+        ...options,
+      },
+    )
+    observer.observe(target)
+    return () => observer.disconnect()
+  }
+
+  /**
+   * 키 다운 이벤트 핸들러
+   * @param e 키보드 이벤트
+   */
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      setProjects([])
+      setPage(1)
+      setSize(10)
+      handleGetProjects()
+    }
   }
 
   // ###################################################
@@ -144,6 +225,7 @@ export default function MyAiPage() {
               placeholder="프로젝트 검색..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
+              onKeyDown={handleKeyDown}
               className="focus:border-primary focus:ring-primary w-64 rounded-lg border border-gray-200 bg-white py-2 pr-4 pl-9 text-sm outline-none focus:ring-1"
             />
           </div>
@@ -195,7 +277,7 @@ export default function MyAiPage() {
                           학습 문서 관리
                         </button>
                         <button
-                          onClick={(e) => handleDeleteProject(e, project)}
+                          onClick={(e) => handleDeleteProjectEvent(e, project)}
                           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -244,9 +326,13 @@ export default function MyAiPage() {
           </p>
         </div>
       )}
+      <div ref={bottomRef} />
       {createModalIsOpen && (
         <ModalMyAiCreate
-          onCreate={() => setCreateModalIsOpen(false)}
+          onCreate={() => {
+            setCreateModalIsOpen(false)
+            handleGetProjects()
+          }}
           onClose={() => setCreateModalIsOpen(false)}
         />
       )}
@@ -256,6 +342,7 @@ export default function MyAiPage() {
           onModify={() => {
             setModifyModalIsOpen(false)
             setSelectedProject(null)
+            handleGetProjects()
           }}
           onClose={() => {
             setModifyModalIsOpen(false)

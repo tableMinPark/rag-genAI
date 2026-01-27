@@ -81,7 +81,6 @@ export default function ModalMyAiCreate({
       .then((response) => {
         console.log(`📡 ${response.message}`)
         onCreate()
-        modalStore.setInfo('프로젝트 생성 완료', '프로젝트가 생성되었습니다.')
       })
       .catch((reason) => {
         console.error(reason)

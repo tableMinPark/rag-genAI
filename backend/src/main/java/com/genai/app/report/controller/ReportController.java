@@ -38,7 +38,7 @@ public class ReportController {
         String title = reportTextRequestDto.getTitle();
         String content = reportTextRequestDto.getContext();
 
-        long chatId = 5L;
+        long chatId = 2L;
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, List.of(content), sessionId, chatId);
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
@@ -65,7 +65,7 @@ public class ReportController {
         String promptContext = reportFileRequestDto.getPrompt();
         String title = reportFileRequestDto.getTitle();
 
-        long chatId = 5L;
+        long chatId = 2L;
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFiles, sessionId, chatId);
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()

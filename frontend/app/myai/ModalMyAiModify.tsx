@@ -1,4 +1,6 @@
+import { getProjectSourcesApi, updateProjectSourcesApi } from '@/api/myai'
 import { useModalStore } from '@/stores/modalStore'
+import { useUiStore } from '@/stores/uiStore'
 import { FileDetail, Project } from '@/types/domain'
 import {
   CheckCircle2,
@@ -23,11 +25,15 @@ export default function ModalMyAiModify({
   project,
 }: ModalMyAiModifyProps) {
   const modalStore = useModalStore()
+  const uiStore = useUiStore()
 
   // ###################################################
   // 상태 관리
   // ###################################################
   const [projectFileDetails, setProjectFileDetails] = useState<FileDetail[]>([])
+  const [deleteProjectFileDetailIds, setDeleteProjectFileDetailIds] = useState<
+    number[]
+  >([])
   const [projectFiles, setProjectFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
@@ -46,16 +52,19 @@ export default function ModalMyAiModify({
    * 프로젝트 파일 목록 조회 핸들러
    */
   const handleGetProjectFiles = async () => {
-    // TODO: 프로젝트 학습 문서 API 호출
-    console.log(project.projectId)
-    setProjectFileDetails([
-      {
-        fileDetailId: 1,
-        fileOriginName: '기존_학습문서_v1.pdf',
-        ext: 'pdf',
-        fileSize: 1024 * 500,
-      },
-    ])
+    uiStore.setLoading('프로젝트 파일 목록을 불러오는중 입니다.')
+    await getProjectSourcesApi(project.projectId)
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
+        setProjectFileDetails(response.result)
+        uiStore.reset()
+      })
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError('프로젝트를 삭제할 수 없습니다.', () =>
+          handleGetProjectFiles(),
+        )
+      })
   }
 
   /**
@@ -63,11 +72,19 @@ export default function ModalMyAiModify({
    * @param fileDetail 파일 상세
    */
   const handleRemoveProjectFileDetail = (fileDetail: FileDetail) => {
-    if (confirm('이 문서를 학습 데이터에서 제외하시겠습니까?')) {
-      setProjectFileDetails((prev) =>
-        prev.filter((f) => f.fileDetailId !== fileDetail.fileDetailId),
-      )
-    }
+    modalStore.setConfirm(
+      '프로젝트 문서 제외',
+      '이 문서를 학습 데이터에서 제외하시겠습니까?',
+      () => {
+        setDeleteProjectFileDetailIds((prev) => [
+          ...prev,
+          fileDetail.fileDetailId,
+        ])
+        setProjectFileDetails((prev) =>
+          prev.filter((f) => f.fileDetailId !== fileDetail.fileDetailId),
+        )
+      },
+    )
   }
 
   /**
@@ -92,16 +109,24 @@ export default function ModalMyAiModify({
   /**
    * 프로젝트 수정 핸들러
    */
-  const handleModifyProject = () => {
+  const handleModifyProject = async () => {
     setIsLoading(true)
-    setTimeout(() => {
-      onModify()
-      modalStore.setInfo(
-        '프로젝트 수정 완료',
-        '문서 목록이 업데이트되었습니다.\n변경된 내용으로 재학습을 시작합니다.',
-      )
-      setIsLoading(false)
-    }, 1500)
+    await updateProjectSourcesApi(
+      project.projectId,
+      deleteProjectFileDetailIds,
+      projectFiles,
+    )
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
+        onModify()
+        setIsLoading(false)
+      })
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError('프로젝트 문서를 수정할 수 없습니다.', () =>
+          handleModifyProject(),
+        )
+      })
   }
 
   // ###################################################

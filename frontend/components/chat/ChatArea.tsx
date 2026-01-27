@@ -59,7 +59,7 @@ export default function ChatArea({
    */
   const handleSendQuery = () => {
     if (!query.trim()) {
-      modalStore.setInfo('질문 필수', '질문을 입력하세요')
+      modalStore.setError('질문 필수', '질문을 입력하세요')
       return
     } else if (isStreaming) {
       return

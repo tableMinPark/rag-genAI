@@ -11,9 +11,10 @@ import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { GreetingMessage } from '@/public/const/greeting'
 import { StreamEvent } from '@/types/streamEvent'
 import { useModalStore } from '@/stores/modalStore'
-import NotFound from '@/components/common/NotFound'
+import NotFound from '@/components/NotFound'
 import { Project } from '@/types/domain'
 import { useUiStore } from '@/stores/uiStore'
+import { getProjectApi } from '@/api/myai'
 
 function MyAiContent() {
   const menuInfo = menuInfos.myai
@@ -80,19 +81,25 @@ function MyAiContent() {
    * 프로젝트 단건 조회 핸들러
    */
   const handleGetProject = async () => {
-    // TODO: 프로젝트 단건 조회 API 호출
-    await new Promise((resolve) => {
-      setTimeout(resolve, 1000)
-    })
-    setProject({
-      projectId: projectId,
-      projectName: '프로젝트 테스트',
-      projectDesc: '',
-      sysCreateDt: '',
-      sysModifyDt: '',
-      sourceCount: 10,
-      chunkCount: 10,
-    })
+    uiStore.setLoading('프로젝트를 불러오는 중입니다')
+    await getProjectApi(projectId)
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
+        setProject({
+          projectId: response.result.projectId,
+          projectName: response.result.projectName,
+          projectDesc: response.result.projectDesc,
+          sysCreateDt: response.result.sysCreateDt,
+          sysModifyDt: response.result.sysModifyDt,
+          sourceCount: response.result.sourceCount,
+          chunkCount: response.result.chunkCount,
+        })
+        uiStore.reset()
+      })
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError('프로젝트를 조회할 수 없습니다.', handleGetProject)
+      })
   }
 
   /**

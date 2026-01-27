@@ -9,7 +9,7 @@ import { useModalStore } from '@/stores/modalStore'
 import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { StreamEvent } from '@/types/streamEvent'
-import NotFound from '@/components/common/NotFound'
+import NotFound from '@/components/NotFound'
 import { menuInfos } from '@/public/const/menu'
 
 function LlmContent() {

@@ -18,5 +18,5 @@ public interface EmbedCoreService {
      * @param collectionType 컬렉션 타입
      * @param fileId 파일 ID
      */
-    void deleteEmbedSources(CollectionType collectionType, long fileId);
+    void deleteEmbedSources(CollectionType collectionType, long fileId, String categoryCode);
 }

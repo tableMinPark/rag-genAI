@@ -76,40 +76,42 @@ export default React.memo(function AnswerMessage({
    * Mermaid 렌더링 이펙트
    */
   useEffect(() => {
-    if (!containerRef.current) return
+    const container = containerRef.current
+    if (!container) return
+
+    let cancelled = false
+    let rafId: number
 
     const renderMermaid = async () => {
-      const blocks = containerRef.current!.querySelectorAll('.mermaid-block')
+      if (cancelled || !containerRef.current) return
+
+      const blocks = container.querySelectorAll('.mermaid-block')
 
       for (let i = 0; i < blocks.length; i++) {
         const block = blocks[i] as HTMLElement
-        if (block.getAttribute('data-processed') === 'true') continue
-        let code = block.textContent || ''
-        code = code.trim()
-        const id = `${uid}-${i}`
+        if (block.dataset.processed === 'true') continue
+
+        const code = (block.textContent || '').trim()
+        const id = `${uid}-${i}-${content.length}`
 
         try {
-          if (await mermaid.parse(code)) {
-            const { svg } = await mermaid.render(id, code)
-            block.innerHTML = svg
-            block.setAttribute('data-processed', 'true')
-
-            block.style.display = 'flex'
-            block.style.justifyContent = 'center'
-            block.style.padding = '20px'
-            block.style.backgroundColor = '#f9fafb'
-            block.style.borderRadius = '8px'
-            block.style.overflowX = 'auto'
-          }
-        } catch (error) {
-          block.innerHTML = `<pre class="text-xs text-red-500 p-2 bg-red-50 rounded">${code}</pre>`
-          block.setAttribute('data-processed', 'true')
+          const { svg } = await mermaid.render(id, code)
+          block.innerHTML = svg
+          block.dataset.processed = 'true'
+        } catch {
+          block.innerHTML = `<pre>${code}</pre>`
+          block.dataset.processed = 'true'
         }
       }
     }
 
-    requestAnimationFrame(() => renderMermaid())
-  })
+    rafId = requestAnimationFrame(renderMermaid)
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+    }
+  }, [convertContent])
 
   return (
     <div className="mb-6 flex items-start gap-3">

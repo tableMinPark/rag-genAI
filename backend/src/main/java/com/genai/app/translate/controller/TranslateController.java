@@ -44,7 +44,7 @@ public class TranslateController {
         boolean containDic = translateTextRequestDto.isContainDic();
         String context = translateTextRequestDto.getContext();
 
-        long chatId = 7L;
+        long chatId = 4L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, context, sessionId, chatId, containDic);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
@@ -72,7 +72,7 @@ public class TranslateController {
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();
 
-        long chatId = 7L;
+        long chatId = 4L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, multipartFile, sessionId, chatId, containDic);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
