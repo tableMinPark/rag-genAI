@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
@@ -32,6 +32,7 @@ function MyAiContent() {
   const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
   // 프로젝트 리스트 상태
   const [project, setProject] = useState<Project | null>(null)
 
@@ -66,12 +67,16 @@ function MyAiContent() {
           greetingMessageIndex++
         }
       }, 10)
+      return () => clearInterval(greetingMessageInterval)
     }
   }, [project])
 
   useEffect(() => {
     uiStore.setLoading('프로젝트를 로딩중입니다')
     handleGetProject()
+    return () => {
+      streamRef.current?.close()
+    }
   }, [])
 
   // ###################################################
@@ -112,7 +117,7 @@ function MyAiContent() {
     // 스트림 시작 상태 변경
     setIsStreaming(true)
     // 세션 기반 SSE 연결
-    await streamApi(
+    streamRef.current = streamApi(
       sessionId,
       new StreamEvent({
         onConnect: async (_) => {
@@ -129,17 +134,21 @@ function MyAiContent() {
               console.error(reason)
               modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
+              streamRef.current = null
             })
         },
         onDisconnect: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onException: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onError: (_) => {
           modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
+          streamRef.current = null
         },
         onInference: (event) => {
           setMessages((prev) => {
@@ -176,7 +185,7 @@ function MyAiContent() {
             const currentMessage = messages[currentMessageIndex]
             messages[currentMessageIndex] = {
               ...currentMessage,
-              documents: JSON.parse(event.data).documents,
+              documents: JSON.parse(event.data),
             }
             return messages
           })
@@ -194,7 +203,10 @@ function MyAiContent() {
         console.log(`📡 ${response.message}`)
       })
       .catch((reason) => console.error(reason))
-      .finally(() => setIsStreaming(false))
+      .finally(() => {
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   // ###################################################

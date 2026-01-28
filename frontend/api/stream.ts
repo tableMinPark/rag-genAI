@@ -8,10 +8,10 @@ import { StreamEvent } from '@/types/streamEvent'
  *
  * @param sessionId 세션 ID
  */
-export const streamApi = async (
+export const streamApi = (
   sessionId: string,
   streamEvent: StreamEvent,
-): Promise<void> => {
+): EventSource => {
   const eventSource = new EventSource(
     `${config.apiBasePath}/stream/${sessionId}`,
   )
@@ -93,7 +93,7 @@ export const streamApi = async (
     eventSource.close()
     streamEvent.onError(event)
   })
-  return Promise.resolve()
+  return eventSource
 }
 
 /**

@@ -2,6 +2,8 @@ import { Project } from '@/types/domain'
 import { client } from './client'
 import { ApiResponse, PageResponse } from '@/types/api'
 
+export interface GetProjectResponseDto extends Project {}
+
 export interface GetProjectsResponseDto extends PageResponse {
   content: Project[]
 }
@@ -11,6 +13,18 @@ export interface GetProjectSources {
   fileOriginName: string
   ext: string
   fileSize: number
+}
+
+/**
+ * 프로젝트 조회 API
+ *
+ * @param projectId 프로젝트 ID
+ */
+export const getProjectApi = async (
+  projectId: number,
+): Promise<ApiResponse<GetProjectResponseDto>> => {
+  const response = await client.get(`/myai/${projectId}`)
+  return response.data
 }
 
 /**

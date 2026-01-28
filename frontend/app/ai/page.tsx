@@ -31,6 +31,7 @@ function AiContent() {
   const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
   // 카테고리 목록
   const [categories, setCategories] = useState<Category[]>([])
   // 선택한 카테고리 목록
@@ -75,7 +76,10 @@ function AiContent() {
         greetingMessageIndex++
       }
     }, 10)
-    return () => clearInterval(greetingMessageInterval)
+    return () => {
+      clearInterval(greetingMessageInterval)
+      streamRef.current?.close()
+    }
   }, [])
 
   // ###################################################
@@ -91,7 +95,7 @@ function AiContent() {
     // 스트림 시작 상태 변경
     setIsStreaming(true)
     // 세션 기반 SSE 연결
-    await streamApi(
+    streamRef.current = streamApi(
       sessionId,
       new StreamEvent({
         onConnect: async (_) => {
@@ -108,17 +112,21 @@ function AiContent() {
               console.error(reason)
               modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
+              streamRef.current = null
             })
         },
         onDisconnect: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onException: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onError: (_) => {
           modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
+          streamRef.current = null
         },
         onInference: (event) => {
           setMessages((prev) => {
@@ -155,7 +163,7 @@ function AiContent() {
             const currentMessage = messages[currentMessageIndex]
             messages[currentMessageIndex] = {
               ...currentMessage,
-              documents: JSON.parse(event.data).documents,
+              documents: JSON.parse(event.data),
             }
             return messages
           })
@@ -193,7 +201,10 @@ function AiContent() {
         console.log(`📡 ${response.message}`)
       })
       .catch((reason) => console.error(reason))
-      .finally(() => setIsStreaming(false))
+      .finally(() => {
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   /**

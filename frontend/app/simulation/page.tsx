@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import { Play, Square, RotateCcw } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
@@ -18,7 +18,7 @@ const md = new MarkdownIt({
 })
 
 // 기본 설정값
-const DEFAULT_SYSTEM_PROMPT = '참고 문서를 기반으로 답변합니다.'
+const DEFAULT_SYSTEM_PROMPT = ''
 const DEFAULT_TEMPERATURE = 0.7
 const DEFAULT_TOP_P = 0.95
 const DEFAULT_MAX_TOKENS = 1200
@@ -46,8 +46,18 @@ export default function SimulationPage() {
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
   // 실행 및 결과 상태
   const [output, setOutput] = useState('')
+
+  // ###################################################
+  // 랜더링 이펙트
+  // ###################################################
+  useEffect(() => {
+    return () => {
+      streamRef.current?.close()
+    }
+  }, [])
 
   // ###################################################
   // 핸들러
@@ -85,7 +95,7 @@ export default function SimulationPage() {
       `**설정된 파라미터:**\n- Temperature: \`${temperature}\`\n- Top P: \`${topP}\`\n- Max Tokens: \`${maxTokens}\`\n\n**System Prompt:**\n\`\`\`text\n${prompt.trim()}\n\`\`\`\n\n**Reference Context:**\n${context ? `\`\`\`text\n${context.trim()}\n\`\`\`` : '(참고 문서 없음)'}`,
     )
     // 세션 기반 SSE 연결
-    await streamApi(
+    streamRef.current = streamApi(
       sessionId,
       new StreamEvent({
         onConnect: async (_) => {
@@ -106,17 +116,21 @@ export default function SimulationPage() {
               console.error(reason)
               modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
+              streamRef.current = null
             })
         },
         onDisconnect: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onException: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onError: (_) => {
           modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
+          streamRef.current = null
         },
         onInferenceStart: (_) => {
           setOutput((prev) =>
@@ -147,7 +161,10 @@ export default function SimulationPage() {
         console.log(`📡 ${response.message}`)
       })
       .catch((reason) => console.error(reason))
-      .finally(() => setIsStreaming(false))
+      .finally(() => {
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   // ###################################################
@@ -172,32 +189,32 @@ export default function SimulationPage() {
         {/* [왼쪽] 입력 폼 영역 */}
         <div className="flex h-full flex-1 flex-col gap-4">
           {/* 1. 질의문 (Input) */}
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
               사용자 질의 (Query)
             </label>
             <input
               type="text"
-              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
+              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
               placeholder="LLM에게 던질 질문을 입력하세요."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
           {/* 2. 시스템 프롬프트 (Textarea) */}
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              시스템 프롬프트 (Prompt)
+              시스템 프롬프트 (Prompt) <span className="text-red-500">*</span>
             </label>
             <textarea
-              className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
+              className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
               placeholder="AI의 페르소나나 지시사항을 입력하세요."
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
           {/* 3. 참고 문서 (Textarea) */}
-          <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
               참고 문서 (Context)
             </label>
@@ -209,12 +226,12 @@ export default function SimulationPage() {
             />
           </div>
           {/* 4. 파라미터 설정 */}
-          <div className="grid shrink-0 grid-cols-3 gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="grid shrink-0 grid-cols-3 gap-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             {/* Temperature */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <label className="text-xs font-bold text-gray-600">
-                  Temperature
+                  Temperature <span className="text-red-500">*</span>
                 </label>
                 <span className="text-primary text-xs font-bold">
                   {temperature}
@@ -233,7 +250,9 @@ export default function SimulationPage() {
             {/* Top P */}
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
-                <label className="text-xs font-bold text-gray-600">Top P</label>
+                <label className="text-xs font-bold text-gray-600">
+                  Top P <span className="text-red-500">*</span>
+                </label>
                 <span className="text-primary text-xs font-bold">{topP}</span>
               </div>
               <input
@@ -250,7 +269,7 @@ export default function SimulationPage() {
             <div className="flex flex-col gap-2">
               <div className="flex justify-between">
                 <label className="text-xs font-bold text-gray-600">
-                  Max Tokens
+                  Max Tokens <span className="text-red-500">*</span>
                 </label>
                 <span className="text-primary text-xs font-bold">
                   {maxTokens}
@@ -287,6 +306,7 @@ export default function SimulationPage() {
               </button>
             ) : (
               <button
+                disabled={!prompt}
                 onClick={(e) =>
                   handleSendQuery(
                     query,
@@ -297,7 +317,7 @@ export default function SimulationPage() {
                     maxTokens,
                   )
                 }
-                className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-95"
+                className="bg-primary hover:bg-primary-hover flex flex-1 items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-bold text-white shadow-md transition-all active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 <Play className="h-4 w-4 fill-current" />
                 테스트 실행

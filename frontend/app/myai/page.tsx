@@ -15,7 +15,7 @@ import {
   Layers,
 } from 'lucide-react'
 import { Project } from '@/types/domain'
-import { deleteProjectApi, getProjectsApi } from '@/api/myai'
+import { deleteProjectApi, getProjectApi, getProjectsApi } from '@/api/myai'
 import { formatDateToYYYYMMDD } from '@/public/ts/commonUtil'
 import { menuInfos } from '@/public/const/menu'
 import { useUiStore } from '@/stores/uiStore'
@@ -99,6 +99,40 @@ export default function MyAiPage() {
       .catch((reason) => {
         console.error(reason)
         uiStore.setError('프로젝트를 조회할 수 없습니다.', handleGetProjects)
+      })
+  }
+
+  /**
+   * 프로젝트 단건 조회 핸들러
+   */
+  const handleGetProject = async (projectId: number) => {
+    uiStore.setLoading('프로젝트를 불러오는 중입니다')
+    await getProjectApi(projectId)
+      .then((response) => {
+        console.log(`📡 ${response.message}`)
+        setProjects((prev) => {
+          const projects = prev.map((project) =>
+            project.projectId === response.result.projectId
+              ? {
+                  projectId: response.result.projectId,
+                  projectName: response.result.projectName,
+                  projectDesc: response.result.projectDesc,
+                  sysCreateDt: response.result.sysCreateDt,
+                  sysModifyDt: response.result.sysModifyDt,
+                  sourceCount: response.result.sourceCount,
+                  chunkCount: response.result.chunkCount,
+                }
+              : project,
+          )
+          return projects
+        })
+        uiStore.reset()
+      })
+      .catch((reason) => {
+        console.error(reason)
+        uiStore.setError('프로젝트를 조회할 수 없습니다.', () =>
+          handleGetProject(projectId),
+        )
       })
   }
 
@@ -341,8 +375,8 @@ export default function MyAiPage() {
           project={selectedProject}
           onModify={() => {
             setModifyModalIsOpen(false)
+            handleGetProject(selectedProject.projectId)
             setSelectedProject(null)
-            handleGetProjects()
           }}
           onClose={() => {
             setModifyModalIsOpen(false)

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
@@ -25,6 +25,7 @@ function LlmContent() {
   const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
 
   // ###################################################
   // 랜더링 이펙트
@@ -52,7 +53,10 @@ function LlmContent() {
       }
     }, 10)
 
-    return () => clearInterval(greetingMessageInterval)
+    return () => {
+      clearInterval(greetingMessageInterval)
+      streamRef.current?.close()
+    }
   }, [])
 
   // ###################################################
@@ -63,12 +67,14 @@ function LlmContent() {
    * @param query 사용자 질의
    */
   const handleSendQuery = async (query: string) => {
+    // 기존 스트림 정리
+    streamRef.current?.close()
     // 스트림 상태 체크
     if (isStreaming) return
     // 스트림 시작 상태 변경
     setIsStreaming(true)
     // 세션 기반 SSE 연결
-    await streamApi(
+    streamRef.current = streamApi(
       sessionId,
       new StreamEvent({
         onConnect: async (_) => {
@@ -85,17 +91,21 @@ function LlmContent() {
               console.error(reason)
               modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
               setIsStreaming(false)
+              streamRef.current = null
             })
         },
         onDisconnect: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onException: (_) => {
           setIsStreaming(false)
+          streamRef.current = null
         },
         onError: (_) => {
           modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
           setIsStreaming(false)
+          streamRef.current = null
         },
         onInference: (event) => {
           setMessages((prev) => {
@@ -138,7 +148,10 @@ function LlmContent() {
         console.log(`📡 ${response.message}`)
       })
       .catch((reason) => console.error(reason))
-      .finally(() => setIsStreaming(false))
+      .finally(() => {
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   // ###################################################
