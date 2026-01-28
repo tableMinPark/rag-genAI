@@ -4,7 +4,6 @@ import { ApiResponse } from '@/types/api'
 export interface GenerateReportResponse {
   sessionId: string
   msgId: string
-  content: string
 }
 
 /**
@@ -46,10 +45,10 @@ export const generateReportFileApi = async (
   sessionId: string,
   prompt: string,
   title: string,
-  uploadFile: File,
+  uploadFile: File[],
 ): Promise<ApiResponse<GenerateReportResponse>> => {
   const formData = new FormData()
-  formData.append('uploadFile', uploadFile)
+  uploadFile.forEach((file) => formData.append('uploadFile', file))
   formData.append(
     'requestDto',
     new Blob([JSON.stringify({ sessionId, prompt, title })], {

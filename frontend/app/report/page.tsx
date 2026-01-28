@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import MarkdownIt from 'markdown-it'
-import { FileText, Play } from 'lucide-react'
+import { FileText, Play, X } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { generateReportFileApi, generateReportTextApi } from '@/api/report'
+import { menuInfos } from '@/public/const/menu'
+import { useModalStore } from '@/stores/modalStore'
+import { streamApi } from '@/api/stream'
+import { StreamEvent } from '@/types/streamEvent'
 
-// ###################################################
-// 상수 정의 (Const)
-// ###################################################
-// Markdown 파서 설정
 const md = new MarkdownIt({
   html: true,
   breaks: true,
@@ -18,104 +18,134 @@ const md = new MarkdownIt({
 })
 
 export default function ReportPage() {
+  const menuInfo = menuInfos.report
+  const modalStore = useModalStore()
+
   // ###################################################
-  // 상태 정의 (State)
+  // 상태 관리
   // ###################################################
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 입력 텍스트
   const [title, setTitle] = useState('')
-  const [promptText, setPromptText] = useState('')
-  const [contextText, setContextText] = useState('')
+  // 시스템 프롬프트 입력 상태 (보고서 양식)
+  const [prompt, setPrompt] = useState('')
+  // 참고 문서 입력 상태
+  const [context, setContext] = useState('')
+  // 파일 상태
+  const [selectedFile, setSelectedFile] = useState<File[]>([])
+  // 스트리밍 상태
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
   // 출력 텍스트
-  const [outputText, setOutputText] = useState('')
-  // 파일 관련
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  // 프로세스 상태
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [output, setOutput] = useState('')
 
   // ###################################################
-  // 핸들러 (Handler)
+  // 랜더링 이펙트
   // ###################################################
-  /**
-   * 프롬프트(양식) 입력 핸들러
-   */
-  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setPromptText(e.target.value)
-  }
+  useEffect(() => {
+    return () => {
+      streamRef.current?.close()
+    }
+  }, [])
 
-  /**
-   * 참고 자료(Context) 입력 핸들러
-   */
-  const handleContextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setContextText(e.target.value)
-  }
-
+  // ###################################################
+  // 핸들러
+  // ###################################################
   /**
    * 파일 업로드 핸들러
    */
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setSelectedFile(file)
-      setContextText(`📄 ${file.name}`)
-      setOutputText('')
+  const handleSelectFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      setSelectedFile((prev) => [...prev, ...files])
     }
   }
 
   /**
-   * 파일 선택 초기화 핸들러
+   * 새로운 파일 삭제 핸들러
+   * @param index 파일 인덱스
    */
-  const clearFile = () => {
-    setSelectedFile(null)
-    setContextText('')
-    setOutputText('')
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+  const handleRemoveFile = (index: number) => {
+    setSelectedFile((prev) => {
+      const now = prev.filter((_, i) => i !== index)
+      if (now.length == 0) {
+        setContext('')
+      }
+      return now
+    })
   }
 
   /**
    * 보고서 생성 핸들러
    */
-  const handleGenerate = async () => {
-    if (!title || !promptText || (!contextText && !selectedFile)) {
-      alert('보고서 제목 및 양식과 참고 자료를 모두 입력해주세요.')
-      return
-    }
-
-    setIsGenerating(true)
-
-    if (!selectedFile) {
-      await generateReportTextApi(sessionId, promptText, title, contextText)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.result.content))
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setOutputText(
-            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-          )
-          setIsGenerating(false)
-        })
-    } else {
-      await generateReportFileApi(sessionId, promptText, title, selectedFile)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.result.content))
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setOutputText(
-            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-          )
-          setIsGenerating(false)
-        })
-    }
-
-    setIsGenerating(false)
+  const handleGenerateReport = async () => {
+    // 스트림 상태 체크
+    if (isStreaming) return
+    // 스트림 시작 상태 변경
+    setIsStreaming(true)
+    // 결과 값 초기화
+    setOutput('')
+    // 세션 기반 SSE 연결
+    streamRef.current = streamApi(
+      sessionId,
+      new StreamEvent({
+        onConnect: async (_) => {
+          console.log(`📡 보고서 생성 요청 : ${title}`)
+          if (selectedFile.length == 0) {
+            await generateReportTextApi(sessionId, prompt, title, context)
+              .then((response) => {
+                console.log(`📡 ${response.message}`)
+              })
+              .catch((reason) => {
+                console.error(reason)
+                modalStore.setError(
+                  '서버 통신 에러',
+                  '보고서 생성에 실패했습니다.',
+                )
+                setIsStreaming(false)
+                streamRef.current = null
+              })
+          } else {
+            await generateReportFileApi(sessionId, prompt, title, selectedFile)
+              .then((response) => {
+                console.log(`📡 ${response.message}`)
+              })
+              .catch((reason) => {
+                console.error(reason)
+                modalStore.setError(
+                  '서버 통신 에러',
+                  '보고서 생성에 실패했습니다.',
+                )
+                setIsStreaming(false)
+                streamRef.current = null
+              })
+          }
+        },
+        onDisconnect: (_) => {
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onException: (_) => {
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onError: (_) => {
+          modalStore.setError('서버 통신 에러', '보고서 생성에 실패했습니다.')
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onInference: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+        onAnswerStart: (_) => {
+          setOutput('')
+        },
+        onAnswer: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+      }),
+    )
   }
 
   // ###################################################
@@ -128,77 +158,83 @@ export default function ReportPage() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <FileText className="text-primary h-6 w-6" />
-              보고서 생성
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              텍스트 및 파일 기반 보고서 초안 생성
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
       </div>
-
       {/* 메인 영역: 좌우 분할 */}
       <div className="flex min-h-0 flex-1 gap-4">
         {/* [왼쪽] 입력 영역 컨테이너 (위/아래 2개 박스) */}
         <div className="flex flex-1 flex-col gap-4">
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              보고서 제목 (Report title)
+              보고서 제목 (Report title) <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
+              className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
               placeholder="보고서 제목을 입력하세요."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           {/* 1. 보고서 양식/프롬프트 입력 (상단) */}
-          <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="border-b border-gray-100 bg-gray-50 px-4 py-3">
-              <span className="text-sm font-bold text-gray-700">
-                보고서 양식 (Prompt)
-              </span>
-            </div>
+          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              보고서 양식 (Prompt) <span className="text-red-500">*</span>
+            </label>
             <textarea
-              className="flex-1 resize-none p-4 text-sm leading-relaxed text-gray-800 focus:outline-none"
+              className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
               placeholder="작성할 보고서의 목차, 스타일, 필수 포함 사항 등을 입력하세요."
-              value={promptText}
-              onChange={handlePromptChange}
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
 
-          {/* 2. 참고 자료/문맥 입력 + 파일 업로드 (하단) */}
-          <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
-              <span className="text-sm font-bold text-gray-700">
-                참고 자료 (Context)
-              </span>
-              {selectedFile && (
-                <button
-                  onClick={clearFile}
-                  className="text-xs font-medium text-red-500 hover:text-red-700 hover:underline"
-                >
-                  파일 취소
-                </button>
-              )}
-            </div>
-
-            <textarea
-              className={`flex-1 resize-none p-4 text-sm leading-relaxed focus:outline-none ${
-                selectedFile
-                  ? 'cursor-not-allowed bg-gray-50 text-gray-500'
-                  : 'bg-white text-gray-800'
-              }`}
-              placeholder="보고서 작성에 참고할 내용을 입력하거나, 아래에서 파일을 업로드하세요."
-              value={contextText}
-              onChange={handleContextChange}
-              disabled={!!selectedFile}
-            />
-
+          <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <label className="mb-2 block text-sm font-bold text-gray-700">
+              참고 자료 (Context) <span className="text-red-500">*</span>
+            </label>
+            {selectedFile.length == 0 ? (
+              /* 참고 자료 텍스트 */
+              <textarea
+                className="focus:border-primary focus:ring-primary mb-4 w-full flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
+                placeholder="보고서 작성에 참고할 내용을 입력하거나, 아래에서 파일을 업로드하세요."
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+              />
+            ) : (
+              /* 추가된 파일 목록 */
+              <div className="flex-1 py-2.5 focus:outline-none">
+                <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-2">
+                  {selectedFile.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText className="h-4 w-4 shrink-0 text-blue-500" />
+                        <span className="truncate text-gray-700">
+                          {file.name.substring(0, 55) +
+                            (file.name.length > 50 ? '...' : '')}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFile(index)}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {/* 파일 업로드 영역 */}
-            <div className="border-t border-gray-100 bg-gray-50 p-4">
+            <div className="border-t border-gray-100 bg-gray-50">
               <label className="hover:border-primary group flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:bg-red-50">
                 <div className="group-hover:text-primary flex items-center gap-2 text-gray-500">
                   <svg
@@ -217,31 +253,35 @@ export default function ReportPage() {
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                   </svg>
                   <span className="text-sm font-medium">
-                    {selectedFile ? '파일 변경하기' : '참고 파일 업로드'}
+                    {selectedFile.length > 0
+                      ? '참고 파일 추가'
+                      : '참고 파일 등록'}
                   </span>
                 </div>
                 <input
                   type="file"
                   className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleFileUpload}
+                  multiple
+                  onChange={handleSelectFiles}
                 />
               </label>
             </div>
           </div>
         </div>
-
         {/* [중앙] 생성 버튼 */}
         <div className="flex flex-col items-center justify-center">
           <button
-            onClick={handleGenerate}
+            onClick={handleGenerateReport}
             disabled={
-              isGenerating || !promptText || (!contextText && !selectedFile)
+              isStreaming ||
+              !title ||
+              !prompt ||
+              (!context && selectedFile.length == 0)
             }
             className="bg-primary hover:bg-primary-hover group relative flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
             title="보고서 생성하기"
           >
-            {isGenerating ? (
+            {isStreaming ? (
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
             ) : (
               <svg
@@ -263,19 +303,18 @@ export default function ReportPage() {
             )}
           </button>
         </div>
-
         {/* [오른쪽] 생성 결과 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* 헤더 */}
-          <div className="flex h-[52px] items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="flex h-13 items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
             <span className="text-sm font-bold text-gray-700">
               생성 결과 (Result)
             </span>
 
-            {outputText && (
+            {output && (
               <button
                 className="hover:text-primary text-gray-400 transition-colors"
-                onClick={() => navigator.clipboard.writeText(outputText)}
+                onClick={() => navigator.clipboard.writeText(output)}
                 title="결과 복사"
               >
                 <svg
@@ -295,13 +334,12 @@ export default function ReportPage() {
               </button>
             )}
           </div>
-
           {/* 결과 뷰어 */}
           <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
-            {outputText ? (
+            {output ? (
               <div
                 className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
-                dangerouslySetInnerHTML={{ __html: md.render(outputText) }}
+                dangerouslySetInnerHTML={{ __html: md.render(output) }}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
