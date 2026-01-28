@@ -1,5 +1,6 @@
 package com.genai.core.service.business.vo;
 
+import com.genai.core.constant.StreamConst;
 import lombok.*;
 
 @ToString
@@ -7,15 +8,13 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class AnswerVO {
+public class StreamEventVO {
 
     private String id;
 
     private String content;
 
-    private String finishReason;
-
-    private Boolean isInference;
+    private StreamConst.Event event;
 
     /**
      * 공백 문자 치환

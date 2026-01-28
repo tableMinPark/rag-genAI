@@ -7,7 +7,7 @@ import java.util.List;
 
 @Builder
 public record QuestionVO(
-    Flux<List<AnswerVO>> answerStream,
+    Flux<List<StreamEventVO>> answerStream,
     List<DocumentVO> documents,
     long msgId
 ) {}

@@ -42,12 +42,13 @@ public class StreamController {
         // 세션 만료 처리
         streamSubscriber.getEmitter().onTimeout(() -> {
             streamCoreService.deleteStream(sessionId);
-            log.info("사용자 SSE 타임 아웃 : {}", sessionId);
+            log.warn("사용자 SSE 타임 아웃 : {}", sessionId);
         });
 
         // 에러 처리
         streamSubscriber.getEmitter().onError(throwable -> {
-            log.error("사용자 SSE 에러 : {} | {}", sessionId, throwable.getMessage());
+            streamCoreService.deleteStream(sessionId);
+            log.warn("사용자 SSE 에러 : {} | {}", sessionId, throwable.getMessage());
         });
 
         return streamSubscriber.getEmitter();
@@ -60,6 +61,8 @@ public class StreamController {
      */
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<ResponseDto<StreamCancelResponseDto>> cancelStream(@PathVariable("sessionId") String sessionId) {
+
+        log.info("사용자 스트림 중지 요청 : {}", sessionId);
 
         // 답변 스트림 삭제
         streamCoreService.deleteStream(sessionId);

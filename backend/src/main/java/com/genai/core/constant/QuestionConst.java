@@ -1,6 +1,13 @@
 package com.genai.core.constant;
 
+import java.util.List;
+
 public class QuestionConst {
+
+    public static final List<String> REFERENCE_VALID_PATTERN = List.of(
+            "관련(\\s)?s문서를(\\s)?s찾을(\\s)?수(\\s)?없습니다.",
+            "관련된(\\s)?질문만(\\s)?답변이(\\s)?가능해요"
+    );
 
     // 멀티턴 참고 대화 이력 수
     public static final int     MULTITURN_TURNS              = 3;
