@@ -74,6 +74,6 @@ public class PromptCoreServiceImpl implements PromptCoreService {
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        return modelRepository.generateAnswerStr(userInput, context, CommonUtil.generateRandomId(), promptEntity);
+        return modelRepository.generateAnswerSyncStr(userInput, context, CommonUtil.generateRandomId(), promptEntity);
     }
 }

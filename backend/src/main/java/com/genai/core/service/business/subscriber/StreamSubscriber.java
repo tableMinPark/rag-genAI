@@ -5,6 +5,7 @@ import com.genai.core.service.business.vo.StreamEventVO;
 import com.genai.core.service.business.vo.StreamVO;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.reactivestreams.Subscription;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.BaseSubscriber;
 
@@ -12,7 +13,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Slf4j
-public class StreamSubscriber extends BaseSubscriber<List<StreamEventVO>> {
+public class StreamSubscriber extends BaseSubscriber<StreamEventVO> {
 
     private final StreamVO stream;
     private StreamConst.Event currentEvent = StreamConst.Event.INITIALIZE;
@@ -30,39 +31,37 @@ public class StreamSubscriber extends BaseSubscriber<List<StreamEventVO>> {
     }
 
     @Override
-    protected void hookOnNext(@NonNull List<StreamEventVO> streamEvents) {
+    protected void hookOnNext(@NonNull StreamEventVO streamEvent) {
         if (stream.isCancelled()) {
             cancel();
             return;
         }
 
         try {
-            for (StreamEventVO streamEvent : streamEvents) {
-                synchronized (StreamSubscriber.this) {
-                    StreamConst.Event nextEvent = streamEvent.getEvent();
+            synchronized (StreamSubscriber.this) {
+                StreamConst.Event nextEvent = streamEvent.getEvent();
 
-                    if (!currentEvent.equals(nextEvent)) {
-                        // 이전 이벤트 종료 신호 전송
-                        if (!StreamConst.Event.INITIALIZE.equals(currentEvent)) {
-                            stream.getEmitter().send(SseEmitter.event()
-                                    .name(currentEvent.done)
-                                    .data(currentEvent.done));
-                        }
+                if (!currentEvent.equals(nextEvent)) {
+                    // 이전 이벤트 종료 신호 전송
+                    if (!StreamConst.Event.INITIALIZE.equals(currentEvent)) {
                         stream.getEmitter().send(SseEmitter.event()
-                                .name(nextEvent.start)
-                                .data(nextEvent.start));
-
-                        currentEvent = nextEvent;
+                                .name(currentEvent.done)
+                                .data(currentEvent.done));
                     }
-                }
-
-                String content = streamEvent.getConvertContent();
-
-                if (!content.isBlank()) {
                     stream.getEmitter().send(SseEmitter.event()
-                            .name(currentEvent.process)
-                            .data(content));
+                            .name(nextEvent.start)
+                            .data(nextEvent.start));
+
+                    currentEvent = nextEvent;
                 }
+            }
+
+            String content = streamEvent.getConvertContent();
+
+            if (!content.isBlank()) {
+                stream.getEmitter().send(SseEmitter.event()
+                        .name(currentEvent.process)
+                        .data(content));
             }
         } catch (IllegalStateException | IOException ignored) {
         }

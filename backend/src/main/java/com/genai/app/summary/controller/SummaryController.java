@@ -1,12 +1,12 @@
 package com.genai.app.summary.controller;
 
-import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.business.SummaryCoreService;
-import com.genai.core.service.business.vo.SummaryVO;
-import com.genai.global.enums.Response;
 import com.genai.app.summary.controller.dto.request.SummaryFileRequestDto;
 import com.genai.app.summary.controller.dto.request.SummaryTextRequestDto;
 import com.genai.app.summary.controller.dto.response.SummaryResponseDto;
+import com.genai.core.service.business.SummaryCoreService;
+import com.genai.core.service.business.vo.SummaryVO;
+import com.genai.global.dto.ResponseDto;
+import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +42,6 @@ public class SummaryController {
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_TEXT_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(summaryVO.getMsgId())
-                .content(summaryVO.getContent())
                 .build()));
     }
 
@@ -68,7 +67,6 @@ public class SummaryController {
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_FILE_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(summaryVO.getMsgId())
-                .content(summaryVO.getContent())
                 .build()));
     }
 }

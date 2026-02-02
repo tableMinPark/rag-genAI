@@ -30,28 +30,16 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
      * @param chatId 대화 ID
      * @param chatDetailId 대화 상세 ID
      * @param answer 답변
-     */
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateChatDetail(Long chatId, Long chatDetailId, String answer) {
-        this.updateChatDetail(chatId, chatDetailId, answer, Collections.emptyList());
-    }
-
-    /**
-     * 대화 이력 저장
-     *
-     * @param chatId 대화 ID
-     * @param chatDetailId 대화 상세 ID
-     * @param answer 답변
      * @param chatPassageEntities 참고 문서 목록
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateChatDetail(Long chatId, Long chatDetailId, String answer, List<ChatPassageEntity> chatPassageEntities) {
+    public void updateChatDetail(Long chatId, Long chatDetailId, String rewriteQuery, String answer, List<ChatPassageEntity> chatPassageEntities) {
         // 1. 답변 내용 업데이트
         ChatDetailEntity chatDetailEntity = chatDetailRepository.findById(chatDetailId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
+        chatDetailEntity.setRewriteQuery(rewriteQuery);
         chatDetailEntity.setAnswer(answer);
         chatDetailRepository.save(chatDetailEntity);
 

@@ -32,6 +32,7 @@ public class ChatDetailEntity {
     @Comment("질문")
     private String query;
 
+    @Setter
     @Column(name = "rewrite_query")
     @Comment("질문")
     private String rewriteQuery;

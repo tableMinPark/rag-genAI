@@ -15,7 +15,6 @@ export interface ChatLlmResponse {
 export interface ChatMyAiResponse {
   query: string
   sessionId: string
-  documents?: Document[]
 }
 
 export interface ChatSimulationResponse {

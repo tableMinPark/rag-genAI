@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,10 +57,10 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 응답 문자열
      */
     @Override
-    public String generateAnswerStr(String query, String context, String sessionId, PromptEntity promptEntity) {
+    public String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity) {
 
         StringBuilder answerBuilder = new StringBuilder();
-        this.generateAnswer(query, context, null, Collections.emptyList(), sessionId, promptEntity).forEach(answerEntity -> {
+        this.generateAnswerSync(query, context, null, Collections.emptyList(), sessionId, promptEntity).forEach(answerEntity -> {
             if (!answerEntity.getIsInference()) {
                 answerBuilder.append(answerEntity.getContent());
             }
@@ -68,26 +69,9 @@ public class VllmModelRepositoryImpl implements ModelRepository {
         return answerBuilder.toString().trim();
     }
 
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
     @Override
-    public String generateAnswerStr(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-
-        StringBuilder answerBuilder = new StringBuilder();
-        this.generateAnswer(query, context, chatState, conversations, sessionId, promptEntity).forEach(answerEntity -> {
-            if (!answerEntity.getIsInference()) {
-                answerBuilder.append(answerEntity.getContent());
-            }
-        });
-
-        return answerBuilder.toString().trim();
+    public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+        return Mono.just(generateAnswerSync(query, context, chatState, conversations, sessionId, promptEntity));
     }
 
     /**
@@ -100,7 +84,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 응답
      */
     @Override
-    public List<AnswerEntity> generateAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
@@ -154,26 +138,13 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * 답변 실시간 생성 요청
      *
      * @param query        질의문
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 Flux
-     */
-    @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-        return this.generateStreamAnswer(query, null, null, conversations, sessionId, promptEntity);
-    }
-
-    /**
-     * 답변 실시간 생성 요청
-     *
-     * @param query        질의문
      * @param context      검색 결과 데이터
      * @param sessionId    세션 식별자
      * @param promptEntity 프롬 프트
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
@@ -206,7 +177,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .mapNotNull(raw -> raw.replaceFirst("^data:", "").trim())
                 .filter(raw -> !raw.equals("[DONE]"))
                 .filter(raw -> !raw.isEmpty())
-                .mapNotNull(json -> {
+                .flatMapIterable(json -> {
                     try {
                         VllmAnswerStreamResponse vllmAnswerStreamResponse = objectMapper.readValue(json, VllmAnswerStreamResponse.class);
                         return vllmAnswerStreamResponse.getChoices().stream()

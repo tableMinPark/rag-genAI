@@ -44,7 +44,6 @@ public class ReportController {
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(reportVO.getMsgId())
-                .content(reportVO.getContent())
                 .build()));
     }
 
@@ -71,7 +70,6 @@ public class ReportController {
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(reportVO.getMsgId())
-                .content(reportVO.getContent())
                 .build()));
     }
 }

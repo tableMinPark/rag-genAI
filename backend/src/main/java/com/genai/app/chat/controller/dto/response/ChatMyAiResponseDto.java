@@ -1,9 +1,6 @@
 package com.genai.app.chat.controller.dto.response;
 
-import com.genai.core.service.business.vo.DocumentVO;
 import lombok.*;
-
-import java.util.List;
 
 @Builder
 @Getter
@@ -15,6 +12,4 @@ public class ChatMyAiResponseDto {
     private String sessionId;
 
     private String query;
-
-    private List<DocumentVO> documents;
 }

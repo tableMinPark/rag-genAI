@@ -64,7 +64,6 @@ public class ChatController {
         return ResponseEntity.ok().body(Response.CHAT_AI_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
                 .query(query)
                 .sessionId(sessionId)
-                .documents(questionVO.documents())
                 .build()));
     }
 
@@ -90,7 +89,6 @@ public class ChatController {
         return ResponseEntity.ok().body(Response.CHAT_LLM_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
                 .query(query)
                 .sessionId(sessionId)
-                .documents(Collections.emptyList())
                 .build()));
     }
 
@@ -120,7 +118,6 @@ public class ChatController {
         return ResponseEntity.ok().body(Response.CHAT_MYAI_SUCCESS.toResponseDto(ChatMyAiResponseDto.builder()
                 .query(query)
                 .sessionId(sessionId)
-                .documents(questionVO.documents())
                 .build()));
     }
 
@@ -151,7 +148,6 @@ public class ChatController {
         return ResponseEntity.ok().body(Response.CHAT_SIMULATION_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
                 .query(query)
                 .sessionId(sessionId)
-                .documents(Collections.emptyList())
                 .build()));
     }
 

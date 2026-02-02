@@ -13,23 +13,26 @@ import com.genai.core.repository.wrapper.Rerank;
 import com.genai.core.repository.wrapper.Search;
 import com.genai.core.service.business.QuestionCoreService;
 import com.genai.core.service.business.vo.DocumentVO;
+import com.genai.core.service.business.vo.QuestionContextVO;
 import com.genai.core.service.business.vo.QuestionVO;
 import com.genai.core.service.business.vo.StreamEventVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
+import com.genai.core.service.module.QuestionModuleService;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
 import com.genai.global.utils.DecisionDetectUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -37,84 +40,15 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class QuestionCoreServiceImpl implements QuestionCoreService {
 
+    private final QuestionModuleService questionModuleService;
+    private final ChatDetailRepository chatDetailRepository;
     private final SearchRepository searchRepository;
     private final ModelRepository modelRepository;
     private final PromptRepository promptRepository;
     private final ChatRepository chatRepository;
-    private final ChatDetailRepository chatDetailRepository;
     private final CollectionTypeFactory collectionTypeFactory;
     private final ChatHistoryModuleService chatHistoryModuleService;
-    private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
-
-    /**
-     * 질문 재작성
-     *
-     * @param query     질문
-     * @param sessionId 세션 ID
-     * @return 재작성 질문
-     */
-    public String rewriteQuery(String query, long chatId, String sessionId) {
-
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = transactionTemplate.execute(status ->
-                chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS)).stream()
-                        .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
-                        .toList());
-
-        PromptEntity promptEntity = PromptEntity.builder()
-                .promptContent(QuestionConst.REWRITE_QUERY_PROMPT)
-                .temperature(QuestionConst.REWRITE_QUERY_TEMPERATURE)
-                .topP(QuestionConst.REWRITE_QUERY_TOP_P)
-                .build();
-
-        String rewriteQuery = "";
-        if (chatDetailEntities != null && !chatDetailEntities.isEmpty()) {
-            List<ConversationVO> conversationVos = chatDetailEntities.stream()
-                    .map(chatDetailEntity -> ConversationVO.builder()
-                            .query(chatDetailEntity.getRewriteQuery())
-                            .answer(chatDetailEntity.getAnswer())
-                            .build())
-                    .toList();
-
-            // 질의 재작성
-            rewriteQuery = modelRepository.generateAnswerStr(query, null, null, conversationVos, sessionId, promptEntity);
-        }
-
-        return rewriteQuery.trim().isBlank() ? query : rewriteQuery;
-    }
-
-    /**
-     * 대화 상태 요약
-     *
-     * @param sessionId 세션 ID
-     * @return 요약 답변 문자열
-     */
-    public String summaryState(String chatState, long chatId, String sessionId) {
-
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = transactionTemplate.execute(status ->
-                chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.SUMMARY_UPDATE_TURNS)).stream()
-                        .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
-                        .toList());
-
-        PromptEntity promptEntity = PromptEntity.builder()
-                .promptContent(QuestionConst.SUMMARY_UPDATE_PROMPT)
-                .temperature(QuestionConst.SUMMARY_UPDATE_TEMPERATURE)
-                .topP(QuestionConst.SUMMARY_UPDATE_TOP_P)
-                .build();
-
-        List<ConversationVO> conversationVos = chatDetailEntities == null
-                ? Collections.emptyList()
-                : chatDetailEntities.stream()
-                .map(chatDetailEntity -> ConversationVO.builder()
-                        .query(chatDetailEntity.getRewriteQuery())
-                        .answer(chatDetailEntity.getAnswer())
-                        .build())
-                .toList();
-
-        return modelRepository.generateAnswerStr(null, null, chatState, conversationVos, sessionId, promptEntity);
-    }
 
     /**
      * AI 질문 & 답변
@@ -157,7 +91,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      * @param categoryCodes  검색 필터
      * @return 답변 VO
      */
-    @Transactional
     @Override
     public QuestionVO questionByCollectionId(String query, String sessionId, long chatId, long promptId, CollectionType collectionType, List<String> categoryCodes) {
 
@@ -169,131 +102,109 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
-                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
-                .toList();
-
-        // 질의 재작성 (멀티턴)
-        String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
-        if (rewriteQuery.trim().isBlank()) rewriteQuery = query;
-
-        // 이전 대화 요약 문자열
-        String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
-        // 이전 대화 목록 Vo 목록
-
-        List<ConversationVO> conversations = Collections.emptyList();
-        if (!chatDetailEntities.isEmpty()) {
-            conversations = chatDetailEntities.stream()
-                    .map(chatDetailEntity -> ConversationVO.builder()
-                            .query(chatDetailEntity.getRewriteQuery())
-                            .answer(chatDetailEntity.getAnswer())
-                            .build())
-                    .toList();
-        }
-
-        // 검색 결과 목록 (key 를 통한 중복 제거)
-        Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
-
-        // 키워드 검색
-        List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
-        keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
-
-        // 벡터 검색
-        List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, SearchConst.VECTOR_TOP_K, categoryCodes);
-        vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
-
-        // 키워드 검색 결과, 벡터 검색 결과 변환
-        List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
-                .filter(searchEntity -> searchEntity.getScore() >= SearchConst.SEARCH_SCORE_MIN)
-                .map(searchEntity -> Rerank.builder()
-                        .document(searchEntity.getFields())
-                        .build())
-                .toList());
-
-        // 상위 RERANK_TOP_K 개 추출
-        List<Rerank> finalTopRerankEntities = rerankEntities.subList(0, Math.min(SearchConst.RERANK_TOP_K, rerankEntities.size()));
-
-        // Context 생성
-        StringBuilder contextBuilder = new StringBuilder();
-        for (Rerank rerank : finalTopRerankEntities) {
-            contextBuilder.append("# ").append(rerank.getDocument().getTitle()).append("\n");
-            contextBuilder.append("## ").append(rerank.getDocument().getSubTitle()).append("\n");
-            contextBuilder.append("### ").append(rerank.getDocument().getThirdTitle()).append("\n");
-            contextBuilder.append(rerank.getDocument().getCompactContent()).append("\n");
-            contextBuilder.append(rerank.getDocument().getSubContent()).append("\n");
-        }
-
-        // 답변 이력 생성
+        // 새로운 대화 등록
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
                 .query(query)
-                .rewriteQuery(rewriteQuery)
                 .build());
 
-        // 답변 Flux
-        StringBuilder answerBuilder = new StringBuilder();
-        Flux<List<StreamEventVO>> answerStream = modelRepository
-                .generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatState, conversations, sessionId, promptEntity)
-                .map(answerEntities -> answerEntities.stream()
-                        .map(answerEntity -> StreamEventVO.builder()
-                                .id(answerEntity.getId())
-                                .content(answerEntity.getContent())
-                                .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
-                                .build())
-                        .toList())
-                .doOnNext(streamVos -> {
-                    for (StreamEventVO streamVo : streamVos) {
-                        if (StreamConst.Event.ANSWER.equals(streamVo.getEvent())) {
-                            answerBuilder.append(streamVo.getContent());
-                        }
+        // 이전 대화 요약 문자열
+        String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
+
+        // 이전 대화 상세 내역
+        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId)
+                .collectList()
+                .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ conversationMono 완료"))
+                ;
+
+        // 질의 재정의
+        Mono<String> rewriteQueryMono = conversationMono
+                .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
+                .doOnSubscribe(s -> log.info("🔥 [2] rewriteQueryMono 실제 실행 (LLM 요청)"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ rewriteQueryMono 완료"))
+                ;
+
+        // 검색
+        Mono<List<Rerank>> rerankFlux = rewriteQueryMono.flatMap(rewriteQuery ->
+                Mono.fromCallable(() -> {
+                    // 검색 결과 목록 (key 를 통한 중복 제거)
+                    Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
+
+                    // 키워드 검색
+                    List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
+                    keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+
+                    // 벡터 검색
+                    List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, SearchConst.VECTOR_TOP_K, categoryCodes);
+                    vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+
+                    // 키워드 검색 결과, 벡터 검색 결과 변환
+                    List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
+                            .filter(searchEntity -> searchEntity.getScore() >= SearchConst.SEARCH_SCORE_MIN)
+                            .map(searchEntity -> Rerank.builder()
+                                    .document(searchEntity.getFields())
+                                    .build())
+                            .toList());
+
+                    // 상위 RERANK_TOP_K 개 추출
+                    return rerankEntities.subList(0, Math.min(SearchConst.RERANK_TOP_K, rerankEntities.size()));
+
+                }).subscribeOn(Schedulers.boundedElastic()))
+                .doOnSubscribe(s -> log.info("🔥 [3] rerankMono 실제 실행 (벡터/키워드 검색)"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ rerankMono 완료"))
+                ;
+
+        Mono<QuestionContextVO> contextMono = Mono.zip(conversationMono, rewriteQueryMono, rerankFlux)
+                .map(tuple -> QuestionContextVO.builder()
+                        .conversations(tuple.getT1())
+                        .query(query)
+                        .rewriteQuery(tuple.getT2())
+                        .reranks(tuple.getT3())
+                        .build())
+                .doOnSubscribe(s -> log.info("🔥 [4] contextMono 조합 시작"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ contextMono 완료"))
+                ;
+
+        // 답변
+        StringBuilder answerAccumulator = new StringBuilder();
+
+        // 답변 Entity
+        Flux<StreamEventVO> answerFlux = contextMono.flatMapMany(ctx -> {
+                    List<ConversationVO> conversations = ctx.getConversations();
+                    String rewriteQuery = ctx.getRewriteQuery();
+                    List<Rerank> rerankEntities = ctx.getReranks();
+
+                    StringBuilder contextBuilder = new StringBuilder();
+                    for (Rerank rerank : rerankEntities) {
+                        contextBuilder.append("# ").append(rerank.getDocument().getTitle()).append("\n");
+                        contextBuilder.append("## ").append(rerank.getDocument().getSubTitle()).append("\n");
+                        contextBuilder.append("### ").append(rerank.getDocument().getThirdTitle()).append("\n");
+                        contextBuilder.append(rerank.getDocument().getCompactContent()).append("\n");
+                        contextBuilder.append(rerank.getDocument().getSubContent()).append("\n");
                     }
+
+                    // 답변 요청
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatState, conversations, sessionId, promptEntity);
                 })
-                .doOnComplete(() -> {
-                    Mono.fromRunnable(() -> {
-                                String answer = answerBuilder.toString().trim();
-                                // 참고 문서 목록
-                                List<ChatPassageEntity> chatPassageEntities = finalTopRerankEntities.stream()
-                                        .map(rerankEntity -> {
-                                            String context = rerankEntity.getDocument().getTitle() + "\n" +
-                                                    rerankEntity.getDocument().getSubTitle() + "\n" +
-                                                    rerankEntity.getDocument().getThirdTitle() + "\n" +
-                                                    rerankEntity.getDocument().getContent() + "\n" +
-                                                    rerankEntity.getDocument().getSubContent() + "\n";
-
-                                            context = context.replace("\\n", "\n");
-
-                                            return ChatPassageEntity.builder()
-                                                    .msgId(chatDetailEntity.getMsgId())
-                                                    .fileDetailId(rerankEntity.getDocument().getFileDetailId())
-                                                    .sourceType(rerankEntity.getDocument().getSourceType())
-                                                    .categoryCode(rerankEntity.getDocument().getCategoryCode())
-                                                    .content(context)
-                                                    .build();
-
-                                        })
-                                        .toList();
-
-                                // 대화 이력 업데이트
-                                chatHistoryModuleService.updateChatDetail(chatId, chatDetailEntity.getMsgId(), answer, chatPassageEntities);
-
-                                // 대화 상태 감지 및 변경
-                                if (DecisionDetectUtil.detect(query, answer)) {
-                                    String newChatState = summaryState(chatState, chatId, sessionId);
-                                    chatHistoryModuleService.updateChatState(chatId, newChatState);
-                                }
-                            })
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .subscribe();
-                })
-                .doOnError(e -> log.error("스트림 에러 발생: {}", e.getMessage()));
+                .doOnNext(answer -> answerAccumulator.append(answer.getContent()))
+                .doOnSubscribe(s -> log.info("🔥 [5] 답변 생성 스트림 시작"))
+                .map(answerEntity -> StreamEventVO.builder()
+                        .id(answerEntity.getId())
+                        .content(answerEntity.getContent())
+                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .build())
+                .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"))
+                ;
 
         // 참고 문서 Flux
-        Flux<List<StreamEventVO>> referenceFlux = Flux.just(finalTopRerankEntities)
-                .map(referenceDocuments -> {
-                    String answer = answerBuilder.toString().trim();
-
-                    String content = "{}";
+        Mono<StreamEventVO> referenceMono = rerankFlux
+                .map(reranks -> {
+                    String answer = answerAccumulator.toString().trim();
 
                     StringBuilder referencePatternBuilder = new StringBuilder();
                     for (int index = 0; index < QuestionConst.REFERENCE_VALID_PATTERN.size(); index++) {
@@ -306,9 +217,12 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
 
                     Pattern referencePattern = Pattern.compile(referencePatternBuilder.toString());
+
+                    String content = "{}";
+
                     if (!referencePattern.matcher(answer).find()) {
                         try {
-                            content = objectMapper.writeValueAsString(referenceDocuments.stream()
+                            content = objectMapper.writeValueAsString(reranks.stream()
                                     .map(rerank -> DocumentVO.builder()
                                             .title(rerank.getDocument().getTitle())
                                             .subTitle(rerank.getDocument().getSubContent())
@@ -327,15 +241,69 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         }
                     }
 
-                    return List.of(StreamEventVO.builder()
+                    return StreamEventVO.builder()
                             .id(sessionId)
                             .event(StreamConst.Event.REFERENCE)
                             .content(content)
-                            .build());
+                            .build();
                 });
 
+        // 대화 이력 업데이트
+        Mono<Void> chatHistoryMono = contextMono.flatMap(ctx -> {
+            String answer = answerAccumulator.toString().trim();
+            List<ConversationVO> conversations = ctx.getConversations();
+            String rewriteQuery = ctx.getRewriteQuery();
+            List<Rerank> rerankEntities = ctx.getReranks();
+
+                // 1. 대화 상태 요약
+                Mono<Void> summaryMono = !DecisionDetectUtil.detect(query, answer)
+                    ? Mono.empty()
+                    : questionModuleService.summaryState(chatState, conversations, sessionId)
+                        .flatMap(newChatState ->
+                                Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
+
+                // 2. passage + answer 저장
+                Mono<Void> saveMono = Mono.fromRunnable(() -> {
+                    List<ChatPassageEntity> chatPassageEntities =
+                        rerankEntities.stream()
+                                .map(rerank -> {
+                                    String context =
+                                            rerank.getDocument().getTitle() + "\n" +
+                                            rerank.getDocument().getSubTitle() + "\n" +
+                                            rerank.getDocument().getThirdTitle() + "\n" +
+                                            rerank.getDocument().getContent() + "\n" +
+                                            rerank.getDocument().getSubContent() + "\n";
+
+                                    context = context.replace("\\n", "\n");
+
+                                    return ChatPassageEntity.builder()
+                                            .msgId(chatDetailEntity.getMsgId())
+                                            .fileDetailId(rerank.getDocument().getFileDetailId())
+                                            .sourceType(rerank.getDocument().getSourceType())
+                                            .categoryCode(rerank.getDocument().getCategoryCode())
+                                            .content(context)
+                                            .build();
+                                })
+                                .toList();
+
+                            chatHistoryModuleService.updateChatDetail(
+                                    chatId,
+                                    chatDetailEntity.getMsgId(),
+                                    rewriteQuery,
+                                    answer,
+                                    chatPassageEntities
+                            );
+                        });
+
+                return Mono.when(summaryMono, saveMono).subscribeOn(Schedulers.boundedElastic());
+            });
+
+        Flux<StreamEventVO> answerStream = Flux
+                .concat(answerFlux, referenceMono)
+                .concatWith(chatHistoryMono.then(Mono.empty()));
+
         return QuestionVO.builder()
-                .answerStream(Flux.concat(answerStream, referenceFlux))
+                .answerStream(answerStream)
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
@@ -360,70 +328,84 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
-        // 이전 대화 목록 조회
-        List<ChatDetailEntity> chatDetailEntities = chatDetailRepository.findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, PageRequest.of(0, QuestionConst.MULTITURN_TURNS)).stream()
-                .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
-                .toList();
-
-        // 질의 재작성 (멀티턴)
-        String rewriteQuery = this.rewriteQuery(query, chatId, sessionId);
-
-        // 이전 대화 요약 문자열
-        String chatState = chatEntity.getState();
-
-        // 이전 대화 목록 Vo 목록
-        List<ConversationVO> conversations = Collections.emptyList();
-        if (!chatDetailEntities.isEmpty()) {
-            conversations = chatDetailEntities.stream()
-                    .map(chatDetailEntity -> ConversationVO.builder()
-                            .query(chatDetailEntity.getRewriteQuery())
-                            .answer(chatDetailEntity.getAnswer())
-                            .build())
-                    .toList();
-        }
-
-        // 답변 이력 생성
+        // 새로운 대화 등록
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
                 .query(query)
-                .rewriteQuery(rewriteQuery)
                 .build());
 
-        // 답변 Flux
-        StringBuilder answerBuilder = new StringBuilder();
-        Flux<List<StreamEventVO>> answerStream = modelRepository
-                .generateStreamAnswerAsync(rewriteQuery, chatState, conversations, sessionId, promptEntity)
-                .map(answerEntities -> answerEntities.stream()
-                        .map(answerEntity -> StreamEventVO.builder()
-                                .id(answerEntity.getId())
-                                .content(answerEntity.getContent())
-                                .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
-                                .build())
-                        .toList())
-                .doOnNext(streamEventVos -> {
-                    for (StreamEventVO streamEventVo : streamEventVos) {
-                        if (!StreamConst.Event.ANSWER.equals(streamEventVo.getEvent())) {
-                            answerBuilder.append(streamEventVo.getContent());
-                        }
-                    }
+        // 이전 대화 요약 문자열
+        String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
+
+        // 이전 대화 상세 내역
+        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId)
+                .collectList()
+                .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ conversationMono 완료"))
+                ;
+
+        // 질의 재정의
+        Mono<String> rewriteQueryMono = conversationMono
+                .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
+                .doOnSubscribe(s -> log.info("🔥 [2] rewriteQueryMono 실제 실행 (LLM 요청)"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ rewriteQueryMono 완료"))
+                ;
+
+        Mono<QuestionContextVO> contextMono = Mono.zip(conversationMono, rewriteQueryMono)
+                .map(tuple -> QuestionContextVO.builder()
+                        .conversations(tuple.getT1())
+                        .query(query)
+                        .rewriteQuery(tuple.getT2())
+                        .reranks(Collections.emptyList())
+                        .build())
+                .doOnSubscribe(s -> log.info("🔥 [3] contextMono 조합 시작"))
+                .cache()
+                .doOnSuccess(s -> log.info("✅ contextMono 완료"))
+                ;
+
+        // 답변
+        StringBuilder answerAccumulator = new StringBuilder();
+
+        // 답변 Entity
+        Flux<StreamEventVO> answerFlux = contextMono
+                .flatMapMany(ctx -> {
+                    List<ConversationVO> conversations = ctx.getConversations();
+                    String rewriteQuery = ctx.getRewriteQuery();
+
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, null, chatState, conversations, sessionId, promptEntity);
                 })
-                .doOnComplete(() -> {
-                    String answer = answerBuilder.toString().trim();
-                    Mono.fromRunnable(() -> {
-                                chatHistoryModuleService.updateChatDetail(chatId, chatDetailEntity.getMsgId(), answer);
-                                if (DecisionDetectUtil.detect(query, answer)) {
-                                    String newChatState = summaryState(chatState, chatId, sessionId);
-                                    chatHistoryModuleService.updateChatState(chatId, newChatState);
-                                }
-                            })
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .subscribe();
-                })
-                .doOnError(e -> log.error("스트림 에러 발생: {}", e.getMessage()));
+                .doOnNext(answer -> answerAccumulator.append(answer.getContent()))
+                .doOnSubscribe(s -> log.info("🔥 [4] 답변 생성 스트림 시작"))
+                .map(answerEntity -> StreamEventVO.builder()
+                        .id(answerEntity.getId())
+                        .content(answerEntity.getContent())
+                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .build())
+                .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"));
+
+        // 대화 이력 업데이트
+        Mono<Void> chatHistoryMono = contextMono.flatMap(ctx -> {
+            String answer = answerAccumulator.toString().trim();
+            List<ConversationVO> conversations = ctx.getConversations();
+            String rewriteQuery = ctx.getRewriteQuery();
+            List<Rerank> rerankEntities = ctx.getReranks();
+
+            // 1. 대화 상태 요약
+            Mono<Void> summaryMono = !DecisionDetectUtil.detect(query, answer)
+                    ? Mono.empty()
+                    : questionModuleService.summaryState(chatState, conversations, sessionId)
+                    .flatMap(newChatState ->
+                            Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
+
+            return Mono.when(summaryMono).subscribeOn(Schedulers.boundedElastic());
+        });
+
+        Flux<StreamEventVO> answerStream = answerFlux.concatWith(chatHistoryMono.then(Mono.empty()));
 
         return QuestionVO.builder()
                 .answerStream(answerStream)
-                .documents(Collections.emptyList())
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
@@ -464,34 +446,15 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .build());
 
         // 답변 Flux
-        StringBuilder answerBuilder = new StringBuilder();
-        Flux<List<StreamEventVO>> answerStream = modelRepository
-                .generateStreamAnswerAsync(query, context, null, Collections.emptyList(), sessionId, promptEntity)
-                .map(answerEntities -> answerEntities.stream()
-                        .map(answerEntity -> StreamEventVO.builder()
-                                .id(answerEntity.getId())
-                                .content(answerEntity.getContent())
-                                .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
-                                .build())
-                        .toList())
-                .doOnNext(streamEventVos -> {
-                    for (StreamEventVO streamEventVo : streamEventVos) {
-                        if (!StreamConst.Event.ANSWER.equals(streamEventVo.getEvent())) {
-                            answerBuilder.append(streamEventVo.getContent());
-                        }
-                    }
-                })
-                .doOnComplete(() -> {
-                    String answer = answerBuilder.toString().trim();
-                    Mono.fromRunnable(() -> chatHistoryModuleService.updateChatDetail(chatId, chatDetailEntity.getMsgId(), answer))
-                            .subscribeOn(Schedulers.boundedElastic())
-                            .subscribe();
-                })
-                .doOnError(e -> log.error("스트림 에러 발생: {}", e.getMessage()));
+        Flux<StreamEventVO> answerFlux = modelRepository.generateStreamAnswerAsync(query, context, null, Collections.emptyList(), sessionId, promptEntity)
+                .map(answerEntity -> StreamEventVO.builder()
+                        .id(answerEntity.getId())
+                        .content(answerEntity.getContent())
+                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .build());
 
         return QuestionVO.builder()
-                .answerStream(answerStream)
-                .documents(Collections.emptyList())
+                .answerStream(answerFlux)
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }

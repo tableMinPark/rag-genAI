@@ -168,7 +168,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
             while (!contextQueue.isEmpty()) {
                 // 병렬 처리
                 contextQueue.poll().parallelStream().forEach(context -> {
-                    String translateContent = modelRepository.generateAnswerStr(queryBuilder.toString(), context, CommonUtil.generateRandomId(), promptEntity);
+                    String translateContent = modelRepository.generateAnswerSyncStr(queryBuilder.toString(), context, CommonUtil.generateRandomId(), promptEntity);
                     translateContentBuilder.append(translateContent).append("\n");
                 });
             }

@@ -193,7 +193,6 @@ export default function ReportPage() {
               onChange={(e) => setPrompt(e.target.value)}
             />
           </div>
-
           <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
               참고 자료 (Context) <span className="text-red-500">*</span>

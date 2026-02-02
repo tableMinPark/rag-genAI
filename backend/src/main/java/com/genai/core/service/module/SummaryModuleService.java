@@ -13,7 +13,7 @@ public interface SummaryModuleService {
      * @param contents 본문 분리 부분 문자열 목록
      * @return 부분 요약 Flux
      */
-    Flux<String> partSummaryAsync(List<String> contents);
+    Flux<String> partSummary(List<String> contents);
 
     /**
      * 부분 요약문 전체 요약
@@ -21,5 +21,5 @@ public interface SummaryModuleService {
      * @param contents 부분 요약 문자열 목록
      * @return 전체 요약 Mono
      */
-    Mono<String> summaryAsync(List<String> contents);
+    Mono<String> wholeSummary(List<String> contents);
 }

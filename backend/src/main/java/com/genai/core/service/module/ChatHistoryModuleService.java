@@ -12,18 +12,9 @@ public interface ChatHistoryModuleService {
      * @param chatId 대화 ID
      * @param chatDetailId 대화 상세 ID
      * @param answer 답변
-     */
-    void updateChatDetail(Long chatId, Long chatDetailId, String answer);
-
-    /**
-     * 대화 이력 저장
-     *
-     * @param chatId 대화 ID
-     * @param chatDetailId 대화 상세 ID
-     * @param answer 답변
      * @param chatPassageEntities 참고 문서 목록
      */
-    void updateChatDetail(Long chatId, Long chatDetailId, String answer, List<ChatPassageEntity> chatPassageEntities);
+    void updateChatDetail(Long chatId, Long chatDetailId, String rewriteQuery, String answer, List<ChatPassageEntity> chatPassageEntities);
 
     /**
      * 대화 상태 업데이트

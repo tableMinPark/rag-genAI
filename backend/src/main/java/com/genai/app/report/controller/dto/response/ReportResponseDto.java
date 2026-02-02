@@ -12,6 +12,4 @@ public class ReportResponseDto {
     private String sessionId;
 
     private long msgId;
-
-    private String content;
 }
