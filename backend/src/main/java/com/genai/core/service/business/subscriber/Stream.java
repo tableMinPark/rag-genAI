@@ -1,4 +1,4 @@
-package com.genai.core.service.business.vo;
+package com.genai.core.service.business.subscriber;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -6,7 +6,7 @@ import lombok.Setter;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Getter
-public class StreamVO {
+public class Stream {
     private final String streamId;
     private final SseEmitter emitter;
 
@@ -18,7 +18,7 @@ public class StreamVO {
     private boolean cancelled;
 
     @Builder
-    public StreamVO(String streamId) {
+    public Stream(String streamId) {
         this.streamId = streamId;
         this.emitter = new SseEmitter(Long.MAX_VALUE);
         this.cancelled = false;

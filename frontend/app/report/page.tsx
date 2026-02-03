@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react'
 import MarkdownIt from 'markdown-it'
-import { FileText, Play, X } from 'lucide-react'
+import { FileText, Loader2, Play, X } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { generateReportFileApi, generateReportTextApi } from '@/api/report'
 import { menuInfos } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { streamApi } from '@/api/stream'
-import { StreamEvent } from '@/types/streamEvent'
+import { Prepare, StreamEvent } from '@/types/streamEvent'
 
 const md = new MarkdownIt({
   html: true,
@@ -37,6 +37,8 @@ export default function ReportPage() {
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
   const streamRef = useRef<EventSource | null>(null)
+  // 스트림 상태
+  const [prepare, setPrepare] = useState<Prepare | null>(null)
   // 출력 텍스트
   const [output, setOutput] = useState('')
 
@@ -144,6 +146,9 @@ export default function ReportPage() {
         onAnswer: (event) => {
           setOutput((prev) => replaceEventDataToText(prev + event.data))
         },
+        onPrepare: (event) => {
+          setPrepare(JSON.parse(event.data))
+        },
       }),
     )
   }
@@ -151,6 +156,10 @@ export default function ReportPage() {
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
+  const size = 48
+  const strokeWidth = 2
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
   return (
     <div className="flex h-full w-full flex-col p-6">
       {/* 헤더 영역 */}
@@ -174,6 +183,7 @@ export default function ReportPage() {
               보고서 제목 (Report title) <span className="text-red-500">*</span>
             </label>
             <input
+              disabled={isStreaming}
               type="text"
               className="focus:border-primary focus:ring-primary w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm focus:ring-1 focus:outline-none"
               placeholder="보고서 제목을 입력하세요."
@@ -187,6 +197,7 @@ export default function ReportPage() {
               보고서 양식 (Prompt) <span className="text-red-500">*</span>
             </label>
             <textarea
+              disabled={isStreaming}
               className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
               placeholder="작성할 보고서의 목차, 스타일, 필수 포함 사항 등을 입력하세요."
               value={prompt}
@@ -200,6 +211,7 @@ export default function ReportPage() {
             {selectedFile.length == 0 ? (
               /* 참고 자료 텍스트 */
               <textarea
+                disabled={isStreaming}
                 className="focus:border-primary focus:ring-primary mb-4 w-full flex-1 resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
                 placeholder="보고서 작성에 참고할 내용을 입력하거나, 아래에서 파일을 업로드하세요."
                 value={context}
@@ -221,86 +233,144 @@ export default function ReportPage() {
                             (file.name.length > 50 ? '...' : '')}
                         </span>
                       </div>
-                      <button
-                        onClick={() => handleRemoveFile(index)}
-                        className="text-gray-400 hover:text-red-500"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      {!isStreaming && (
+                        <button
+                          onClick={() => handleRemoveFile(index)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
             {/* 파일 업로드 영역 */}
-            <div className="border-t border-gray-100 bg-gray-50">
-              <label className="hover:border-primary group flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:bg-red-50">
-                <div className="group-hover:text-primary flex items-center gap-2 text-gray-500">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                  <span className="text-sm font-medium">
-                    {selectedFile.length > 0
-                      ? '참고 파일 추가'
-                      : '참고 파일 등록'}
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  className="hidden"
-                  multiple
-                  onChange={handleSelectFiles}
-                />
-              </label>
-            </div>
+            {!isStreaming && (
+              <div className="border-t border-gray-100 bg-gray-50">
+                <label className="hover:border-primary group flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:bg-red-50">
+                  <div className="group-hover:text-primary flex items-center gap-2 text-gray-500">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span className="text-sm font-medium">
+                      {selectedFile.length > 0
+                        ? '참고 파일 추가'
+                        : '참고 파일 등록'}
+                    </span>
+                  </div>
+                  <input
+                    type="file"
+                    className="hidden"
+                    multiple
+                    onChange={handleSelectFiles}
+                  />
+                </label>
+              </div>
+            )}
           </div>
         </div>
-        {/* [중앙] 생성 버튼 */}
+        {/* [중앙] 생성 버튼 영역 */}
         <div className="flex flex-col items-center justify-center">
-          <button
-            onClick={handleGenerateReport}
-            disabled={
-              isStreaming ||
-              !title ||
-              !prompt ||
-              (!context && selectedFile.length == 0)
-            }
-            className="bg-primary hover:bg-primary-hover group relative flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
-            title="보고서 생성하기"
-          >
-            {isStreaming ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="12" x2="12" y1="18" y2="12" />
-                <line x1="9" x2="15" y1="15" y2="15" />
-              </svg>
-            )}
-          </button>
+          <div className="relative flex items-center justify-center">
+            {/* 1. Progress Ring SVG */}
+            {/* 버튼이 로딩 중(isStreaming)이거나 준비 중일 때만 보여주거나, 항상 보여주되 색상만 제어할 수 있습니다. */}
+            <svg
+              className="absolute top-0 left-0 z-20 -rotate-90 transform"
+              width={size}
+              height={size}
+              viewBox={`0 0 ${size} ${size}`}
+              fill="none"
+              style={{ pointerEvents: 'none' }} // 클릭은 버튼이 받도록 통과시킴
+            >
+              {/* (옵션) 배경 트랙: 로딩 중일 때만 연한 회색으로 표시 */}
+              {isStreaming && prepare && (
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="#e5e7eb" // gray-200
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                />
+              )}
+              {/* 실제 진행 바 (Progress) */}
+              {prepare && prepare.progress < 1 && (
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="currentColor"
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                  strokeLinecap="round"
+                  className={`text-primary transition-all duration-300 ease-out ${
+                    isStreaming ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={{
+                    strokeDasharray: circumference,
+                    strokeDashoffset: isStreaming
+                      ? circumference - prepare.progress * circumference
+                      : circumference,
+                  }}
+                />
+              )}
+            </svg>
+            {/* 2. 중앙 버튼 */}
+            <button
+              onClick={handleGenerateReport}
+              disabled={
+                isStreaming ||
+                !title ||
+                !prompt ||
+                (!context && selectedFile.length == 0)
+              }
+              className={`group relative z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-md transition-all ${!isStreaming ? 'hover:scale-110' : ''} active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 ${
+                isStreaming
+                  ? 'text-primary bg-white'
+                  : 'bg-primary hover:bg-primary-hover text-white'
+              }`}
+              title="보고서 생성하기"
+            >
+              {isStreaming ? (
+                // 로딩 중: 진행률 텍스트 혹은 정지 아이콘 표시
+                // <span className="text-xs font-bold">
+                //   {Math.round(prepare.progress * 100)}%
+                // </span>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" x2="12" y1="18" y2="12" />
+                  <line x1="9" x2="15" y1="15" y2="15" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
         {/* [오른쪽] 생성 결과 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -342,10 +412,28 @@ export default function ReportPage() {
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
-                <div className="rounded-full bg-gray-100 p-4">
-                  <Play className="ml-1 h-8 w-8 text-gray-300" />
-                </div>
-                <p className="text-sm">왼쪽 폼을 입력하고 버튼을 눌러보세요.</p>
+                {!isStreaming ? (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Play className="h-8 w-8 text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      왼쪽 폼을 입력하고 버튼을 눌러보세요.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      보고서 초안을 생성중입니다...
+                      {prepare && prepare.progress
+                        ? `(${Math.round(prepare.progress * 100)}%)`
+                        : ''}
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>

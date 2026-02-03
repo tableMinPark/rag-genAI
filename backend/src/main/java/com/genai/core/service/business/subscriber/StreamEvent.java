@@ -1,6 +1,7 @@
-package com.genai.core.service.business.vo;
+package com.genai.core.service.business.subscriber;
 
 import com.genai.core.constant.StreamConst;
+import com.genai.global.utils.CommonUtil;
 import lombok.*;
 
 @ToString
@@ -8,7 +9,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class StreamEventVO {
+public class StreamEvent {
 
     private String id;
 
@@ -29,5 +30,13 @@ public class StreamEventVO {
         }
 
         return content;
+    }
+
+    public static <T> StreamEvent prepare(String id, T content) {
+        return StreamEvent.builder()
+                .id(id)
+                .content(CommonUtil.writeJson(content))
+                .event(StreamConst.Event.PREPARE)
+                .build();
     }
 }

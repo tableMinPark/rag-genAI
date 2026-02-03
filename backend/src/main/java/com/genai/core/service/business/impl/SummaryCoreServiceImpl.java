@@ -14,7 +14,7 @@ import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.SummaryCoreService;
-import com.genai.core.service.business.vo.StreamEventVO;
+import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.SummaryVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
@@ -146,18 +146,18 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                 .query(query)
                 .build());
 
-        Mono<List<String>> partSummaryMono = summaryModuleService.partSummary(contents)
+        Mono<List<String>> partSummaryMono = summaryModuleService.partSummaries(contents, 3)
                 .collectList()
                 .cache();
 
         // 답변
         StringBuilder answerAccumulator = new StringBuilder();
 
-        Flux<StreamEventVO> answerFlux = partSummaryMono
+        Flux<StreamEvent> answerFlux = partSummaryMono
                 .map(partSummaries -> String.join("\n\n--\n\n", partSummaries))
                 .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
                 .doOnNext(answer -> answerAccumulator.append(answer.getContent()))
-                .map(answerEntity -> StreamEventVO.builder()
+                .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
                         .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
@@ -174,7 +174,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
             );
         })).subscribeOn(Schedulers.boundedElastic());
 
-        Flux<StreamEventVO> answerStream = answerFlux.concatWith(chatHistoryMono.then(Mono.empty()));
+        Flux<StreamEvent> answerStream = answerFlux.concatWith(chatHistoryMono.then(Mono.empty()));
 
         return SummaryVO.builder()
                 .answerStream(answerStream)

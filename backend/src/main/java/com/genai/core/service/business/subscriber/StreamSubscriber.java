@@ -1,11 +1,8 @@
 package com.genai.core.service.business.subscriber;
 
 import com.genai.core.constant.StreamConst;
-import com.genai.core.service.business.vo.StreamEventVO;
-import com.genai.core.service.business.vo.StreamVO;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.reactivestreams.Subscription;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.BaseSubscriber;
 
@@ -13,12 +10,12 @@ import java.io.IOException;
 import java.util.List;
 
 @Slf4j
-public class StreamSubscriber extends BaseSubscriber<StreamEventVO> {
+public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
 
-    private final StreamVO stream;
+    private final Stream stream;
     private StreamConst.Event currentEvent = StreamConst.Event.INITIALIZE;
 
-    public StreamSubscriber(StreamVO stream) {
+    public StreamSubscriber(Stream stream) {
         this.stream = stream;
     }
 
@@ -31,7 +28,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEventVO> {
     }
 
     @Override
-    protected void hookOnNext(@NonNull StreamEventVO streamEvent) {
+    protected void hookOnNext(@NonNull StreamEvent streamEvent) {
         if (stream.isCancelled()) {
             cancel();
             return;

@@ -4,6 +4,8 @@ import com.genai.app.report.controller.dto.request.ReportFileRequestDto;
 import com.genai.app.report.controller.dto.request.ReportTextRequestDto;
 import com.genai.app.report.controller.dto.response.ReportResponseDto;
 import com.genai.core.service.business.ReportCoreService;
+import com.genai.core.service.business.StreamCoreService;
+import com.genai.core.service.business.subscriber.StreamSubscriber;
 import com.genai.core.service.business.vo.ReportVO;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Response;
@@ -24,6 +26,7 @@ import java.util.List;
 public class ReportController {
 
     private final ReportCoreService reportCoreService;
+    private final StreamCoreService streamCoreService;
 
     /**
      * 보고서 생성 요청
@@ -38,8 +41,12 @@ public class ReportController {
         String title = reportTextRequestDto.getTitle();
         String content = reportTextRequestDto.getContext();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 2L;
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, List.of(content), sessionId, chatId);
+
+        reportVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)
@@ -64,8 +71,12 @@ public class ReportController {
         String promptContext = reportFileRequestDto.getPrompt();
         String title = reportFileRequestDto.getTitle();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 2L;
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFiles, sessionId, chatId);
+
+        reportVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)

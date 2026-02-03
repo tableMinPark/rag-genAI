@@ -43,3 +43,8 @@ export class StreamEvent {
     Object.assign(this, handlers)
   }
 }
+
+export type Prepare = {
+  progress: number
+  message: string
+}

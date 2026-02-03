@@ -1,5 +1,9 @@
 package com.genai.global.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -9,6 +13,13 @@ public class CommonUtil {
     // 정규식 패턴 정의
     private static final Pattern LINK_PATTERN  = Pattern.compile("\\[([^]]+)]\\([^)]*\\)");
     private static final Pattern IMAGE_PATTERN = Pattern.compile("!\\[([^]]+)]\\([^)]*\\)");
+
+    public static final ObjectMapper objectMapper;
+
+    static {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+    }
 
     /**
      * 랜덤 ID 값 생성
@@ -46,5 +57,17 @@ public class CommonUtil {
         linkMatcher.appendTail(linkBuffer);
 
         return linkBuffer.toString();
+    }
+
+    public static String writeJson(Object object) {
+
+        String json = "{}";
+
+        try {
+            json = objectMapper.writeValueAsString(object);
+        } catch (JsonProcessingException ignored) {
+        }
+
+        return json;
     }
 }

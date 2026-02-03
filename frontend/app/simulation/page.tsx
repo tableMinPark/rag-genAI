@@ -371,10 +371,10 @@ export default function SimulationPage() {
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
                 <div className="rounded-full bg-gray-100 p-4">
-                  <Play className="ml-1 h-8 w-8 text-gray-300" />
+                  <Play className="h-8 w-8 text-gray-300" />
                 </div>
-                <p className="text-sm">
-                  왼쪽 폼을 입력하고 [테스트 실행]을 눌러보세요.
+                <p className="mt-4 text-sm">
+                  왼쪽 폼을 입력하고 [ 테스트 실행 ] 을 눌러보세요.
                 </p>
               </div>
             )}

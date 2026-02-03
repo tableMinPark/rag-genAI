@@ -14,8 +14,9 @@ import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.ReportCoreService;
+import com.genai.core.service.business.subscriber.StreamEvent;
+import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
-import com.genai.core.service.business.vo.StreamEventVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.global.utils.CommonUtil;
@@ -25,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -35,6 +37,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -160,63 +163,63 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .query(query)
                 .build());
 
-        Mono<List<String>> partSummaryMono = summaryModuleService.partSummary(contents)
-                .collectList()
-                .cache();
+        Flux<StreamEvent> answerStream = Flux.create(sink -> {
 
-        Mono<String> wholeSummaryMono = partSummaryMono
-                .flatMap(summaryModuleService::wholeSummary)
-                .cache();
+            // 답변
+            StringBuilder answerAccumulator = new StringBuilder();
+            AtomicReference<Float> progressAtomic = new AtomicReference<>(0f);
+            float interval = 1f / (contents.size() + 1);
 
-        // 답변
-        StringBuilder answerAccumulator = new StringBuilder();
+            Disposable disposable = Flux.fromIterable(contents)
+                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .progress(Math.min(progressAtomic.get(), 1f))
+                            .message("부분 요약 시작")
+                            .build())))
+                    .buffer(3)
+                    .concatMap(batch -> Flux.fromIterable(batch)
+                            .flatMapSequential(content -> summaryModuleService.partSummary(content)
+                                    .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                                            .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
+                                            .message("부분 요약 진행중")
+                                            .build()))), 3))
+                    .collectList()
+                    .flatMap(partSummaries -> summaryModuleService.wholeSummaries(partSummaries)
+                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                                    .progress(Math.min(progressAtomic.get(), 1f))
+                                    .message("전체 요약 시작")
+                                    .build())))
+                            .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                                    .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
+                                    .message("전체 요약 완료")
+                                    .build()))))
+                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
+                    .doOnNext(answerEntity -> {
+                        if (answerEntity.getIsInference()) {
+                            answerAccumulator.append(answerEntity.getContent());
+                        }
+                    })
+                    .map(answerEntity -> StreamEvent.builder()
+                            .id(answerEntity.getId())
+                            .content(answerEntity.getContent())
+                            .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                            .build())
+                    .doOnNext(sink::next)
+                    .doOnComplete(() -> {
+                        // 대화 이력 업데이트
+                        chatHistoryModuleService.updateChatDetail(
+                                chatId,
+                                chatDetailEntity.getMsgId(),
+                                "",
+                                answerAccumulator.toString().trim(),
+                                Collections.emptyList()
+                        );
+                        sink.complete();
+                    })
+                    .doOnError(sink::error)
+                    .subscribe();
 
-        Flux<StreamEventVO> answerFlux = wholeSummaryMono
-                .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
-                .doOnNext(answer -> answerAccumulator.append(answer.getContent()))
-                .map(answerEntity -> StreamEventVO.builder()
-                        .id(answerEntity.getId())
-                        .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
-                        .build());
-
-        // 대화 이력 업데이트
-        Mono<Void> chatHistoryMono = wholeSummaryMono.flatMap(wholeSummary -> {
-            String answer = answerAccumulator.toString().trim();
-
-            Mono<Void> saveMono = Mono.fromRunnable(() -> {
-                chatHistoryModuleService.updateChatDetail(
-                        chatId,
-                        chatDetailEntity.getMsgId(),
-                        "",
-                        answer,
-                        Collections.emptyList()
-                );
-            });
-
-            return Mono.when(saveMono).subscribeOn(Schedulers.boundedElastic());
+            sink.onCancel(disposable);
         });
-
-        Flux<StreamEventVO> answerStream = answerFlux.concatWith(chatHistoryMono.then(Mono.empty()));
-
-//        // 부분 요약
-//        StringBuilder reportPartSummariesBuilder = new StringBuilder();
-//        for (String content : contents) {
-//            PromptEntity reportPartSummaryPromptEntity = PromptEntity.builder()
-//                    .promptContent(ReportConst.REPORT_PART_SUMMARIES_PROMPT)
-//                    .temperature(ReportConst.REPORT_PART_SUMMARIES_TEMPERATURE)
-//                    .topP(ReportConst.REPORT_PART_SUMMARIES_TOP_P)
-//                    .build();
-//
-//            String reportPartSummary = modelRepository.generateAnswerSyncStr("", content, sessionId, reportPartSummaryPromptEntity);
-//            reportPartSummariesBuilder.append(reportPartSummary).append("\n");
-//        }
-//
-//        String reportSummary = modelRepository.generateAnswerSyncStr("", reportPartSummariesBuilder.toString().trim(), sessionId, reportSummaryPromptEntity);
-//
-//
-//        String reportContent = modelRepository.generateAnswerSyncStr(query, reportSummary, sessionId, promptEntity);
-
 
         return ReportVO.builder()
                 .chatId(chatEntity.getChatId())

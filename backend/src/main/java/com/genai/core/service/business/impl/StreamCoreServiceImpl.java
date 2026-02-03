@@ -4,7 +4,7 @@ import com.genai.core.constant.StreamConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.subscriber.StreamSubscriber;
-import com.genai.core.service.business.vo.StreamVO;
+import com.genai.core.service.business.subscriber.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ public class StreamCoreServiceImpl implements StreamCoreService {
     @Override
     public StreamSubscriber createStream(String streamId) {
 
-        StreamSubscriber streamSubscriber = new StreamSubscriber(StreamVO.builder()
+        StreamSubscriber streamSubscriber = new StreamSubscriber(Stream.builder()
                 .streamId(streamId)
                 .build());
 

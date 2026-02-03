@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 
@@ -23,11 +24,11 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
     /**
      * 부분 요약
      *
-     * @param contents 본문 분리 부분 문자열 목록
+     * @param content 본문 분리 부분 문자열
      * @return 부분 요약 Flux
      */
     @Override
-    public Flux<String> partSummary(List<String> contents) {
+    public Mono<String> partSummary(String content) {
 
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(ReportConst.REPORT_PART_SUMMARIES_PROMPT)
@@ -35,16 +36,25 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                 .topP(ReportConst.REPORT_PART_SUMMARIES_TOP_P)
                 .build();
 
+        return Mono.fromCallable(() -> {
+            log.info("부분 요약 | {}", content.replace("\n", "\\n"));
+            return modelRepository.generateAnswerSyncStr("", content, CommonUtil.generateRandomId(), promptEntity);
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 부분 요약
+     *
+     * @param contents 본문 분리 부분 문자열 목록
+     * @return 부분 요약 Flux
+     */
+    @Override
+    public Flux<String> partSummaries(List<String> contents, int batchSize) {
+
         return Flux.fromIterable(contents)
-                .buffer(3)
-                .concatMap(targetContents -> Flux.fromIterable(targetContents)
-                        .flatMapSequential(targetContent -> {
-
-                            log.info("부분 요약 | {}", targetContent);
-
-                            return Flux.just(modelRepository
-                                    .generateAnswerSyncStr("", targetContent, CommonUtil.generateRandomId(), promptEntity));
-                        }, 3));
+                .buffer(batchSize)
+                .concatMap(batch -> Flux.fromIterable(batch)
+                        .flatMapSequential(this::partSummary, batchSize));
     }
 
     /**
@@ -54,7 +64,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
      * @return 전체 요약 Mono
      */
     @Override
-    public Mono<String> wholeSummary(List<String> contents) {
+    public Mono<String> wholeSummaries(List<String> contents) {
 
         // 전체 요약
         PromptEntity promptEntity = PromptEntity.builder()
@@ -67,6 +77,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                 .collectList()
                 .flatMap(targetContents -> Mono.fromCallable(() -> {
                     String context = String.join("\n\n---\n\n", targetContents);
+                    log.info("전체 요약 | {}", context.replace("\n", "\\n"));
                     return modelRepository.generateAnswerSyncStr("", context, CommonUtil.generateRandomId(), promptEntity);
                 }));
     }
