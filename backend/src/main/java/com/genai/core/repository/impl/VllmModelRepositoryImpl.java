@@ -71,7 +71,53 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
     @Override
     public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-        return Mono.just(generateAnswerSync(query, context, chatState, conversations, sessionId, promptEntity));
+
+        int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
+
+        VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
+                .modelName(llmProperty.getModelName())
+                .temperature(promptEntity.getTemperature())
+                .topP(promptEntity.getTopP())
+                .minP(0)
+                .topK(20)
+                .maxTokens(maxTokens)
+                .stream(false)
+                .prompt(promptEntity.getPromptContent())
+                .chatState(chatState)
+                .conversations(conversations)
+                .context(context)
+                .query(query)
+                .build();
+
+        try {
+            log.info("{}", objectMapper.writeValueAsString(requestBody));
+        } catch (JsonProcessingException ignored) {}
+
+        return webClient.post()
+                .uri(llmProperty.getUrl())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchangeToMono(response -> response
+                        .bodyToMono(VllmAnswerResponse.class)
+                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
+                .map(responseBody -> {
+                    if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
+                        throw new ModelErrorException("LLM(" + llmProperty.getModelName() + ")");
+                    }
+
+                    List<AnswerEntity> answerEntities = new ArrayList<>();
+
+                    if (responseBody.getBody() != null) {
+                        responseBody.getBody().getChoices().forEach(choice -> {
+                            String id = responseBody.getBody().getId();
+                            answerEntities.add(new AnswerEntity(id, choice.getMessage().getReasoningContent(), choice.getFinishReason(), true));
+                            answerEntities.add(new AnswerEntity(id, choice.getMessage().getContent(), choice.getFinishReason(), false));
+                        });
+                    }
+
+                    return answerEntities;
+                });
     }
 
     /**

@@ -3,7 +3,9 @@ package com.genai.app.summary.controller;
 import com.genai.app.summary.controller.dto.request.SummaryFileRequestDto;
 import com.genai.app.summary.controller.dto.request.SummaryTextRequestDto;
 import com.genai.app.summary.controller.dto.response.SummaryResponseDto;
+import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.SummaryCoreService;
+import com.genai.core.service.business.subscriber.StreamSubscriber;
 import com.genai.core.service.business.vo.SummaryVO;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Response;
@@ -23,6 +25,7 @@ import javax.validation.Valid;
 public class SummaryController {
 
     private final SummaryCoreService summaryCoreService;
+    private final StreamCoreService streamCoreService;
 
     /**
      * 요약 요청
@@ -36,8 +39,12 @@ public class SummaryController {
         float lengthRatio = summaryTextRequestDto.getLengthRatio();
         String context = summaryTextRequestDto.getContext();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 3L;
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, context, sessionId, chatId);
+
+        summaryVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_TEXT_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)
@@ -61,8 +68,12 @@ public class SummaryController {
         String sessionId = summaryFileRequestDto.getSessionId();
         float lengthRatio = summaryFileRequestDto.getLengthRatio();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 3L;
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, multipartFile, sessionId, chatId);
+
+        summaryVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_FILE_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)

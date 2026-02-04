@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import MarkdownIt from 'markdown-it'
-import { FileText, Play } from 'lucide-react'
+import { FileText, Loader2, Play, X } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { summaryFileApi, summaryTextApi } from '@/api/summary'
+import { menuInfos } from '@/public/const/menu'
+import { useModalStore } from '@/stores/modalStore'
+import { Prepare, StreamEvent } from '@/types/streamEvent'
+import { streamApi } from '@/api/stream'
 
-// ###################################################
-// 상수 정의 (Const)
-// ###################################################
-// Markdown 파서 설정
 const md = new MarkdownIt({
   html: true,
   breaks: true,
@@ -24,104 +24,146 @@ const SUMMARY_OPTIONS = [
 ]
 
 export default function SummaryPage() {
+  const menuInfo = menuInfos.summary
+  const modalStore = useModalStore()
+
   // ###################################################
-  // 상태 정의 (State)
+  // 상태 관리
   // ###################################################
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 입력/출력 텍스트
-  const [inputText, setInputText] = useState('')
-  const [outputText, setOutputText] = useState('')
+  const [context, setContext] = useState('')
   // 파일 관련
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // 프로세스 상태
-  const [isSummarizing, setIsSummarizing] = useState(false)
   // 요약 옵션 상태 (기본값: 중간)
   const [summaryOption, setSummaryOption] = useState('MEDIUM')
+  // 스트리밍 상태
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
+  // 스트림 상태
+  const [prepare, setPrepare] = useState<Prepare | null>(null)
+  // 출력 텍스트
+  const [output, setOutput] = useState('')
 
   // ###################################################
-  // 핸들러 (Handler)
+  // 랜더링 이펙트
   // ###################################################
-  /**
-   * 텍스트 입력 핸들러
-   */
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInputText(e.target.value)
-  }
+  useEffect(() => {
+    return () => {
+      streamRef.current?.close()
+    }
+  }, [])
 
+  // ###################################################
+  // 핸들러
+  // ###################################################
   /**
    * 파일 업로드 핸들러
    */
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setInputText(`📄 ${file.name}`)
-      setOutputText('')
+      setOutput('')
     }
   }
 
   /**
-   * 파일 선택 초기화 핸들러
+   * 파일 삭제 핸들러
    */
-  const clearFile = () => {
+  const handleRemoveFile = () => {
     setSelectedFile(null)
-    setInputText('')
-    setOutputText('')
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
   }
 
   /**
-   * 요약 실행 핸들러 (Mock)
+   * 요약 실행 핸들러
    */
   const handleSummary = async () => {
-    if (!inputText && !selectedFile) {
-      alert('요약할 텍스트 또는 파일를 입력해주세요.')
-      return
-    }
+    // 스트림 상태 체크
+    if (isStreaming) return
+    // 스트림 시작 상태 변경
+    setIsStreaming(true)
+    // 결과 값 초기화
+    setOutput('')
+    // 세션 기반 SSE 연결
+    streamRef.current = streamApi(
+      sessionId,
+      new StreamEvent({
+        onConnect: async (_) => {
+          console.log(`📡 요약 요청`)
 
-    setIsSummarizing(true)
+          const lengthRatio = SUMMARY_OPTIONS.find(
+            (v) => v.code == summaryOption,
+          )?.ratio as number
 
-    const lengthRatio = SUMMARY_OPTIONS.find((v) => v.code == summaryOption)
-      ?.ratio as number
-
-    if (!selectedFile) {
-      await summaryTextApi(sessionId, lengthRatio, inputText)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.result.content))
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setOutputText(
-            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-          )
-          setIsSummarizing(false)
-        })
-    } else {
-      await summaryFileApi(sessionId, lengthRatio, selectedFile)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          setOutputText(replaceEventDataToText(response.result.content))
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setOutputText(
-            '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-          )
-          setIsSummarizing(false)
-        })
-    }
-
-    setIsSummarizing(false)
+          if (!selectedFile) {
+            await summaryTextApi(sessionId, lengthRatio, context)
+              .then((response) => {
+                console.log(`📡 ${response.message}`)
+              })
+              .catch((reason) => {
+                console.error(reason)
+                modalStore.setError(
+                  '서버 통신 에러',
+                  '보고서 생성에 실패했습니다.',
+                )
+                setIsStreaming(false)
+                streamRef.current = null
+              })
+          } else {
+            await summaryFileApi(sessionId, lengthRatio, selectedFile)
+              .then((response) => {
+                console.log(`📡 ${response.message}`)
+              })
+              .catch((reason) => {
+                console.error(reason)
+                modalStore.setError(
+                  '서버 통신 에러',
+                  '보고서 생성에 실패했습니다.',
+                )
+                setIsStreaming(false)
+                streamRef.current = null
+              })
+          }
+        },
+        onDisconnect: (_) => {
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onException: (_) => {
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onError: (_) => {
+          modalStore.setError('서버 통신 에러', '보고서 생성에 실패했습니다.')
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onInference: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+        onAnswerStart: (_) => {
+          setOutput('')
+        },
+        onAnswer: (event) => {
+          setOutput((prev) => replaceEventDataToText(prev + event.data))
+        },
+        onPrepare: (event) => {
+          setPrepare(JSON.parse(event.data))
+        },
+      }),
+    )
   }
 
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
+  const size = 48
+  const strokeWidth = 2
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
   return (
     <div className="flex h-full w-full flex-col p-6">
       {/* 헤더 영역 */}
@@ -129,10 +171,10 @@ export default function SummaryPage() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <FileText className="text-primary h-6 w-6" />
-              요약
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">텍스트 및 파일 요약</p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
       </div>
@@ -141,38 +183,51 @@ export default function SummaryPage() {
       <div className="flex min-h-0 flex-1 gap-4">
         {/* [왼쪽] 요약 전 텍스트 입력 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          {/* 헤더: 파일 취소 버튼 등 */}
-          <div className="flex h-[52px] items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="flex h-13 items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-gray-700">
                 원문 (Original)
               </span>
             </div>
-
-            {selectedFile && (
-              <button
-                onClick={clearFile}
-                className="text-xs font-medium text-red-500 underline hover:text-red-700"
-              >
-                파일 취소
-              </button>
+          </div>
+          <div className="relative flex-1">
+            {selectedFile == null ? (
+              <textarea
+                className={`h-full w-full resize-none p-4 leading-relaxed text-gray-800 focus:outline-none ${
+                  selectedFile
+                    ? 'cursor-not-allowed bg-gray-100 text-gray-500'
+                    : 'bg-white'
+                }`}
+                placeholder="요약할 긴 텍스트를 입력하거나, 아래에서 파일을 업로드하세요."
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                disabled={!!selectedFile}
+              />
+            ) : (
+              /* 추가된 파일 목록 */
+              <div className="flex-1 py-2.5 focus:outline-none">
+                <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-2 pl-2">
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <FileText className="h-4 w-4 shrink-0 text-blue-500" />
+                      <span className="truncate text-gray-700">
+                        {selectedFile.name.substring(0, 55) +
+                          (selectedFile.name.length > 50 ? '...' : '')}
+                      </span>
+                    </div>
+                    {!isStreaming && (
+                      <button
+                        onClick={() => handleRemoveFile()}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
-
-          <div className="relative flex-1">
-            <textarea
-              className={`h-full w-full resize-none p-4 leading-relaxed text-gray-800 focus:outline-none ${
-                selectedFile
-                  ? 'cursor-not-allowed bg-gray-100 text-gray-500'
-                  : 'bg-white'
-              }`}
-              placeholder="요약할 긴 텍스트를 입력하거나, 아래에서 파일을 업로드하세요."
-              value={inputText}
-              onChange={handleTextChange}
-              disabled={!!selectedFile}
-            />
-          </div>
-
           {/* 하단 파일 업로드 영역 */}
           <div className="border-t border-gray-100 bg-gray-50 p-4">
             <label className="hover:border-primary group flex w-full cursor-pointer items-center justify-center rounded-lg border-2 border-dashed border-gray-300 p-3 transition-colors hover:bg-red-50">
@@ -200,41 +255,95 @@ export default function SummaryPage() {
                 type="file"
                 className="hidden"
                 ref={fileInputRef}
-                onChange={handleFileUpload}
+                onChange={handleSelectFile}
               />
             </label>
           </div>
         </div>
-
-        {/* [중앙] 요약 진행 버튼 */}
+        {/* [중앙] 생성 버튼 영역 */}
         <div className="flex flex-col items-center justify-center">
-          <button
-            onClick={handleSummary}
-            disabled={isSummarizing || (!inputText && !selectedFile)}
-            className="bg-primary hover:bg-primary-hover group relative flex h-12 w-12 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-110 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300"
-            title="요약하기"
-          >
-            {isSummarizing ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14"></path>
-                <path d="m12 5 7 7-7 7"></path>
-              </svg>
-            )}
-          </button>
+          <div className="relative flex items-center justify-center">
+            {/* 1. Progress Ring SVG */}
+            {/* 버튼이 로딩 중(isStreaming)이거나 준비 중일 때만 보여주거나, 항상 보여주되 색상만 제어할 수 있습니다. */}
+            <svg
+              className="absolute top-0 left-0 z-20 -rotate-90 transform"
+              width={size}
+              height={size}
+              viewBox={`0 0 ${size} ${size}`}
+              fill="none"
+              style={{ pointerEvents: 'none' }} // 클릭은 버튼이 받도록 통과시킴
+            >
+              {/* (옵션) 배경 트랙: 로딩 중일 때만 연한 회색으로 표시 */}
+              {isStreaming && prepare && (
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="#e5e7eb" // gray-200
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                />
+              )}
+              {/* 실제 진행 바 (Progress) */}
+              {prepare && prepare.progress < 1 && (
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  stroke="currentColor"
+                  strokeWidth={strokeWidth}
+                  fill="none"
+                  strokeLinecap="round"
+                  className={`text-primary transition-all duration-300 ease-out ${
+                    isStreaming ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  style={{
+                    strokeDasharray: circumference,
+                    strokeDashoffset: isStreaming
+                      ? circumference - prepare.progress * circumference
+                      : circumference,
+                  }}
+                />
+              )}
+            </svg>
+            {/* 2. 중앙 버튼 */}
+            <button
+              onClick={handleSummary}
+              disabled={isStreaming || (!context && selectedFile === null)}
+              className={`group relative z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-md transition-all ${!isStreaming ? 'hover:scale-110' : ''} active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 ${
+                isStreaming
+                  ? 'text-primary bg-white'
+                  : 'bg-primary hover:bg-primary-hover text-white'
+              }`}
+              title="보고서 생성하기"
+            >
+              {isStreaming ? (
+                // 로딩 중: 진행률 텍스트 혹은 정지 아이콘 표시
+                // <span className="text-xs font-bold">
+                //   {Math.round(prepare.progress * 100)}%
+                // </span>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="12" x2="12" y1="18" y2="12" />
+                  <line x1="9" x2="15" y1="15" y2="15" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
-
         {/* [오른쪽] 요약 결과 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* 헤더: 요약 옵션 선택 */}
@@ -254,10 +363,10 @@ export default function SummaryPage() {
               </select>
             </div>
 
-            {outputText && (
+            {output && (
               <button
                 className="hover:text-primary text-gray-400 transition-colors"
-                onClick={() => navigator.clipboard.writeText(outputText)}
+                onClick={() => navigator.clipboard.writeText(output)}
                 title="결과 복사"
               >
                 <svg
@@ -280,17 +389,35 @@ export default function SummaryPage() {
 
           {/* 결과 뷰어 */}
           <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
-            {outputText ? (
+            {output ? (
               <div
                 className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
-                dangerouslySetInnerHTML={{ __html: md.render(outputText) }}
+                dangerouslySetInnerHTML={{ __html: md.render(output) }}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
-                <div className="rounded-full bg-gray-100 p-4">
-                  <Play className="ml-1 h-8 w-8 text-gray-300" />
-                </div>
-                <p className="text-sm">왼쪽 폼을 입력하고 버튼을 눌러보세요.</p>
+                {!isStreaming ? (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Play className="h-8 w-8 text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      왼쪽 폼을 입력하고 버튼을 눌러보세요.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      요약문을 생성중입니다...
+                      {prepare && prepare.progress
+                        ? `(${Math.round(prepare.progress * 100)}%)`
+                        : ''}
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>
