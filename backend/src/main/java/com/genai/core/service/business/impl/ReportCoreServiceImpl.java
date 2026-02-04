@@ -2,8 +2,6 @@ package com.genai.core.service.business.impl;
 
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.constant.PromptConst;
-import com.genai.core.constant.ReportConst;
-import com.genai.core.constant.StreamConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.exception.ReportErrorException;
 import com.genai.core.repository.ChatDetailRepository;
@@ -14,6 +12,8 @@ import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.ReportCoreService;
+import com.genai.core.service.business.constant.ReportCoreConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
@@ -28,8 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -84,11 +82,11 @@ public class ReportCoreServiceImpl implements ReportCoreService {
 
                 String content = extractUtil.extract(fullPath.toString());
 
-                int step = ReportConst.REPORT_PART_TOKEN_SIZE - ReportConst.REPORT_PART_OVERLAP_SIZE;
+                int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
                 contents.addAll(IntStream.iterate(0, i -> i + step)
                         .limit((content.length() + step - 1) / step)
-                        .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportConst.REPORT_PART_TOKEN_SIZE)))
+                        .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
                         .toList());
 
             } catch (IOException e) {
@@ -98,7 +96,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
             }
         }
 
-        contents = contents.subList(0, Math.min(contents.size(), ReportConst.REPORT_PART_MAX_COUNT));
+        contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
 
         return this.generateReport(reportTitle, promptContext, contents, sessionId, chatId);
     }
@@ -117,14 +115,14 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     @Override
     public ReportVO generateReport(String reportTitle, String promptContext, String content, String sessionId, long chatId) {
 
-        int step = ReportConst.REPORT_PART_TOKEN_SIZE - ReportConst.REPORT_PART_OVERLAP_SIZE;
+        int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
         List<String> contents = new ArrayList<>(IntStream.iterate(0, i -> i + step)
                 .limit((content.length() + step - 1) / step)
-                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportConst.REPORT_PART_TOKEN_SIZE)))
+                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
                 .toList());
 
-        contents = contents.subList(0, Math.min(contents.size(), ReportConst.REPORT_PART_MAX_COUNT));
+        contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
 
         return this.generateReport(reportTitle, promptContext, contents, sessionId, chatId);
     }
@@ -175,13 +173,13 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                             .progress(Math.min(progressAtomic.get(), 1f))
                             .message("부분 요약 시작")
                             .build())))
-                    .buffer(3)
+                    .buffer(ReportCoreConst.CHUNK_PART_BATCH_SIZE)
                     .concatMap(batch -> Flux.fromIterable(batch)
                             .flatMapSequential(content -> summaryModuleService.partSummary(content)
                                     .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
                                             .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                             .message("부분 요약 진행중")
-                                            .build()))), 3))
+                                            .build()))), ReportCoreConst.CHUNK_PART_BATCH_SIZE))
                     .collectList()
                     .flatMap(partSummaries -> summaryModuleService.wholeSummaries(partSummaries)
                             .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
@@ -201,7 +199,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                     .map(answerEntity -> StreamEvent.builder()
                             .id(answerEntity.getId())
                             .content(answerEntity.getContent())
-                            .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                            .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
                             .build())
                     .doOnNext(sink::next)
                     .doOnComplete(() -> {

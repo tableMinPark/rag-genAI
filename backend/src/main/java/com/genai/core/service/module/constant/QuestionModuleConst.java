@@ -1,19 +1,8 @@
-package com.genai.core.constant;
+package com.genai.core.service.module.constant;
 
-import java.util.List;
+public class QuestionModuleConst {
 
-public class QuestionConst {
-
-    public static final List<String> REFERENCE_VALID_PATTERN = List.of(
-            "관련(\\s)?s문서를(\\s)?s찾을(\\s)?수(\\s)?없습니다.",
-            "관련된(\\s)?질문만(\\s)?답변이(\\s)?가능해요"
-    );
-
-    // 멀티턴 참고 대화 이력 수
-    public static final int     MULTITURN_TURNS              = 3;
-
-    // 멀티턴 재질의 생성 설정
-    public  static final int    REWRITE_QUERY_TURNS          = 3;
+    // 질의 재정의 설정
     public  static final double REWRITE_QUERY_TEMPERATURE    = 0.1;
     public  static final double REWRITE_QUERY_TOP_P          = 0.9;
     private static final int    REWRITE_QUERY_MAXIMUM_TOKENS = 256;
@@ -35,12 +24,11 @@ public class QuestionConst {
     8. 출력 분량은 %d 토큰 이내로 작성하세요.
     """, REWRITE_QUERY_MAXIMUM_TOKENS);
 
-    // 멀티턴 답변 요약 관련 설정
-    public  static final int    SUMMARY_UPDATE_TURNS          = 2;
-    public  static final double SUMMARY_UPDATE_TEMPERATURE    = 0.2;
-    public  static final double SUMMARY_UPDATE_TOP_P          = 0.9;
-    private static final int    SUMMARY_UPDATE_MAXIMUM_TOKENS = 512;
-    public  static final String SUMMARY_UPDATE_PROMPT         = String.format("""
+    // 답변 상태 설정
+    public  static final double CHAT_STATE_UPDATE_TEMPERATURE    = 0.2;
+    public  static final double CHAT_STATE_UPDATE_TOP_P          = 0.9;
+    private static final int    CHAT_STATE_UPDATE_MAXIMUM_TOKENS = 512;
+    public  static final String CHAT_STATE_UPDATE_PROMPT = String.format("""
     You are a conversation state manager.
     
     Your task is to update the conversation state summary.
@@ -63,5 +51,5 @@ public class QuestionConst {
     - If nothing changes, return the previous summary unchanged.
     - This summary is authoritative and higher priority than retrieved documents.
     - Max output token is %d.
-    """, SUMMARY_UPDATE_MAXIMUM_TOKENS);
+    """, CHAT_STATE_UPDATE_MAXIMUM_TOKENS);
 }

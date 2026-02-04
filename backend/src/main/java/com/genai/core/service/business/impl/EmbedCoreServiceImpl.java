@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
 import com.genai.core.config.properties.ChunkProperty;
-import com.genai.core.constant.EmbedConst;
+import com.genai.core.service.business.constant.EmbedCoreConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;
 import com.genai.core.repository.FileRepository;
@@ -94,7 +94,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
             List<PassageEntity> passageEntities = new ArrayList<>();
             for (String chunk : chunks) {
                 ChunkEntity chunkEntity = ChunkEntity.builder()
-                        .version(EmbedConst.EMBED_VERSION)
+                        .version(EmbedCoreConst.EMBED_VERSION)
                         .title(targetFileDetailEntity.getFileOriginName())
                         .subTitle("")
                         .thirdTitle("")
@@ -106,7 +106,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                         .build();
 
                 PassageEntity passageEntity = PassageEntity.builder()
-                        .version(EmbedConst.EMBED_VERSION)
+                        .version(EmbedCoreConst.EMBED_VERSION)
                         .sortOrder(passageEntities.size())
                         .title(targetFileDetailEntity.getFileOriginName())
                         .subTitle("")
@@ -114,7 +114,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                         .content(chunk)
                         .subContent("")
                         .tokenSize(chunk.length())
-                        .updateState(EmbedConst.EMBED_UPDATE_STATE)
+                        .updateState(EmbedCoreConst.EMBED_UPDATE_STATE)
                         .chunks(List.of(chunkEntity))
                         .build();
 
@@ -123,9 +123,9 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
             // 현재 문서 DB 등록
             SourceEntity sourceEntity = sourceRepository.save(SourceEntity.builder()
-                    .version(EmbedConst.EMBED_VERSION)
-                    .sourceType(EmbedConst.EMBED_SOURCE_TYPE)
-                    .selectType(EmbedConst.EMBED_SELECT_TYPE)
+                    .version(EmbedCoreConst.EMBED_VERSION)
+                    .sourceType(EmbedCoreConst.EMBED_SOURCE_TYPE)
+                    .selectType(EmbedCoreConst.EMBED_SELECT_TYPE)
                     .categoryCode(categoryCode)
                     .name(targetFileDetailEntity.getFileOriginName())
                     .content(content)

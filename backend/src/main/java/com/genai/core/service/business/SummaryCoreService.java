@@ -33,7 +33,7 @@ public interface SummaryCoreService {
      * 텍스트 요약
      *
      * @param lengthRatio 요약 길이 비율
-     * @param contents     사용자 입력 텍스트
+     * @param contents    사용자 입력 텍스트 목록
      * @param sessionId   세션 ID
      * @param chatId      대화 정보 ID
      * @return 요약 결과 문자열

@@ -1,4 +1,4 @@
-package com.genai.core.constant;
+package com.genai.core.service.business.constant;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-public class StreamConst {
+public class StreamCoreConst {
 
     public static final String CONNECT         = "connect";
     public static final String DISCONNECT      = "disconnect";

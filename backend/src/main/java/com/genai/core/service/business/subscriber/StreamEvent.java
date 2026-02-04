@@ -1,6 +1,6 @@
 package com.genai.core.service.business.subscriber;
 
-import com.genai.core.constant.StreamConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.global.utils.CommonUtil;
 import lombok.*;
 
@@ -15,7 +15,7 @@ public class StreamEvent {
 
     private String content;
 
-    private StreamConst.Event event;
+    private StreamCoreConst.Event event;
 
     /**
      * 공백 문자 치환
@@ -25,7 +25,7 @@ public class StreamEvent {
         String content = this.content;
 
         if (this.content != null) {
-            content = content.replace(" ", "&nbsp");
+            content = content.replace(" ", "&nbsp;");
             content = content.replace("\n", "\\n");
         }
 
@@ -36,7 +36,7 @@ public class StreamEvent {
         return StreamEvent.builder()
                 .id(id)
                 .content(CommonUtil.writeJson(content))
-                .event(StreamConst.Event.PREPARE)
+                .event(StreamCoreConst.Event.PREPARE)
                 .build();
     }
 }

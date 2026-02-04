@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface QuestionModuleService {
 
-    Flux<ConversationVO> getConversations(long chatId);
+    Flux<ConversationVO> getConversations(long chatId, int size);
 
     Mono<String> rewriteQuery(String query, List<ConversationVO> conversations, String sessionId);
 

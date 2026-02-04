@@ -1,12 +1,12 @@
 package com.genai.core.service.module.impl;
 
-import com.genai.core.constant.QuestionConst;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.service.module.QuestionModuleService;
+import com.genai.core.service.module.constant.QuestionModuleConst;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,9 +26,9 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
     private final ModelRepository modelRepository;
 
     @Override
-    public Flux<ConversationVO> getConversations(long chatId) {
+    public Flux<ConversationVO> getConversations(long chatId, int size) {
 
-        Pageable pageable = PageRequest.of(0, QuestionConst.REWRITE_QUERY_TURNS);
+        Pageable pageable = PageRequest.of(0, size);
 
         return Mono.fromCallable(() ->
                         chatDetailRepository
@@ -49,9 +49,9 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
     public Mono<String> rewriteQuery(String query, List<ConversationVO> conversations, String sessionId) {
 
         PromptEntity promptEntity = PromptEntity.builder()
-                .promptContent(QuestionConst.REWRITE_QUERY_PROMPT)
-                .temperature(QuestionConst.REWRITE_QUERY_TEMPERATURE)
-                .topP(QuestionConst.REWRITE_QUERY_TOP_P)
+                .promptContent(QuestionModuleConst.REWRITE_QUERY_PROMPT)
+                .temperature(QuestionModuleConst.REWRITE_QUERY_TEMPERATURE)
+                .topP(QuestionModuleConst.REWRITE_QUERY_TOP_P)
                 .build();
 
         return Mono.just(conversations)
@@ -72,9 +72,9 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
     public Mono<String> summaryState(String chatState, List<ConversationVO> conversations, String sessionId) {
 
         PromptEntity promptEntity = PromptEntity.builder()
-                .promptContent(QuestionConst.SUMMARY_UPDATE_PROMPT)
-                .temperature(QuestionConst.SUMMARY_UPDATE_TEMPERATURE)
-                .topP(QuestionConst.SUMMARY_UPDATE_TOP_P)
+                .promptContent(QuestionModuleConst.CHAT_STATE_UPDATE_PROMPT)
+                .temperature(QuestionModuleConst.CHAT_STATE_UPDATE_TEMPERATURE)
+                .topP(QuestionModuleConst.CHAT_STATE_UPDATE_TOP_P)
                 .build();
 
         return modelRepository.generateAnswerAsync(null, null, null, conversations, sessionId, promptEntity)

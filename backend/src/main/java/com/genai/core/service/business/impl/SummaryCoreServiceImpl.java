@@ -2,8 +2,6 @@ package com.genai.core.service.business.impl;
 
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.constant.PromptConst;
-import com.genai.core.constant.ReportConst;
-import com.genai.core.constant.StreamConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.exception.TranslateErrorException;
 import com.genai.core.repository.ChatDetailRepository;
@@ -14,6 +12,8 @@ import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.SummaryCoreService;
+import com.genai.core.service.business.constant.StreamCoreConst;
+import com.genai.core.service.business.constant.SummaryCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.SummaryVO;
@@ -76,11 +76,11 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
 
             String content = extractUtil.extract(fullPath.toString());
 
-            int step = ReportConst.REPORT_PART_TOKEN_SIZE - ReportConst.REPORT_PART_OVERLAP_SIZE;
+            int step = SummaryCoreConst.CHUNK_PART_TOKEN_SIZE - SummaryCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
             contents.addAll(IntStream.iterate(0, i -> i + step)
                     .limit((content.length() + step - 1) / step)
-                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportConst.REPORT_PART_TOKEN_SIZE)))
+                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + SummaryCoreConst.CHUNK_PART_TOKEN_SIZE)))
                     .toList());
 
         } catch (IOException e) {
@@ -89,7 +89,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
             extractUtil.removeFile(fullPath);
         }
 
-        contents = contents.subList(0, Math.min(contents.size(), ReportConst.REPORT_PART_MAX_COUNT));
+        contents = contents.subList(0, Math.min(contents.size(), SummaryCoreConst.CHUNK_PART_MAX_COUNT));
 
         return this.summary(lengthRatio, contents, sessionId, chatId);
     }
@@ -106,14 +106,14 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     @Override
     public SummaryVO summary(float lengthRatio, String content, String sessionId, long chatId) {
 
-        int step = ReportConst.REPORT_PART_TOKEN_SIZE - ReportConst.REPORT_PART_OVERLAP_SIZE;
+        int step = SummaryCoreConst.CHUNK_PART_TOKEN_SIZE - SummaryCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
         List<String> contents = new ArrayList<>(IntStream.iterate(0, i -> i + step)
                 .limit((content.length() + step - 1) / step)
-                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportConst.REPORT_PART_TOKEN_SIZE)))
+                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + SummaryCoreConst.CHUNK_PART_TOKEN_SIZE)))
                 .toList());
 
-        contents = contents.subList(0, Math.min(contents.size(), ReportConst.REPORT_PART_MAX_COUNT));
+        contents = contents.subList(0, Math.min(contents.size(), SummaryCoreConst.CHUNK_PART_MAX_COUNT));
 
         return this.summary(lengthRatio, contents, sessionId, chatId);
     }
@@ -130,9 +130,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     @Override
     public SummaryVO summary(float lengthRatio, List<String> contents, String sessionId, long chatId) {
 
-        String query = String.format("""
-        > 길이 비율 값이 %.2f 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.
-        """, lengthRatio);
+        String query = String.format("길이 비율 값이 %.2f 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.", lengthRatio);
 
         PromptEntity promptEntity = promptRepository.findById(PromptConst.SUMMARY_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
@@ -158,13 +156,13 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                             .progress(Math.min(progressAtomic.get(), 1f))
                             .message("부분 요약 시작")
                             .build())))
-                    .buffer(3)
+                    .buffer(SummaryCoreConst.CHUNK_PART_BATCH_SIZE)
                     .concatMap(batch -> Flux.fromIterable(batch)
                             .flatMapSequential(content -> summaryModuleService.partSummary(content)
                                     .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
                                             .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                             .message("부분 요약 진행중")
-                                            .build()))), 3))
+                                            .build()))), SummaryCoreConst.CHUNK_PART_BATCH_SIZE))
                     .collectList()
                     .flatMap(partSummaries -> summaryModuleService.wholeSummaries(partSummaries)
                             .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
@@ -184,7 +182,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                     .map(answerEntity -> StreamEvent.builder()
                             .id(answerEntity.getId())
                             .content(answerEntity.getContent())
-                            .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                            .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
                             .build())
                     .doOnNext(sink::next)
                     .doOnComplete(() -> {

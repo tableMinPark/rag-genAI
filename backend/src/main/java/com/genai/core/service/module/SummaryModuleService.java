@@ -11,7 +11,7 @@ public interface SummaryModuleService {
      * 부분 요약
      *
      * @param content 본문 분리 부분 문자열
-     * @return 부분 요약 Flux
+     * @return 부분 요약 Mono
      */
     Mono<String> partSummary(String content);
 

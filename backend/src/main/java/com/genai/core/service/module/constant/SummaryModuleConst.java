@@ -1,15 +1,12 @@
-package com.genai.core.constant;
+package com.genai.core.service.module.constant;
 
-public class ReportConst {
+public class SummaryModuleConst {
 
-    public static final int     REPORT_PART_TOKEN_SIZE               = 8000;
-    public static final int     REPORT_PART_OVERLAP_SIZE             = 1000;
-
-    public  static final int    REPORT_PART_MAX_COUNT                = 20;
-    public  static final double REPORT_PART_SUMMARIES_TEMPERATURE    = 0.2;
-    public  static final double REPORT_PART_SUMMARIES_TOP_P          = 0.9;
-    private static final int    REPORT_PART_SUMMARIES_MAXIMUM_TOKENS = 1500;
-    public  static final String REPORT_PART_SUMMARIES_PROMPT         = String.format("""
+    // 부분 요약
+    public  static final double PART_SUMMARY_TEMPERATURE    = 0.2;
+    public  static final double PART_SUMMARY_TOP_P          = 0.9;
+    private static final int    PART_SUMMARY_MAXIMUM_TOKENS = 1500;
+    public  static final String PART_SUMMARY_PROMPT = String.format("""
     당신은 긴 문서를 부분적으로 요약하는 분석가입니다.
     
     아래 문서는 하나의 문서에서 분리된 일부입니다.
@@ -27,12 +24,13 @@ public class ReportConst {
     
     ### 출력 형식
     - 이 부분의 핵심 내용 요약 (문단 또는 bullet)
-    """, REPORT_PART_SUMMARIES_MAXIMUM_TOKENS);
+    """, PART_SUMMARY_MAXIMUM_TOKENS);
 
-    public  static final double REPORT_SUMMARIES_TEMPERATURE    = 0.15;
-    public  static final double REPORT_SUMMARIES_TOP_P          = 0.85;
-    private static final int    REPORT_SUMMARIES_MAXIMUM_TOKENS = 8192;
-    public  static final String REPORT_SUMMARIES_PROMPT         = String.format("""
+    // 전체 요약
+    public  static final double WHOLE_SUMMARY_TEMPERATURE    = 0.15;
+    public  static final double WHOLE_SUMMARY_TOP_P          = 0.85;
+    private static final int    WHOLE_SUMMARY_MAXIMUM_TOKENS = 8192;
+    public  static final String WHOLE_SUMMARY_PROMPT = String.format("""
     당신은 보고서 작성을 돕는 전문 분석가입니다.
     아래에 제공되는 여러 문서는 동일한 주제 또는 연관된 주제를 다루고 있습니다.
     
@@ -72,5 +70,5 @@ public class ReportConst {
     ### 입력 문서
     아래 문서들을 종합하여 요약을 수행하세요.
     각 문서는 독립적인 정보 단위입니다.
-    """, REPORT_SUMMARIES_MAXIMUM_TOKENS);
+    """, WHOLE_SUMMARY_MAXIMUM_TOKENS);
 }

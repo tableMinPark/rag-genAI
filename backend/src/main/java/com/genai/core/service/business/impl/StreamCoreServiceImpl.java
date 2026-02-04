@@ -1,6 +1,6 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.constant.StreamConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.subscriber.StreamSubscriber;
@@ -37,8 +37,8 @@ public class StreamCoreServiceImpl implements StreamCoreService {
         // 연결 이벤트 전송
         try {
             streamSubscriber.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.CONNECT)
-                    .data(StreamConst.CONNECT));
+                    .name(StreamCoreConst.CONNECT)
+                    .data(StreamCoreConst.CONNECT));
         } catch (IOException e) {
             streamSubscriber.getEmitter().completeWithError(e);
         }

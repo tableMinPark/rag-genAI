@@ -2,9 +2,6 @@ package com.genai.core.service.business.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.core.constant.QuestionConst;
-import com.genai.core.constant.SearchConst;
-import com.genai.core.constant.StreamConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
@@ -12,6 +9,8 @@ import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.repository.wrapper.Rerank;
 import com.genai.core.repository.wrapper.Search;
 import com.genai.core.service.business.QuestionCoreService;
+import com.genai.core.service.business.constant.QuestionCoreConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.DocumentVO;
 import com.genai.core.service.business.vo.QuestionContextVO;
@@ -112,7 +111,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
 
         // 이전 대화 상세 내역
-        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId)
+        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURNS)
                 .collectList()
                 .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
                 .cache()
@@ -134,23 +133,23 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
 
                     // 키워드 검색
-                    List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, SearchConst.KEYWORD_TOP_K, sessionId, categoryCodes);
+                    List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, QuestionCoreConst.KEYWORD_TOP_K, sessionId, categoryCodes);
                     keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
 
                     // 벡터 검색
-                    List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, SearchConst.VECTOR_TOP_K, categoryCodes);
+                    List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, QuestionCoreConst.VECTOR_TOP_K, categoryCodes);
                     vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
 
                     // 키워드 검색 결과, 벡터 검색 결과 변환
                     List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
-                            .filter(searchEntity -> searchEntity.getScore() >= SearchConst.SEARCH_SCORE_MIN)
+                            .filter(searchEntity -> searchEntity.getScore() >= QuestionCoreConst.SEARCH_SCORE_MIN)
                             .map(searchEntity -> Rerank.builder()
                                     .document(searchEntity.getFields())
                                     .build())
                             .toList());
 
                     // 상위 RERANK_TOP_K 개 추출
-                    return rerankEntities.subList(0, Math.min(SearchConst.RERANK_TOP_K, rerankEntities.size()));
+                    return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
 
                 }).subscribeOn(Schedulers.boundedElastic()))
                 .doOnSubscribe(s -> log.info("🔥 [3] rerankMono 실제 실행 (벡터/키워드 검색)"))
@@ -200,7 +199,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
                         .build())
                 .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"))
                 ;
@@ -211,11 +210,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     String answer = answerAccumulator.toString().trim();
 
                     StringBuilder referencePatternBuilder = new StringBuilder();
-                    for (int index = 0; index < QuestionConst.REFERENCE_VALID_PATTERN.size(); index++) {
-                        String pattern = QuestionConst.REFERENCE_VALID_PATTERN.get(index);
+                    for (int index = 0; index < QuestionCoreConst.REFERENCE_VALID_PATTERN.size(); index++) {
+                        String pattern = QuestionCoreConst.REFERENCE_VALID_PATTERN.get(index);
                         referencePatternBuilder.append("(").append(pattern).append(")");
 
-                        if (index < QuestionConst.REFERENCE_VALID_PATTERN.size() - 1) {
+                        if (index < QuestionCoreConst.REFERENCE_VALID_PATTERN.size() - 1) {
                             referencePatternBuilder.append("|");
                         }
                     }
@@ -247,7 +246,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
                     return StreamEvent.builder()
                             .id(sessionId)
-                            .event(StreamConst.Event.REFERENCE)
+                            .event(StreamCoreConst.Event.REFERENCE)
                             .content(content)
                             .build();
                 });
@@ -340,7 +339,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
 
         // 이전 대화 상세 내역
-        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId)
+        Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURNS)
                 .collectList()
                 .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
                 .cache()
@@ -387,7 +386,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
                         .build())
                 .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"));
 
@@ -481,7 +480,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamConst.Event.INFERENCE : StreamConst.Event.ANSWER)
+                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
                         .build());
 
         return QuestionVO.builder()

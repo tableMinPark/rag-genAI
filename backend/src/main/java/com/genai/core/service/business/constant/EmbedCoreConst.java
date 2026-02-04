@@ -1,6 +1,6 @@
-package com.genai.core.constant;
+package com.genai.core.service.business.constant;
 
-public class EmbedConst {
+public class EmbedCoreConst {
 
     public static final long   EMBED_VERSION      = 1L;
     public static final String EMBED_UPDATE_STATE = "UPDATE-STATE-INSERT";

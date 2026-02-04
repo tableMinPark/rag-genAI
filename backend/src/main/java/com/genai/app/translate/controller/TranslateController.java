@@ -5,7 +5,9 @@ import com.genai.app.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.app.translate.controller.dto.response.GetTranslateLanguageResponseDto;
 import com.genai.app.translate.controller.dto.response.TranslateResponseDto;
 import com.genai.core.constant.CommonConst;
+import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.TranslateCoreService;
+import com.genai.core.service.business.subscriber.StreamSubscriber;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
@@ -29,6 +31,7 @@ public class TranslateController {
 
     private final TranslateCoreService translateCoreService;
     private final CommonCodeModuleService commonCodeModuleService;
+    private final StreamCoreService streamCoreService;
 
     /**
      * 번역 요청
@@ -44,13 +47,16 @@ public class TranslateController {
         boolean containDic = translateTextRequestDto.isContainDic();
         String context = translateTextRequestDto.getContext();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 4L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, context, sessionId, chatId, containDic);
+
+        translateVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(translateVO.getMsgId())
-                .content(translateVO.getContent())
                 .build()));
     }
 
@@ -72,13 +78,16 @@ public class TranslateController {
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();
 
+        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
+
         long chatId = 4L;
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, multipartFile, sessionId, chatId, containDic);
+
+        translateVO.getAnswerStream().subscribe(streamSubscriber);
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)
                 .msgId(translateVO.getMsgId())
-                .content(translateVO.getContent())
                 .build()));
     }
 

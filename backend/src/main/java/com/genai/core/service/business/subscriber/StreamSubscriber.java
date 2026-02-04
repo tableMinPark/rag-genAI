@@ -1,6 +1,6 @@
 package com.genai.core.service.business.subscriber;
 
-import com.genai.core.constant.StreamConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -13,7 +13,7 @@ import java.util.List;
 public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
 
     private final Stream stream;
-    private StreamConst.Event currentEvent = StreamConst.Event.INITIALIZE;
+    private StreamCoreConst.Event currentEvent = StreamCoreConst.Event.INITIALIZE;
 
     public StreamSubscriber(Stream stream) {
         this.stream = stream;
@@ -36,11 +36,11 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
 
         try {
             synchronized (StreamSubscriber.this) {
-                StreamConst.Event nextEvent = streamEvent.getEvent();
+                StreamCoreConst.Event nextEvent = streamEvent.getEvent();
 
                 if (!currentEvent.equals(nextEvent)) {
                     // 이전 이벤트 종료 신호 전송
-                    if (!StreamConst.Event.INITIALIZE.equals(currentEvent)) {
+                    if (!StreamCoreConst.Event.INITIALIZE.equals(currentEvent)) {
                         stream.getEmitter().send(SseEmitter.event()
                                 .name(currentEvent.done)
                                 .data(currentEvent.done));
@@ -67,20 +67,20 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
     @Override
     protected void hookOnCancel() {
         try {
-            List<StreamConst.Event> doneEvents = StreamConst.EVENT_STEP.stream()
-                    .filter(event -> !StreamConst.Event.INITIALIZE.equals(event))
+            List<StreamCoreConst.Event> doneEvents = StreamCoreConst.EVENT_STEP.stream()
+                    .filter(event -> !StreamCoreConst.Event.INITIALIZE.equals(event))
                     .filter(event -> event.sort >= currentEvent.sort)
                     .toList();
 
-            for (StreamConst.Event event : doneEvents) {
+            for (StreamCoreConst.Event event : doneEvents) {
                 stream.getEmitter().send(SseEmitter.event()
                         .name(event.done)
                         .data(event.done));
             }
 
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
 
         } catch (IllegalStateException | IOException ignored) {
         }
@@ -92,24 +92,24 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
     @Override
     protected void hookOnError(@NonNull Throwable throwable) {
         try {
-            List<StreamConst.Event> doneEvents = StreamConst.EVENT_STEP.stream()
-                    .filter(event -> !StreamConst.Event.INITIALIZE.equals(event))
+            List<StreamCoreConst.Event> doneEvents = StreamCoreConst.EVENT_STEP.stream()
+                    .filter(event -> !StreamCoreConst.Event.INITIALIZE.equals(event))
                     .filter(event -> event.sort >= currentEvent.sort)
                     .toList();
 
-            for (StreamConst.Event event : doneEvents) {
+            for (StreamCoreConst.Event event : doneEvents) {
                 stream.getEmitter().send(SseEmitter.event()
                         .name(event.done)
                         .data(event.done));
             }
 
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.EXCEPTION)
+                    .name(StreamCoreConst.EXCEPTION)
                     .data(throwable.getMessage()));
 
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
 
         } catch (IllegalStateException | IOException ignored) {
         }
@@ -121,15 +121,15 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
     @Override
     protected void hookOnComplete() {
         try {
-            if (!StreamConst.Event.INITIALIZE.equals(currentEvent)) {
+            if (!StreamCoreConst.Event.INITIALIZE.equals(currentEvent)) {
                 stream.getEmitter().send(SseEmitter.event()
                         .name(currentEvent.done)
                         .data(currentEvent.done));
             }
 
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
         } catch (IllegalStateException | IOException ignored) {
         }
 

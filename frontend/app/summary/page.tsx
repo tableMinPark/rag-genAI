@@ -73,7 +73,7 @@ export default function SummaryPage() {
   /**
    * 파일 삭제 핸들러
    */
-  const handleRemoveFile = () => {
+  const handleDeleteFile = () => {
     setSelectedFile(null)
   }
 
@@ -217,7 +217,7 @@ export default function SummaryPage() {
                     </div>
                     {!isStreaming && (
                       <button
-                        onClick={() => handleRemoveFile()}
+                        onClick={() => handleDeleteFile()}
                         className="text-gray-400 hover:text-red-500"
                       >
                         <X className="h-4 w-4" />
@@ -347,7 +347,7 @@ export default function SummaryPage() {
         {/* [오른쪽] 요약 결과 영역 */}
         <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           {/* 헤더: 요약 옵션 선택 */}
-          <div className="flex h-[52px] items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
+          <div className="flex h-13 items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-gray-500">LENGTH</span>
               <select
