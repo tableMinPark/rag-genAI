@@ -31,7 +31,6 @@ public class CommonCodeModuleServiceImpl implements CommonCodeModuleService {
                 .orElseThrow(() -> new NotFoundException("공통 코드"));
 
         return CommonCodeVO.builder()
-                .codeId(commonCodeEntity.getCodeId())
                 .code(commonCodeEntity.getCode())
                 .codeName(commonCodeEntity.getCodeName())
                 .codeGroup(commonCodeEntity.getCodeGroup())
@@ -53,7 +52,6 @@ public class CommonCodeModuleServiceImpl implements CommonCodeModuleService {
 
         return comnCodeEntities.stream()
                 .map(commonCodeEntity -> CommonCodeVO.builder()
-                        .codeId(commonCodeEntity.getCodeId())
                         .code(commonCodeEntity.getCode())
                         .codeName(commonCodeEntity.getCodeName())
                         .codeGroup(commonCodeEntity.getCodeGroup())

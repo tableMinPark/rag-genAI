@@ -65,7 +65,7 @@ public class VllmAnswerRequest {
             this.messages.add(Message.builder().role("system").content("이전 대화 요약:\n" + chatState).build());
         }
         if (context != null && !context.isBlank()) {
-            this.messages.add(Message.builder().role("system").content("참고 문서:\n\n" + context).build());
+            this.messages.add(Message.builder().role("user").content("참고 문서:\n\n```" + context + "```").build());
         }
         // 이전 대화 목록
         if (conversations != null && !conversations.isEmpty()) {

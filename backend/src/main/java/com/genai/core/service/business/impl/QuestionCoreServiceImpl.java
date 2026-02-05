@@ -113,18 +113,12 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURNS)
                 .collectList()
-                .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ conversationMono 완료"))
-                ;
+                .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
                 .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
-                .doOnSubscribe(s -> log.info("🔥 [2] rewriteQueryMono 실제 실행 (LLM 요청)"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ rewriteQueryMono 완료"))
-                ;
+                .cache();
 
         // 검색
         Mono<List<Rerank>> rerankFlux = rewriteQueryMono.flatMap(rewriteQuery ->
@@ -152,10 +146,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
 
                 }).subscribeOn(Schedulers.boundedElastic()))
-                .doOnSubscribe(s -> log.info("🔥 [3] rerankMono 실제 실행 (벡터/키워드 검색)"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ rerankMono 완료"))
-                ;
+                .cache();
 
         Mono<QuestionContextVO> contextMono = Mono.zip(conversationMono, rewriteQueryMono, rerankFlux)
                 .map(tuple -> QuestionContextVO.builder()
@@ -164,10 +155,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .rewriteQuery(tuple.getT2())
                         .reranks(tuple.getT3())
                         .build())
-                .doOnSubscribe(s -> log.info("🔥 [4] contextMono 조합 시작"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ contextMono 완료"))
-                ;
+                .cache();
 
         // 답변
         StringBuilder answerAccumulator = new StringBuilder();
@@ -195,14 +183,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         answerAccumulator.append(answerEntity.getContent());
                     }
                 })
-                .doOnSubscribe(s -> log.info("🔥 [5] 답변 생성 스트림 시작"))
                 .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
                         .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build())
-                .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"))
-                ;
+                        .build());
 
         // 참고 문서 Flux
         Mono<StreamEvent> referenceMono = rerankFlux
@@ -341,18 +326,12 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURNS)
                 .collectList()
-                .doOnSubscribe(s -> log.info("🔥 [1] conversationMono 실제 실행 (DB 조회)"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ conversationMono 완료"))
-                ;
+                .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
                 .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
-                .doOnSubscribe(s -> log.info("🔥 [2] rewriteQueryMono 실제 실행 (LLM 요청)"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ rewriteQueryMono 완료"))
-                ;
+                .cache();
 
         Mono<QuestionContextVO> contextMono = Mono.zip(conversationMono, rewriteQueryMono)
                 .map(tuple -> QuestionContextVO.builder()
@@ -361,10 +340,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .rewriteQuery(tuple.getT2())
                         .reranks(Collections.emptyList())
                         .build())
-                .doOnSubscribe(s -> log.info("🔥 [3] contextMono 조합 시작"))
-                .cache()
-                .doOnSuccess(s -> log.info("✅ contextMono 완료"))
-                ;
+                .cache();
 
         // 답변
         StringBuilder answerAccumulator = new StringBuilder();
@@ -382,13 +358,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         answerAccumulator.append(answerEntity.getContent());
                     }
                 })
-                .doOnSubscribe(s -> log.info("🔥 [4] 답변 생성 스트림 시작"))
                 .map(answerEntity -> StreamEvent.builder()
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
                         .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build())
-                .doOnComplete(() -> log.info("✅ answerStreamFlux 완료"));
+                        .build());
 
         // 대화 이력 업데이트
         Mono<Void> chatHistoryMono = contextMono.flatMap(ctx -> {

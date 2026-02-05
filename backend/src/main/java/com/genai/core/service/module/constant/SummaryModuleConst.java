@@ -3,8 +3,8 @@ package com.genai.core.service.module.constant;
 public class SummaryModuleConst {
 
     // 부분 요약
-    public  static final double PART_SUMMARY_TEMPERATURE    = 0.2;
-    public  static final double PART_SUMMARY_TOP_P          = 0.9;
+    public  static final double PART_SUMMARY_TEMPERATURE    = 0.15;
+    public  static final double PART_SUMMARY_TOP_P          = 0.85;
     private static final int    PART_SUMMARY_MAXIMUM_TOKENS = 1500;
     public  static final String PART_SUMMARY_PROMPT = String.format("""
     당신은 긴 문서를 부분적으로 요약하는 분석가입니다.

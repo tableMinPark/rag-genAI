@@ -26,4 +26,8 @@ public class DictionaryEntity {
     @Column(name = "dictionary_desc")
     @Comment("사전 설명")
     private String dictionaryDesc;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "language_code")
+    private CommonCodeEntity language;
 }
