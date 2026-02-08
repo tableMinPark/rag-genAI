@@ -13,7 +13,7 @@ export const streamApi = (
   streamEvent: StreamEvent,
 ): EventSource => {
   const eventSource = new EventSource(
-    `${config.apiBasePath}/stream/${sessionId}`,
+    `http://${config.apiHost}:${config.apiPort}${config.apiBasePath}/stream/${sessionId}`,
   )
   // SSE 연결 이벤트
   eventSource.addEventListener('connect', (event: MessageEvent) => {
