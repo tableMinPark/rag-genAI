@@ -114,7 +114,11 @@ export default function SimulationPage() {
             })
             .catch((reason) => {
               console.error(reason)
-              modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
+              modalStore.setError(
+                '서버 통신 에러',
+                '시뮬레이션 실패',
+                '시뮬레이션 실행에 실패했습니다.',
+              )
               setIsStreaming(false)
               streamRef.current = null
             })
@@ -128,7 +132,11 @@ export default function SimulationPage() {
           streamRef.current = null
         },
         onError: (_) => {
-          modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
+          modalStore.setError(
+            '서버 통신 에러',
+            '시뮬레이션 실패',
+            '시뮬레이션 실행에 실패했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },

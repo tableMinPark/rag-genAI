@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ProjectRepository extends JpaRepository<ProjectEntity, Long> {
 
-    Page<ProjectEntity> findAllByProjectName(String projectName, Pageable pageable);
+    Page<ProjectEntity> findAllByProjectNameLike(String projectName, Pageable pageable);
 }

@@ -11,6 +11,8 @@ import { useModalStore } from '@/stores/modalStore'
 import { streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 
+const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
+
 const md = new MarkdownIt({
   html: true,
   breaks: true,
@@ -95,7 +97,12 @@ export default function ReportPage() {
         onConnect: async (_) => {
           console.log(`📡 보고서 생성 요청 : ${title}`)
           if (selectedFile.length == 0) {
-            await generateReportTextApi(sessionId, requestContent, title, context)
+            await generateReportTextApi(
+              sessionId,
+              requestContent,
+              title,
+              context,
+            )
               .then((response) => {
                 console.log(`📡 ${response.message}`)
               })
@@ -103,13 +110,19 @@ export default function ReportPage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
+                  '보고서 생성 실패',
                   '보고서 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
                 streamRef.current = null
               })
           } else {
-            await generateReportFileApi(sessionId, requestContent, title, selectedFile)
+            await generateReportFileApi(
+              sessionId,
+              requestContent,
+              title,
+              selectedFile,
+            )
               .then((response) => {
                 console.log(`📡 ${response.message}`)
               })
@@ -117,6 +130,7 @@ export default function ReportPage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
+                  '보고서 생성 실패',
                   '보고서 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
@@ -133,7 +147,11 @@ export default function ReportPage() {
           streamRef.current = null
         },
         onError: (_) => {
-          modalStore.setError('서버 통신 에러', '보고서 생성에 실패했습니다.')
+          modalStore.setError(
+            '서버 통신 에러',
+            '보고서 생성 실패',
+            '보고서 생성에 실패했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },
@@ -268,13 +286,14 @@ export default function ReportPage() {
                     </svg>
                     <span className="text-sm font-medium">
                       {selectedFile.length > 0
-                        ? '참고 파일 추가'
-                        : '참고 파일 등록'}
+                        ? `참고 파일 추가 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`
+                        : `참고 파일 등록 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`}
                     </span>
                   </div>
                   <input
                     type="file"
                     className="hidden"
+                    accept={ALLOW_EXT.map((ext) => `.${ext}`).join(', ')}
                     multiple
                     onChange={handleSelectFiles}
                   />

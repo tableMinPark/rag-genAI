@@ -101,7 +101,7 @@ public class MyAiServiceImpl implements MyAiService {
         if (keyword == null) {
             projectEntityPage = projectRepository.findAll(pageable);
         } else {
-            projectEntityPage = projectRepository.findAllByProjectName(keyword, pageable);
+            projectEntityPage = projectRepository.findAllByProjectNameLike("%" + keyword.replace(" ", "%") + "%", pageable);
         }
 
         return PageWrapper.<ProjectVO>builder()

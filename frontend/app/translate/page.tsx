@@ -15,6 +15,8 @@ import { useUiStore } from '@/stores/uiStore'
 import { streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 
+const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
+
 export default function TranslatePage() {
   const menuInfo = menuInfos.translate
   const uiStore = useUiStore()
@@ -134,7 +136,8 @@ export default function TranslatePage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
-                  '보고서 생성에 실패했습니다.',
+                  '번역문 생성 실패',
+                  '번역문 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
                 streamRef.current = null
@@ -154,7 +157,8 @@ export default function TranslatePage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
-                  '보고서 생성에 실패했습니다.',
+                  '번역문 생성 실패',
+                  '번역문 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
                 streamRef.current = null
@@ -170,7 +174,11 @@ export default function TranslatePage() {
           streamRef.current = null
         },
         onError: (_) => {
-          modalStore.setError('서버 통신 에러', '보고서 생성에 실패했습니다.')
+          modalStore.setError(
+            '서버 통신 에러',
+            '번역문 생성 실패',
+            '번역문 생성에 실패했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },
@@ -309,12 +317,15 @@ export default function TranslatePage() {
                     <line x1="12" y1="3" x2="12" y2="15"></line>
                   </svg>
                   <span className="text-sm font-medium">
-                    {selectedFile ? '파일 변경하기' : '파일 업로드'}
+                    {!selectedFile
+                      ? `파일 업로드 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`
+                      : `파일 변경 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`}
                   </span>
                 </div>
                 <input
                   type="file"
                   className="hidden"
+                  accept={ALLOW_EXT.map((ext) => `.${ext}`).join(', ')}
                   ref={fileInputRef}
                   onChange={handleSelectFile}
                 />
@@ -416,11 +427,13 @@ export default function TranslatePage() {
                   onChange={(e) => setTargetLang(e.target.value)}
                   className="text-primary hover:text-primary-hover cursor-pointer bg-transparent text-sm font-bold transition-colors focus:outline-none"
                 >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
+                  {languages
+                    .filter((lang) => lang.code !== sourceLang)
+                    .map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name}
+                      </option>
+                    ))}
                 </select>
               </div>
               {output && (

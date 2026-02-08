@@ -11,6 +11,8 @@ import { useModalStore } from '@/stores/modalStore'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 import { streamApi } from '@/api/stream'
 
+const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
+
 const md = new MarkdownIt({
   html: true,
   breaks: true,
@@ -107,7 +109,8 @@ export default function SummaryPage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
-                  '보고서 생성에 실패했습니다.',
+                  '요약문 생성 실패',
+                  '요약문 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
                 streamRef.current = null
@@ -121,7 +124,8 @@ export default function SummaryPage() {
                 console.error(reason)
                 modalStore.setError(
                   '서버 통신 에러',
-                  '보고서 생성에 실패했습니다.',
+                  '요약문 생성 실패',
+                  '요약문 생성에 실패했습니다.',
                 )
                 setIsStreaming(false)
                 streamRef.current = null
@@ -137,7 +141,11 @@ export default function SummaryPage() {
           streamRef.current = null
         },
         onError: (_) => {
-          modalStore.setError('서버 통신 에러', '보고서 생성에 실패했습니다.')
+          modalStore.setError(
+            '서버 통신 에러',
+            '요약문 생성 실패',
+            '요약문 생성에 실패했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },
@@ -248,12 +256,15 @@ export default function SummaryPage() {
                   <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
                 <span className="text-sm font-medium">
-                  {selectedFile ? '파일 변경하기' : '파일 업로드'}
+                  {!selectedFile
+                    ? `파일 업로드 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`
+                    : `파일 변경 (${ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')})`}
                 </span>
               </div>
               <input
                 type="file"
                 className="hidden"
+                accept={ALLOW_EXT.map((ext) => `.${ext}`).join(', ')}
                 ref={fileInputRef}
                 onChange={handleSelectFile}
               />

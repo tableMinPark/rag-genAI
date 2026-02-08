@@ -59,7 +59,11 @@ export default function ChatArea({
    */
   const handleSendQuery = () => {
     if (!query.trim()) {
-      modalStore.setError('질문 필수', '질문을 입력하세요')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '질의문 필수',
+        '질의문을 입력해주세요.',
+      )
       return
     } else if (isStreaming) {
       return

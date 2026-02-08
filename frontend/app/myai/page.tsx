@@ -67,13 +67,6 @@ export default function MyAiPage() {
     )
   }, [])
 
-  /**
-   * 초기 프로젝트 목록 조회 이펙트
-   */
-  useEffect(() => {
-    handleGetProjects()
-  }, [])
-
   // ###################################################
   // 핸들러
   // ###################################################
@@ -156,6 +149,7 @@ export default function MyAiPage() {
     modalStore.setConfirm(
       '프로젝트 삭제',
       '정말로 이 프로젝트를 삭제하시겠습니까?',
+      '삭제한 프로젝트는 복구할 수 없습니다.',
       async () => {
         setSelectedProject(null)
         handleDeleteProject(project)

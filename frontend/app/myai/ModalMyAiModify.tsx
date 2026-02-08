@@ -13,6 +13,8 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
+
 interface ModalMyAiModifyProps {
   onModify: () => void
   onClose: () => void
@@ -75,6 +77,7 @@ export default function ModalMyAiModify({
     modalStore.setConfirm(
       '프로젝트 문서 제외',
       '이 문서를 학습 데이터에서 제외하시겠습니까?',
+      '제외한 문서는 복구할 수 없습니다.',
       () => {
         setDeleteProjectFileDetailIds((prev) => [
           ...prev,
@@ -207,11 +210,14 @@ export default function ModalMyAiModify({
                 <p className="group-hover:text-primary text-sm font-bold text-gray-600">
                   클릭하여 파일 선택
                 </p>
-                <p className="text-[10px] text-gray-400">PDF, HWP</p>
+                <p className="text-[10px] text-gray-400">
+                  {ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')}
+                </p>
               </div>
               <input
                 type="file"
                 className="hidden"
+                accept={ALLOW_EXT.map((ext) => `.${ext}`).join(', ')}
                 multiple
                 onChange={handleSelectProjectFile}
               />

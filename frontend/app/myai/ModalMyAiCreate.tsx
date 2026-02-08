@@ -10,6 +10,8 @@ import { PromptParameter } from '@/types/domain'
 import { FileSearch, FileText, Loader2, Save, Upload, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
+const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
+
 interface ModalMyAiCreateProps {
   onCreate: () => void
   onClose: () => void
@@ -83,32 +85,64 @@ export default function ModalMyAiCreate({
    */
   const handleCreateProject = async () => {
     if (!projectName.trim()) {
-      modalStore.setError('프로젝트 이름 필수', '프로젝트 이름을 입력해주세요.')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '프로젝트 이름 필수',
+        '프로젝트 이름을 입력해주세요.',
+      )
       return
     }
     if (!projectDescription.trim()) {
-      modalStore.setError('프로젝트 설명 필수', '프로젝트 설명을 입력해주세요.')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '프로젝트 설명 필수',
+        '프로젝트 설명을 입력해주세요.',
+      )
       return
     }
     if (!promptRole.trim()) {
-      modalStore.setError('프로젝트 역할 필수', '프로젝트 역할을 선택해주세요.')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '프로젝트 역할 필수',
+        '프로젝트 역할을 선택해주세요.',
+      )
       return
     }
     if (!answerTone.trim()) {
-      modalStore.setError('답변 톤 필수', '답변 톤을 선택해주세요.')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '답변 톤 필수',
+        '답변 톤을 선택해주세요.',
+      )
       return
     }
     if (!answerStyle.trim()) {
-      modalStore.setError('답변 스타일 필수', '답변 스타일을 선택해주세요.')
+      modalStore.setError(
+        '필수 입력값 누락',
+        '답변 스타일 필수',
+        '답변 스타일을 선택해주세요.',
+      )
       return
     }
     if (projectFiles.length === 0) {
       modalStore.setError(
+        '필수 입력값 누락',
         '프로젝트 문서 등록 필수',
         '최소 1개 이상의 학습 문서를 업로드해주세요.',
       )
       return
     }
+    projectFiles.map((projectFile) => {
+      const ext = projectFile.name.split('.').pop()?.toLowerCase()
+      if (!ALLOW_EXT.includes(ext || '')) {
+        modalStore.setError(
+          '지원하지 않는 파일 형식',
+          '파일 형식 오류',
+          `${projectFile.name} 파일은 지원되지 않는 형식입니다.`,
+        )
+        return
+      }
+    })
     setIsLoading(true)
     await createProjectApi(
       projectName,
@@ -125,6 +159,7 @@ export default function ModalMyAiCreate({
       .catch((reason) => {
         console.error(reason)
         modalStore.setError(
+          '서버 통신 에러',
           '프로젝트 생성 실패',
           '프로젝트 생성에 실패했습니다.',
         )
@@ -206,7 +241,7 @@ export default function ModalMyAiCreate({
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-bold text-gray-600">
-              프로젝트 설명
+              프로젝트 설명 <span className="text-red-500">*</span>
             </label>
 
             <input
@@ -286,11 +321,14 @@ export default function ModalMyAiCreate({
                 <p className="group-hover:text-primary text-sm font-bold text-gray-600">
                   클릭하여 파일 선택
                 </p>
-                <p className="text-[10px] text-gray-400">PDF, HWP</p>
+                <p className="text-[10px] text-gray-400">
+                  {ALLOW_EXT.map((ext) => ext.toUpperCase()).join(', ')}
+                </p>
               </div>
               <input
                 type="file"
                 className="hidden"
+                accept={ALLOW_EXT.map((ext) => `.${ext}`).join(', ')}
                 multiple
                 onChange={handleSelectProjectFile}
               />

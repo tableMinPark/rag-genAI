@@ -110,7 +110,11 @@ function AiContent() {
             })
             .catch((reason) => {
               console.error(reason)
-              modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
+              modalStore.setError(
+                '서버 통신 불가',
+                '답변 생성 실패',
+                '답변 생성에 실패했습니다.',
+              )
               setIsStreaming(false)
               streamRef.current = null
             })
@@ -124,7 +128,11 @@ function AiContent() {
           streamRef.current = null
         },
         onError: (_) => {
-          modalStore.setError('서버 통신 에러', '답변 생성에 실패했습니다.')
+          modalStore.setError(
+            '서버 통신 불가',
+            '답변 생성 실패',
+            '답변 생성에 실패했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },
