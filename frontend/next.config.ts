@@ -9,14 +9,6 @@ const nextConfig: NextConfig = {
     unoptimized: config.imageUnOptimized,
   },
   compress: false,
-  rewrites: async () => {
-    return [
-      {
-        source: `/api/:path*`,
-        destination: `http://${config.apiHost}:${config.apiPort}${config.apiBasePath}/:path*`,
-      },
-    ]
-  },
 }
 
 export default nextConfig

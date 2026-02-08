@@ -20,8 +20,8 @@ import { formatDateToYYYYMMDD } from '@/public/ts/commonUtil'
 import { menuInfos } from '@/public/const/menu'
 import { useUiStore } from '@/stores/uiStore'
 import { useModalStore } from '@/stores/modalStore'
-import ModalMyAiCreate from '@/app/myai/ModalMyAiCreate'
-import ModalMyAiModify from './ModalMyAiModify'
+import ModalMyAiCreate from '@/components/modal/ModalMyAiCreate'
+import ModalMyAiModify from '@/components/modal/ModalMyAiModify'
 
 export default function MyAiPage() {
   const menuInfo = menuInfos.myai
