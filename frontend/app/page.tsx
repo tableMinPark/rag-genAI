@@ -1,29 +1,37 @@
 'use client'
 
 import React, { useState } from 'react'
-import { useRouter } from 'next/navigation' // 라우터 훅
-import { Send, Sparkles, MessageSquare } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Sparkles, MessageSquare, SendHorizonal } from 'lucide-react'
 
-export default function ChatMainPage() {
+const DEFAULT_RECOMMEND_QUERY = [
+  '캐릭터 관련 규정',
+  '인사규정',
+  '프로젝트 관리 규정',
+]
+
+export default function MainPage() {
   const router = useRouter()
   const [input, setInput] = useState('')
 
-  // [수정됨] 검색/채팅 시작 핸들러
-  const handleSearch = (e?: React.FormEvent) => {
+  /**
+   * 질의 요청 핸들러
+   * @param e 이벤트
+   */
+  const handleSendQuery = (e?: React.FormEvent) => {
     e?.preventDefault()
     if (!input.trim()) return
-
-    // 입력값을 URL 인코딩하여 쿼리 스트링으로 전달
     const query = encodeURIComponent(input.trim())
-
-    // /ai 경로로 이동 (예: /ai?q=안녕하세요)
     router.push(`/ai?query=${query}`)
   }
 
+  /**
+   * 키 다운 핸들러
+   * @param e 이벤트
+   */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // 한글 입력 중 조합(Composing) 이슈 방지 및 엔터키 처리
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-      handleSearch()
+      handleSendQuery()
     }
   }
 
@@ -40,7 +48,7 @@ export default function ChatMainPage() {
             무엇을 도와드릴까요?
           </h1>
           <p className="text-lg text-gray-500">
-            RAG 기반의 AI가 사내 문서를 분석하여 정확한 답변을 제공합니다.
+            RAG 기반의 AI가 문서를 분석하여 정확한 답변을 제공합니다.
           </p>
         </div>
 
@@ -50,7 +58,6 @@ export default function ChatMainPage() {
             <div className="absolute left-6 text-gray-400">
               <MessageSquare className="h-6 w-6" />
             </div>
-
             <input
               type="text"
               value={input}
@@ -62,34 +69,24 @@ export default function ChatMainPage() {
             />
 
             <button
-              onClick={() => handleSearch()}
+              onClick={() => handleSendQuery()}
               disabled={!input.trim()}
               className="bg-primary hover:bg-primary-hover absolute right-3 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-md transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:hover:scale-100"
             >
-              <Send className="ml-0.5 h-6 w-6" />
+              <SendHorizonal className="ml-0.5 h-6 w-6" />
             </button>
           </div>
 
           <div className="mt-4 flex justify-center gap-4 text-xs font-medium text-gray-400">
-            {/* 추천 검색어 클릭 시 바로 이동하도록 처리 가능 */}
-            <span
-              onClick={() => router.push('/ai?query=인사규정')}
-              className="hover:text-primary cursor-pointer transition-colors"
-            >
-              #인사규정
-            </span>
-            <span
-              onClick={() => router.push('/ai?query=IT지원')}
-              className="hover:text-primary cursor-pointer transition-colors"
-            >
-              #IT지원
-            </span>
-            <span
-              onClick={() => router.push('/ai?query=프로젝트관리')}
-              className="hover:text-primary cursor-pointer transition-colors"
-            >
-              #프로젝트관리
-            </span>
+            {DEFAULT_RECOMMEND_QUERY.map((recommendQuery, index) => (
+              <span
+                key={index}
+                onClick={() => router.push(`/ai?query=${recommendQuery}`)}
+                className="hover:text-primary cursor-pointer transition-colors"
+              >
+                #{recommendQuery}
+              </span>
+            ))}
           </div>
         </div>
       </div>

@@ -5,9 +5,6 @@ import com.genai.core.type.CollectionType;
 
 import java.util.List;
 
-/**
- * 질문 & 답변 서비스
- */
 public interface QuestionCoreService {
 
     /**

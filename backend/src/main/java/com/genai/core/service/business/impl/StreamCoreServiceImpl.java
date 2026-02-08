@@ -1,10 +1,10 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.constant.StreamConst;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.subscriber.StreamSubscriber;
-import com.genai.core.service.business.vo.StreamVO;
+import com.genai.core.service.business.subscriber.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,15 +30,15 @@ public class StreamCoreServiceImpl implements StreamCoreService {
     @Override
     public StreamSubscriber createStream(String streamId) {
 
-        StreamSubscriber streamSubscriber = new StreamSubscriber(StreamVO.builder()
+        StreamSubscriber streamSubscriber = new StreamSubscriber(Stream.builder()
                 .streamId(streamId)
                 .build());
 
         // 연결 이벤트 전송
         try {
             streamSubscriber.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.CONNECT)
-                    .data(StreamConst.CONNECT));
+                    .name(StreamCoreConst.CONNECT)
+                    .data(StreamCoreConst.CONNECT));
         } catch (IOException e) {
             streamSubscriber.getEmitter().completeWithError(e);
         }

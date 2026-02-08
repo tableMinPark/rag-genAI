@@ -1,6 +1,8 @@
 package com.genai.core.service.business.vo;
 
+import com.genai.core.service.business.subscriber.StreamEvent;
 import lombok.*;
+import reactor.core.publisher.Flux;
 
 @ToString
 @Builder
@@ -13,5 +15,5 @@ public class ReportVO {
 
     private long msgId;
 
-    private String content;
+    private Flux<StreamEvent> answerStream;
 }

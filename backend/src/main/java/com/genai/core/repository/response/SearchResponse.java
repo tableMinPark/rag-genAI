@@ -1,16 +1,14 @@
 package com.genai.core.repository.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.genai.core.repository.entity.DocumentEntity;
-import com.genai.core.repository.vo.SearchPageVO;
 import com.genai.core.repository.wrapper.Search;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 @ToString
 @Getter
@@ -18,15 +16,20 @@ import java.util.Map;
 @AllArgsConstructor
 public class SearchResponse<T extends DocumentEntity> {
 
-    private int totalHits;
+    private Integer took;
 
-    private SearchPageVO pagingInfo;
+    @JsonProperty("timed_out")
+    private Boolean timeout;
 
-    private List<Search<T>> document = Collections.emptyList();
+    @JsonProperty("hits")
+    private Result<T> result;
 
-    private List<String> typoKeyword = Collections.emptyList();
-
-    private double elapsedTime;
-
-    private Map<String, Object> aggregations = Collections.emptyMap();
+    public record Result<T extends DocumentEntity>(
+        Total total,
+        @JsonProperty("max_score")
+        float maxScore,
+        List<Search<T>> hits
+    ) {
+        public record Total(int value, String relation) {}
+    }
 }

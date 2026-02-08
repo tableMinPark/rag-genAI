@@ -1,10 +1,6 @@
 package com.genai.core.repository.request;
 
-import com.genai.core.repository.wrapper.Rerank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.List;
 
@@ -16,7 +12,15 @@ public class RerankRequest {
 
     private final String query;
 
-    private final String field;
+    private final List<Document> documents;
 
-    private final List<Rerank> document;
+    @Builder
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Document {
+        private String id;
+        private String content;
+    }
 }

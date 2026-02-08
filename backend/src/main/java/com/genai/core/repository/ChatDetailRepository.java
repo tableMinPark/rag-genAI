@@ -8,6 +8,5 @@ import java.util.List;
 
 public interface ChatDetailRepository extends JpaRepository<ChatDetailEntity, Long> {
 
-    List<ChatDetailEntity> findByChatIdOrderBySysCreateDtDesc(Long chatId, Pageable pageable);
-
+    List<ChatDetailEntity> findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(Long chatId, Pageable pageable);
 }

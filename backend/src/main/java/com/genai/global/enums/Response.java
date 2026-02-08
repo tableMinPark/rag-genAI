@@ -30,6 +30,7 @@ public enum Response {
     MYAI_GET_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2003, "나만의 AI 프로젝트 임베딩 문서 조회에 성공했습니다.", ""),
     MYAI_UPDATE_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2004, "나만의 AI 프로젝트 임베딩 문서 수정에 성공했습니다.", ""),
 
+
     // REPORT
     REPORT_GENERATE_TEXT_SUCCESS(HttpStatus.OK, 3000, "텍스트 참조 보고서 생성 요청에 성공했습니다.", ""),
     REPORT_GENERATE_FILE_SUCCESS(HttpStatus.OK, 3001, "파일 참조 보고서 생성 요청에 성공했습니다.", ""),
@@ -42,6 +43,11 @@ public enum Response {
     TRANSLATE_GENERATE_TEXT_SUCCESS(HttpStatus.OK, 5000, "텍스트 참조 번역 요청에 성공했습니다.", ""),
     TRANSLATE_GENERATE_FILE_SUCCESS(HttpStatus.OK, 5001, "파일 참조 번역 요청에 성공했습니다.", ""),
     TRANSLATE_TRANSLATE_LANGUAGES(HttpStatus.OK, 5002, "번역 언어 목록 조회에 성공했습니다.", ""),
+
+    // PROMPT
+    PROMPT_GET_ROLES_SUCCESS(HttpStatus.OK, 6000, "프롬프트 역할 목록 조회에 성공했습니다.", ""),
+    PROMPT_GET_TONES_SUCCESS(HttpStatus.OK, 6001, "프롬프트 답변 톤 목록 조회에 성공했습니다.", ""),
+    PROMPT_GET_STYLES_SUCCESS(HttpStatus.OK, 6002, "프롬프트 답변 스타일 목록 조회에 성공했습니다.", ""),
     ;
 
     private final HttpStatus statusCode;

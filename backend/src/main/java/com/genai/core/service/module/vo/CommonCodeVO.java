@@ -9,8 +9,6 @@ import lombok.*;
 @AllArgsConstructor
 public class CommonCodeVO {
 
-    private Long codeId;
-
     private String code;
 
     private String codeName;

@@ -1,8 +1,8 @@
 package com.genai.app.myai.service;
 
+import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.global.wrapper.PageWrapper;
-import com.genai.app.myai.service.vo.ProjectVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -32,9 +32,12 @@ public interface MyAiService {
      *
      * @param projectName    프로젝트명
      * @param projectDesc    프로젝트 설명
+     * @param roleCode       역할 코드
+     * @param toneCode       답변 톤 코드
+     * @param styleCode      답변 스타일 코드
      * @param multipartFiles 임베딩 문서 목록
      */
-    void createProject(String projectName, String projectDesc, MultipartFile[] multipartFiles);
+    void createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles);
 
     /**
      * 프로젝트 삭제

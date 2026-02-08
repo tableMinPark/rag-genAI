@@ -1,8 +1,6 @@
 package com.genai.core.service.business.subscriber;
 
-import com.genai.core.constant.StreamConst;
-import com.genai.core.service.business.vo.AnswerVO;
-import com.genai.core.service.business.vo.StreamVO;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -12,10 +10,12 @@ import java.io.IOException;
 import java.util.List;
 
 @Slf4j
-public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
-    private final StreamVO stream;
+public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
 
-    public StreamSubscriber(StreamVO stream) {
+    private final Stream stream;
+    private StreamCoreConst.Event currentEvent = StreamCoreConst.Event.INITIALIZE;
+
+    public StreamSubscriber(Stream stream) {
         this.stream = stream;
     }
 
@@ -28,91 +28,90 @@ public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
     }
 
     @Override
-    protected void hookOnNext(@NonNull List<AnswerVO> answers) {
+    protected void hookOnNext(@NonNull StreamEvent streamEvent) {
         if (stream.isCancelled()) {
             cancel();
             return;
         }
 
         try {
-            for (AnswerVO answer : answers) {
-                if (answer.getIsInference() != null) {
-                    if (answer.getIsInference()) {
-                        synchronized (StreamSubscriber.this) {
-                            if (!stream.isInferenceStarted()) {
-                                stream.setInferenceStarted(true);
-                                // 추론 시작 이벤트 전송
-                                stream.getEmitter().send(SseEmitter.event()
-                                        .name(StreamConst.INFERENCE_START)
-                                        .data(StreamConst.INFERENCE_START));
-                            }
-                            // 추론 이벤트 전송
-                            stream.getEmitter().send(SseEmitter.event()
-                                    .name(StreamConst.INFERENCE)
-                                    .data(answer.getConvertContent()));
-                        }
-                    } else {
-                        synchronized (StreamSubscriber.this) {
-                            if (!stream.isAnswerStarted()) {
-                                stream.setAnswerStarted(true);
-                                // 추론 끝 이벤트 전송
-                                stream.getEmitter().send(SseEmitter.event()
-                                        .name(StreamConst.INFERENCE_DONE)
-                                        .data(StreamConst.INFERENCE_DONE));
-                                // 답변 시작 이벤트 전송
-                                stream.getEmitter().send(SseEmitter.event()
-                                        .name(StreamConst.ANSWER_START)
-                                        .data(StreamConst.ANSWER_START));
-                            }
-                            // 답변 이벤트 전송
-                            stream.getEmitter().send(SseEmitter.event()
-                                    .name(StreamConst.ANSWER)
-                                    .data(answer.getConvertContent()));
-                        }
+            synchronized (StreamSubscriber.this) {
+                StreamCoreConst.Event nextEvent = streamEvent.getEvent();
+
+                if (!currentEvent.equals(nextEvent)) {
+                    // 이전 이벤트 종료 신호 전송
+                    if (!StreamCoreConst.Event.INITIALIZE.equals(currentEvent)) {
+                        stream.getEmitter().send(SseEmitter.event()
+                                .name(currentEvent.done)
+                                .data(currentEvent.done));
                     }
+                    stream.getEmitter().send(SseEmitter.event()
+                            .name(nextEvent.start)
+                            .data(nextEvent.start));
+
+                    currentEvent = nextEvent;
                 }
             }
-        } catch (IOException e) {
-            log.error("답변 스트림 SSE 전송 실패 : {}", e.getMessage());
-            cancel();
+
+            String content = streamEvent.getConvertContent();
+
+            if (!content.isBlank()) {
+                stream.getEmitter().send(SseEmitter.event()
+                        .name(currentEvent.process)
+                        .data(content));
+            }
+        } catch (IllegalStateException | IOException ignored) {
         }
     }
 
     @Override
     protected void hookOnCancel() {
         try {
+            List<StreamCoreConst.Event> doneEvents = StreamCoreConst.EVENT_STEP.stream()
+                    .filter(event -> !StreamCoreConst.Event.INITIALIZE.equals(event))
+                    .filter(event -> event.sort >= currentEvent.sort)
+                    .toList();
+
+            for (StreamCoreConst.Event event : doneEvents) {
+                stream.getEmitter().send(SseEmitter.event()
+                        .name(event.done)
+                        .data(event.done));
+            }
+
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.INFERENCE_DONE)
-                    .data(StreamConst.INFERENCE_DONE));
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.ANSWER_DONE)
-                    .data(StreamConst.ANSWER_DONE));
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
-        } catch (IOException ignored) {
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
+
+        } catch (IllegalStateException | IOException ignored) {
         }
 
-        log.error("답변 스트림 중지");
+        log.warn("답변 스트림 중지");
         stream.getEmitter().complete();
     }
 
     @Override
     protected void hookOnError(@NonNull Throwable throwable) {
         try {
+            List<StreamCoreConst.Event> doneEvents = StreamCoreConst.EVENT_STEP.stream()
+                    .filter(event -> !StreamCoreConst.Event.INITIALIZE.equals(event))
+                    .filter(event -> event.sort >= currentEvent.sort)
+                    .toList();
+
+            for (StreamCoreConst.Event event : doneEvents) {
+                stream.getEmitter().send(SseEmitter.event()
+                        .name(event.done)
+                        .data(event.done));
+            }
+
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.INFERENCE_DONE)
-                    .data(StreamConst.INFERENCE_DONE));
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.ANSWER_DONE)
-                    .data(StreamConst.ANSWER_DONE));
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.EXCEPTION)
+                    .name(StreamCoreConst.EXCEPTION)
                     .data(throwable.getMessage()));
+
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
-        } catch (IOException ignored) {
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
+
+        } catch (IllegalStateException | IOException ignored) {
         }
 
         log.error("답변 스트림 비정상 종료 : {}", throwable.getMessage());
@@ -122,13 +121,16 @@ public class StreamSubscriber extends BaseSubscriber<List<AnswerVO>> {
     @Override
     protected void hookOnComplete() {
         try {
+            if (!StreamCoreConst.Event.INITIALIZE.equals(currentEvent)) {
+                stream.getEmitter().send(SseEmitter.event()
+                        .name(currentEvent.done)
+                        .data(currentEvent.done));
+            }
+
             stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.ANSWER_DONE)
-                    .data(StreamConst.ANSWER_DONE));
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamConst.DISCONNECT)
-                    .data(StreamConst.DISCONNECT));
-        } catch (IOException ignored) {
+                    .name(StreamCoreConst.DISCONNECT)
+                    .data(StreamCoreConst.DISCONNECT));
+        } catch (IllegalStateException | IOException ignored) {
         }
 
         log.info("답변 스트림 정상 종료");

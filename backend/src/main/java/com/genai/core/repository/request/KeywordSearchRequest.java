@@ -1,57 +1,86 @@
 package com.genai.core.repository.request;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.genai.core.repository.vo.SearchPageVO;
-import com.genai.core.repository.vo.SearchSortVO;
-import com.genai.core.repository.vo.SearchTraceInfoVO;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
 
 import java.util.List;
+import java.util.Map;
 
 @ToString
+@Builder
 @Getter
+@AllArgsConstructor
 public class KeywordSearchRequest {
 
-    private final int searchMode;
+    private final int size;
 
-    private final int useLa;
+    private final List<Map<SortField, Order>> sort;
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private final String filterQuery;
+    private final Query query;
 
-    private final List<String> searchField;
+    public static Map<SortField, Order> sort(SortField sortField, String direction) {
+        return Map.of(sortField, Order.builder().order(direction).build());
+    }
 
-    private final String commonQuery;
+    public static Query query(QueryType queryType, String query, List<String> fields, List<String> aliases) {
 
-    private final SearchPageVO paging;
+        Query.Bool.Must.MultiMatch multiMatch = Query.Bool.Must.MultiMatch.builder()
+                .type(queryType.name())
+                .query(query)
+                .fields(fields)
+                .build();
 
-    private final List<SearchSortVO> sorting;
+        Query.Bool.Must must = Query.Bool.Must.builder()
+                .multiMatch(multiMatch)
+                .build();
 
-    private final SearchTraceInfoVO traceInfo;
+        List<Query.Bool.Filter> filter = aliases.stream()
+                .map(alias -> Query.Bool.Filter.builder()
+                        .term(Query.Bool.Filter.Term.builder()
+                                .alias(alias)
+                                .build())
+                        .build())
+                .toList();
 
-    private final List<String> sessionInfo;
+        Query.Bool bool = Query.Bool.builder()
+                .must(List.of(must))
+                .filter(filter)
+                .build();
 
-    private final int synonymExpansion;
-
-    private final int useSynonym;
-
-    private final boolean hideQueryLog;
+        return Query.builder()
+                .bool(bool)
+                .build();
+    }
 
     @Builder
-    public KeywordSearchRequest(String filterQuery, int topK, List<String> searchField, String commonQuery, List<String> sessionInfo, List<SearchSortVO> sorting, boolean hideQueryLog, int useSynonym, int synonymExpansion) {
-        this.searchMode = 1;
-        this.useLa = 1;
-        this.filterQuery = filterQuery;
-        this.searchField = searchField;
-        this.commonQuery = commonQuery;
-        this.paging = new SearchPageVO(0, topK);
-        this.sessionInfo = sessionInfo;
-        this.sorting = sorting;
-        this.traceInfo = new SearchTraceInfoVO(true, 0.0);
-        this.hideQueryLog = hideQueryLog;
-        this.useSynonym = useSynonym;
-        this.synonymExpansion = synonymExpansion;
+    public record Order(String order) {}
+
+    @Builder
+    public record Query(Bool bool) {
+        @Builder
+        public record Bool(List<Must> must, List<Filter> filter) {
+            @Builder
+            public record Must(@JsonProperty("multi_match") MultiMatch multiMatch) {
+                @Builder
+                public record MultiMatch(String query, List<String> fields, String type) {}
+            }
+            @Builder
+            public record Filter(Term term) {
+                @Builder
+                public record Term(String alias) {}
+            }
+        }
+    }
+
+    public enum SortField {
+        _score
+    }
+
+    public enum QueryType {
+        best_fields
     }
 }

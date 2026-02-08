@@ -5,7 +5,6 @@ import { Category, Document } from '@/types/domain'
 export interface ChatAiResponse {
   query: string
   sessionId: string
-  documents?: Document[]
 }
 
 export interface ChatLlmResponse {
@@ -16,7 +15,6 @@ export interface ChatLlmResponse {
 export interface ChatMyAiResponse {
   query: string
   sessionId: string
-  documents?: Document[]
 }
 
 export interface ChatSimulationResponse {
@@ -83,7 +81,7 @@ export const chatSimulateionApi = async (
   query: string,
   sessionId: string,
   context: string,
-  prompt: string,
+  promptContent: string,
   maxTokens: number,
   temperature: number,
   topP: number,
@@ -94,7 +92,7 @@ export const chatSimulateionApi = async (
       query,
       sessionId,
       context,
-      prompt,
+      promptContent,
       maxTokens,
       temperature,
       topP,

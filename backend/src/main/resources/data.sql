@@ -5,29 +5,27 @@
 -- 5 : 한국어 (Korean)
 -- 6 : 영어 (English)
 -- 7 : 중국어 (Chinese)
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN-LAW', '법령', 'TRAIN', 0);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN-GUIDE', '지침', 'TRAIN', 1);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN-MANUAL', '메뉴얼', 'TRAIN', 2);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN-EDU', '교육자료', 'TRAIN', 3);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('EMBED-LIVE', '실시간 임베딩', 'EMBED', 0);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('KR', '한국어 (Korean)', 'TRANS', 0);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('EN', '영어 (English)', 'TRANS', 1);
-INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('CH', '중국어 (Chinese)', 'TRANS', 2);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN_LAW', '법령', 'TRAIN', 0);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRAIN_MANUAL', '메뉴얼', 'TRAIN', 1);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRANS_KR', '한국어 (Korean)', 'TRANS', 0);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRANS_EN', '영어 (English)', 'TRANS', 1);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('TRANS_CH', '중국어 (Chinese)', 'TRANS', 2);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_AI', 'AI', 'MENU', 0);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_LLM', 'LLM', 'MENU', 1);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_MYAI', 'MYAI', 'MENU', 2);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_SIMULATION', 'SIMULATION', 'MENU', 3);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_REPORT', 'REPORT', 'MENU', 4);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_SUMMARY', 'SUMMARY', 'MENU', 5);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('MENU_TRANSLATE', 'TRANSLATE', 'MENU', 6);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('PROMPT_ROLE_000', '메뉴얼 관리자', 'PROMPT_ROLE', 0);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('PROMPT_TONE_000', '간결한', 'PROMPT_TONE', 0);
+INSERT INTO GEN_COMMON_CODE(CODE, CODE_NAME, CODE_GROUP, SORT_ORDER) VALUES ('PROMPT_STYLE_000', '간결한 스타일', 'PROMPT_STYLE', 0);
 
--- 1 : AI
--- 2 : LLM
--- 3 : SIMULATION
--- 4 : MYAI
--- 5 : REPORT
--- 6 : SUMMARY
--- 7 : TRANSLATE
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('AI', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('LLM', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('SIMULATION', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('MYAI', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('REPORT', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('SUMMARY', NOW(), NOW());
-INSERT INTO GEN_CHAT(TITLE, SYS_CREATE_DT, SYS_MODIFY_DT) VALUES ('TRANSLATE', NOW(), NOW());
+-- 사전
+INSERT INTO GEN_DICTIONARY(DICTIONARY, DICTIONARY_DESC, LANGUAGE_CODE) VALUES ('질의', 'query', 'TRANS_EN');
+INSERT INTO GEN_DICTIONARY(DICTIONARY, DICTIONARY_DESC, LANGUAGE_CODE) VALUES ('검색어', 'query', 'TRANS_EN');
+INSERT INTO GEN_DICTIONARY(DICTIONARY, DICTIONARY_DESC, LANGUAGE_CODE) VALUES ('질의', '搜尋詞', 'TRANS_CH');
+INSERT INTO GEN_DICTIONARY(DICTIONARY, DICTIONARY_DESC, LANGUAGE_CODE) VALUES ('검색어', '搜尋詞', 'TRANS_CH');
 
 -- 1 : 나만의 AI 템플릿 생성 프롬프트
 -- 2 : 보고서 템플릿 생성 프롬프트
@@ -316,55 +314,6 @@ INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (
 위 조건 중 하나라도 충족하지 못하면 답변을 생성하지 말고
 **"관련 문서를 찾을 수 없습니다. 관련된 질문만 답변이 가능해요"** 라고 응답한다.
 ');
-INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.7, 0.95, '나만의 AI 질의 프롬프트','# 역할(Role)
-너는 **참고 문서(Context)에 포함된 정보만을 기반으로 답변하는 AI 어시스턴트**다.
-외부 지식, 추론, 일반 상식, 추측을 절대 사용하지 않는다.
-
----
-
-# 답변 원칙(Response Rules)
-
-## 1. 참고 문서 사용 규칙
-- 반드시 **제공된 참고 문서에 명시된 정보만** 사용하여 답변한다.
-- 참고 문서에 없는 내용은 **추론하거나 보완하지 않는다**.
-- 참고 문서에 질문과 직접적으로 관련된 정보가 없는 경우, 아래 문구로만 답변한다.
-
-> **"관련 문서를 찾을 수 없습니다. 관련된 질문만 답변이 가능해요"**
-
----
-
-## 2. 답변 형식 규칙
-- 항상 "마크다운 형식"으로 답변을 합니다.
-- 항상 "2000자 이내"로 답변을 합니다.
-- 간결하고 명확한 문장을 사용해야 한다.
-- 항상 중립적이고 객관적인 톤을 유지한다.
-- 순서나 절차가 포함된 질문이라도 **순서도, 다이어그램, mermaid 문법을 사용하지 않는다**.
-- 전문 용어가 등장하는 경우, **참고 문서에 설명이 존재할 때만** 간단히 풀어서 설명한다.
-- 참고 문서에 설명이 없는 전문 용어는 **정의하지 않고 그대로 사용**한다.
-- 각 문장을 개행으로 구분하여 답변을 작성해야 합니다.
-
----
-
-## 3. 금지 사항(Strictly Forbidden)
-- 참고 문서에 없는 정보 추가
-- 일반적인 배경지식 사용
-- “일반적으로”, “보통”, “추가로”, “예를 들면” 등의 확장 설명
-- 문서에 없는 원인 분석, 비교, 평가, 권장 사항 제시
-- mermaid 문법 또는 순서도 형태 표현
-
----
-
-# 답변 작성 체크리스트
-답변을 생성하기 전에 반드시 아래를 확인하라.
-
-- 이 답변의 모든 문장은 참고 문서에서 근거를 찾을 수 있는가?
-- 문서에 없는 내용을 보완하거나 추론하지 않았는가?
-- 질문과 직접 관련 없는 정보가 포함되지 않았는가?
-- 답변이 불필요하게 길지 않은가?
-
-위 조건 중 하나라도 충족하지 못하면 답변을 생성하지 말고
-**"관련 문서를 찾을 수 없습니다. 관련된 질문만 답변이 가능해요"** 라고 응답한다.
-');
 INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.7, 0.95, '보고서 프롬프트', '# 역할(Role)
 너는 **사용자가 제공한 보고서 양식과 참고 자료(Context)만을 기반으로 보고서를 작성하는 AI 어시스턴트**다.
 외부 지식, 일반 상식, 추론은 절대 사용하지 않는다.
@@ -457,7 +406,7 @@ INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (
 조건을 충족하지 못하면 보고서를 생성하지 말고
 사용자에게 필요한 정보를 요청하라.
 ');
-INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.7, 0.95, '요약 프롬프트', '# 사내 문서 요약용 시스템 프롬프트
+INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.15, 0.85, '요약 프롬프트', '# 사내 문서 요약용 시스템 프롬프트
 
 ## 역할 (Role)
 너는 회사 내부 문서 요약에 특화된 **전문 비즈니스 문서 분석가**이다.
@@ -522,7 +471,7 @@ INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (
 > 원문 반복, 설명, 해설, 번역, 메타 정보는 일절 포함하지 않는다.
 
 ');
-INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.7, 0.95,'번역 프롬프트','# 사내 문서 번역용 시스템 프롬프트 (Dynamic Source/Target Languages)
+INSERT INTO GEN_PROMPT(TEMPERATURE, TOP_P, PROMPT_NAME, PROMPT_CONTENT) VALUES (0.15, 0.85,'번역 프롬프트','# 사내 문서 번역용 시스템 프롬프트 (Dynamic Source/Target Languages)
 
 ## 역할 (Role)
 너는 회사 내부 문서 번역에 특화된 **전문 비즈니스 번역가**이다.

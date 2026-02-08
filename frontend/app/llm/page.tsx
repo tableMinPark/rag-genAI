@@ -1,152 +1,154 @@
 'use client'
 
-import { useState } from 'react'
-import ChatArea, { Message } from '@/components/ChatArea'
-import { Brain } from 'lucide-react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import ChatArea from '@/components/chat/ChatArea'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, streamApi } from '@/api/stream'
 import { chatLlmApi } from '@/api/chat'
+import { useModalStore } from '@/stores/modalStore'
+import { GreetingMessage } from '@/public/const/greeting'
+import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
+import { StreamEvent } from '@/types/streamEvent'
+import NotFound from '@/components/NotFound'
+import { menuInfos } from '@/public/const/menu'
 
-export default function LlmPage() {
+function LlmContent() {
+  const menuInfo = menuInfos.llm
+  const modalStore = useModalStore()
+
   // ###################################################
-  // 상태 정의 (State)
+  // 상태 관리
   // ###################################################
   // 세션 ID 상태
   const [sessionId] = useState<string>(randomUUID())
   // 대화 내역 목록 상태
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content:
-        '안녕하세요. **LLM 기반 AI** 입니다.\n\n궁금한 내용을 물어보시면 자유롭게 답변해 드립니다.',
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<EventSource | null>(null)
 
   // ###################################################
-  // 핸들러 (Handler)
+  // 랜더링 이펙트
+  // ###################################################
+  useEffect(() => {
+    setMessages([createAnswerMessage('', '')])
+    let greetingMessageIndex = 0
+    const greetingMessageInterval = setInterval(() => {
+      setMessages((prev) => {
+        if (prev.length === 0) return prev
+        const messages = [...prev]
+        const lastIndex = 0
+        messages[lastIndex] = {
+          ...messages[lastIndex],
+          content: replaceEventDataToText(
+            GreetingMessage.llm.substring(0, greetingMessageIndex),
+          ),
+        }
+        return messages
+      })
+      if (greetingMessageIndex >= GreetingMessage.llm.length) {
+        clearInterval(greetingMessageInterval)
+      } else {
+        greetingMessageIndex++
+      }
+    }, 10)
+
+    return () => {
+      clearInterval(greetingMessageInterval)
+      streamRef.current?.close()
+    }
+  }, [])
+
+  // ###################################################
+  // 핸들러
   // ###################################################
   /**
    * 답변 요청 핸들러
-   *
    * @param query 사용자 질의
    */
-  const handleSendMessage = async (query: string) => {
-    // 질의 등록
-    const userMessage: Message = { role: 'user', content: query }
-    setMessages((prev) => [...prev, userMessage])
-
+  const handleSendQuery = async (query: string) => {
+    // 기존 스트림 정리
+    streamRef.current?.close()
+    // 스트림 상태 체크
+    if (isStreaming) return
     // 스트림 시작 상태 변경
     setIsStreaming(true)
-
-    let content = ''
-    let inference = ''
     // 세션 기반 SSE 연결
-    const eventSource = streamApi(sessionId)
-    // SSE 연결 이벤트
-    eventSource.addEventListener('connect', async (event) => {
-      console.log(`📡 스트림 연결`)
-      console.log(`📡 질의 등록 : ${query}`)
-      setIsStreaming(true)
-
-      console.log(`📡 질의 요청 : ${query}`)
-      await chatLlmApi(query, sessionId)
-        .then((response) => {
-          console.log(`📡 ${response.message}`)
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content: content,
-              inference: inference,
-            },
-          ])
-        })
-        .catch((reason) => {
-          console.error(reason)
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: 'assistant',
-              content:
-                '서버와 통신이 원할하지 않습니다.\n\n잠시후 다시 시도 해주세요.',
-              inference: '',
-            },
-          ])
+    streamRef.current = streamApi(
+      sessionId,
+      new StreamEvent({
+        onConnect: async (_) => {
+          console.log(`📡 질의 요청 : ${query}`)
+          // 질의 등록
+          setMessages((prev) => [...prev, createQueryMessage(query)])
+          await chatLlmApi(query, sessionId)
+            .then((response) => {
+              console.log(`📡 ${response.message}`)
+              // 답변 등록
+              setMessages((prev) => [...prev, createAnswerMessage('', '', [])])
+            })
+            .catch((reason) => {
+              console.error(reason)
+              modalStore.setError(
+                '서버 통신 불가',
+                '답변 생성 실패',
+                '답변 생성에 실패했습니다.',
+              )
+              setIsStreaming(false)
+              streamRef.current = null
+            })
+        },
+        onDisconnect: (_) => {
           setIsStreaming(false)
-        })
-    })
-    // SSE 추론 시작 이벤트
-    eventSource.addEventListener('inference-start', (_) => {
-      console.log('📋 추론 과정 표출 시작')
-    })
-    // SSE 추론 이벤트
-    eventSource.addEventListener('inference', (event) => {
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        const lastMsgIndex = newMsgs.length - 1
-
-        const updatedLastMsg = {
-          ...newMsgs[lastMsgIndex],
-          inference: replaceEventDataToText(
-            newMsgs[lastMsgIndex].inference + event.data,
-          ),
-        }
-
-        newMsgs[lastMsgIndex] = updatedLastMsg
-        return newMsgs
-      })
-    })
-    // SSE 추론 종료 이벤트
-    eventSource.addEventListener('inference-done', (_) => {
-      console.log('📋 추론 과정 표출 종료')
-    })
-    // SSE 답변 시작 이벤트
-    eventSource.addEventListener('answer-start', (_) => {
-      console.log('📋 답변 시작')
-    })
-    // SSE 답변 이벤트
-    eventSource.addEventListener('answer', (event) => {
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        const lastMsgIndex = newMsgs.length - 1
-
-        const updatedLastMsg = {
-          ...newMsgs[lastMsgIndex],
-          content: replaceEventDataToText(
-            newMsgs[lastMsgIndex].content + event.data,
-          ),
-        }
-
-        newMsgs[lastMsgIndex] = updatedLastMsg
-        return newMsgs
-      })
-    })
-    // SSE 답변 종료 이벤트
-    eventSource.addEventListener('answer-done', (_) => {
-      console.log(`📋 답변 종료`)
-      setMessages((prev) => {
-        const newMsgs = [...prev]
-        return newMsgs
-      })
-    })
-    // SSE 연결 종료 이벤트
-    eventSource.addEventListener('disconnect', (_) => {
-      eventSource.close()
-      console.log(`❌ 스트림 닫힘`)
-      setIsStreaming(false)
-    })
-    // SSE 예외 이벤트
-    eventSource.addEventListener('exception', (_) => {
-      eventSource.close()
-      console.log(`❌ 예외 발생`)
-      setIsStreaming(false)
-    })
+          streamRef.current = null
+        },
+        onException: (_) => {
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onError: (_) => {
+          modalStore.setError(
+            '서버 통신 불가',
+            '답변 생성 실패',
+            '답변 생성에 실패했습니다.',
+          )
+          setIsStreaming(false)
+          streamRef.current = null
+        },
+        onInference: (event) => {
+          setMessages((prev) => {
+            const messages = [...prev]
+            const currentMessageIndex = messages.length - 1
+            const currentMessage = messages[currentMessageIndex]
+            messages[currentMessageIndex] = {
+              ...currentMessage,
+              inference: replaceEventDataToText(
+                currentMessage.inference + event.data,
+              ),
+            }
+            return messages
+          })
+        },
+        onAnswer: (event) => {
+          setMessages((prev) => {
+            const messages = [...prev]
+            const currentMessageIndex = messages.length - 1
+            const currentMessage = messages[currentMessageIndex]
+            messages[currentMessageIndex] = {
+              ...currentMessage,
+              content: replaceEventDataToText(
+                currentMessage.content + event.data,
+              ),
+            }
+            return messages
+          })
+        },
+      }),
+    )
   }
 
   /**
-   * 답변 중단 핸들러
+   * 스트림 중단 핸들러
    */
   const handleStop = async () => {
     await cancelStreamApi(sessionId)
@@ -154,7 +156,10 @@ export default function LlmPage() {
         console.log(`📡 ${response.message}`)
       })
       .catch((reason) => console.error(reason))
-      .finally(() => setIsStreaming(false))
+      .finally(() => {
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   // ###################################################
@@ -167,23 +172,30 @@ export default function LlmPage() {
         <div className="flex items-center gap-3">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <Brain className="text-primary h-6 w-6" />
-              LLM Chat
+              <menuInfo.icon className="text-primary h-6 w-6" />
+              {menuInfo.name}
             </h2>
-            <p className="mt-1 text-xs text-gray-500">일반 질문 & 답변</p>
+            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
           </div>
         </div>
       </div>
-
-      {/* 채팅 영역 컨테이너 */}
+      {/* 채팅 영역 */}
       <div className="min-h-0 flex-1">
         <ChatArea
           messages={messages}
-          onSendMessage={handleSendMessage}
+          onSendMessage={handleSendQuery}
           onStop={handleStop}
           isStreaming={isStreaming}
         />
       </div>
     </div>
+  )
+}
+
+export default function LlmPage() {
+  return (
+    <Suspense fallback={<NotFound />}>
+      <LlmContent />
+    </Suspense>
   )
 }

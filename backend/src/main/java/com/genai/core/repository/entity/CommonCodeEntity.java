@@ -3,7 +3,10 @@ package com.genai.core.repository.entity;
 import lombok.*;
 import org.hibernate.annotations.Comment;
 
-import javax.persistence.*;
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
 
 @Getter
 @Builder
@@ -14,12 +17,7 @@ import javax.persistence.*;
 public class CommonCodeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "code_id", nullable = false, updatable = false)
-    @Comment("공통 코드 ID")
-    private Long codeId;
-
-    @Column(name = "code")
+    @Column(name = "code", nullable = false, unique = true)
     @Comment("공통 코드")
     private String code;
 

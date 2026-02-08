@@ -12,6 +12,4 @@ public class TranslateResponseDto {
     private String sessionId;
 
     private long msgId;
-
-    private String content;
 }

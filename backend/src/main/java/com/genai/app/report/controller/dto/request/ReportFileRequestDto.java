@@ -17,7 +17,7 @@ public class ReportFileRequestDto {
     private String sessionId;
 
     @NotBlank
-    private String prompt;
+    private String requestContent;
 
     @NotBlank
     private String title;

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
+import java.util.List;
+
 @ToString
 @Builder
 @Getter
@@ -13,17 +15,17 @@ import lombok.*;
 @AllArgsConstructor
 public class ConvertVectorVO {
 
-    @JsonAlias("DOCID")
-    @JsonProperty("DOCID")
-    private String chunkId;
+    @JsonAlias("id")
+    @JsonProperty("id")
+    private Long id;
 
-    @JsonAlias("context")
-    @JsonProperty("context")
-    private String context;
+    @JsonAlias("content")
+    @JsonProperty("content")
+    private String content;
 
     // 벡터 변환 필드
-    @JsonAlias("context_VECTOR")
-    @JsonProperty("context_VECTOR")
+    @JsonAlias("vector")
+    @JsonProperty("vector")
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String contextVector;
+    private List<Float> vector;
 }

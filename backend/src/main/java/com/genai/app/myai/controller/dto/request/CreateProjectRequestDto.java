@@ -18,4 +18,13 @@ public class CreateProjectRequestDto {
 
     @NotBlank
     private String projectDesc;
+
+    @NotBlank
+    private String roleCode;
+
+    @NotBlank
+    private String toneCode;
+
+    @NotBlank
+    private String styleCode;
 }

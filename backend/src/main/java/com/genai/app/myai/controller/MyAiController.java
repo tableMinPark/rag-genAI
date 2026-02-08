@@ -1,16 +1,16 @@
 package com.genai.app.myai.controller;
 
-import com.genai.global.dto.PageResponseDto;
-import com.genai.global.dto.ResponseDto;
-import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.global.wrapper.PageWrapper;
-import com.genai.global.enums.Response;
 import com.genai.app.myai.controller.dto.request.CreateProjectRequestDto;
 import com.genai.app.myai.controller.dto.request.UpdateProjectSourcesRequestDto;
 import com.genai.app.myai.controller.dto.response.GetProjectResponseDto;
 import com.genai.app.myai.controller.dto.response.GetProjectSourceResponseDto;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.core.service.business.vo.FileDetailVO;
+import com.genai.global.dto.PageResponseDto;
+import com.genai.global.dto.ResponseDto;
+import com.genai.global.enums.Response;
+import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,8 +21,9 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import java.util.List;
-import java.util.Map;
 
 @Validated
 @RestController
@@ -33,16 +34,29 @@ public class MyAiController {
     private final MyAiService myAiService;
 
     /**
+     * 프로젝트 조회
+     *
+     * @param projectId 프로젝트 ID
+     */
+    @GetMapping("/{projectId}")
+    public ResponseEntity<ResponseDto<GetProjectResponseDto>> getProject(@NotNull @PathVariable("projectId") Long projectId) {
+
+        ProjectVO projectVo = myAiService.getProject(projectId);
+
+        return ResponseEntity.ok().body(Response.MYAI_GET_PROJECTS_SUCCESS.toResponseDto(GetProjectResponseDto.of(projectVo)));
+    }
+
+    /**
      * 프로젝트 목록 조회
      *
-     * @param page 페이지
-     * @param size 사이즈
+     * @param page    페이지
+     * @param size    사이즈
      * @param keyword 키워드
      */
     @GetMapping
     public ResponseEntity<ResponseDto<PageResponseDto<GetProjectResponseDto>>> getProjects(
-            @Min(1) @RequestParam("page") int page,
-            @Min(1) @Max(100) @RequestParam("size") int size,
+            @NotNull @Min(1) @RequestParam("page") Integer page,
+            @NotNull @Min(1) @Max(100) @RequestParam("size") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword
     ) {
         PageWrapper<ProjectVO> projectVosPage = myAiService.getProjects(page, size, keyword);
@@ -66,15 +80,17 @@ public class MyAiController {
      * @param multipartFiles          임베딩 문서 목록
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<Map<String, Object>>> createProject(
-            @Valid
-            @RequestPart("requestDto") CreateProjectRequestDto createProjectRequestDto,
+    public ResponseEntity<ResponseDto<?>> createProject(
+            @Valid @RequestPart("requestDto") CreateProjectRequestDto createProjectRequestDto,
             @RequestPart("uploadFiles") MultipartFile[] multipartFiles
     ) {
         String projectName = createProjectRequestDto.getProjectName();
         String projectDesc = createProjectRequestDto.getProjectDesc();
+        String roleCode = createProjectRequestDto.getRoleCode();
+        String toneCode = createProjectRequestDto.getToneCode();
+        String styleCode = createProjectRequestDto.getStyleCode();
 
-        myAiService.createProject(projectName, projectDesc, multipartFiles);
+        myAiService.createProject(projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
 
         return ResponseEntity.ok().body(Response.MYAI_CREATE_PROJECT_SUCCESS.toResponseDto());
     }
@@ -85,7 +101,7 @@ public class MyAiController {
      * @param projectId 프로젝트 ID
      */
     @DeleteMapping("/{projectId}")
-    public ResponseEntity<ResponseDto<Map<String, Object>>> deleteProject(@PathVariable("projectId") Long projectId) {
+    public ResponseEntity<ResponseDto<?>> deleteProject(@NotNull @PathVariable("projectId") Long projectId) {
 
         myAiService.deleteProject(projectId);
 
@@ -95,11 +111,11 @@ public class MyAiController {
     /**
      * 프로젝트 임베딩 문서 목록 조회
      *
-     * @param projectId      프로젝트 ID
+     * @param projectId 프로젝트 ID
      */
     @GetMapping(value = "/{projectId}/source")
     public ResponseEntity<ResponseDto<List<GetProjectSourceResponseDto>>> getProjectSources(
-            @PathVariable("projectId") Long projectId
+            @NotNull @PathVariable("projectId") Long projectId
     ) {
         List<FileDetailVO> fileDetailVos = myAiService.getProjectSources(projectId);
 
@@ -113,10 +129,10 @@ public class MyAiController {
      * @param multipartFiles 임베딩 문서 목록
      */
     @PostMapping(value = "/{projectId}/source", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<Map<String, Object>>> updateProjectSources(
-            @PathVariable("projectId") Long projectId,
-            @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
-            @RequestPart("uploadFiles") MultipartFile[] multipartFiles
+    public ResponseEntity<ResponseDto<?>> updateProjectSources(
+            @NotNull @PathVariable("projectId") Long projectId,
+            @Valid @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
+            @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles
     ) {
         List<Long> deleteFileDetailIds = updateProjectSourcesRequestDto.getDeleteFileDetailIds();
 

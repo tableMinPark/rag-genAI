@@ -1,16 +1,20 @@
 package com.genai.core.repository.impl;
 
-import com.genai.core.config.properties.IndexerProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.core.config.properties.CollectionProperty;
+import com.genai.core.config.properties.EmbedProperty;
+import com.genai.core.config.properties.IndexerProperty;
+import com.genai.core.exception.CollectionErrorException;
 import com.genai.core.repository.CollectionRepository;
 import com.genai.core.repository.entity.CollectionEntity;
 import com.genai.core.repository.entity.DocumentEntity;
-import com.genai.core.repository.entity.IndexEntity;
-import com.genai.core.repository.request.CreateCollectionRequest;
+import com.genai.core.repository.request.CreateIndexBulkRequest;
+import com.genai.core.repository.request.DeleteIndexBulkRequest;
+import com.genai.core.repository.response.CreateIndexBulkResponse;
+import com.genai.core.repository.response.DeleteIndexBulkResponse;
 import com.genai.core.repository.response.GetCollectionResponse;
-import com.genai.core.repository.response.GetIndexResponse;
 import com.genai.core.repository.vo.ConvertVectorVO;
-import com.genai.core.exception.CollectionErrorException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -23,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,18 +37,30 @@ import java.util.stream.Collectors;
 @Component
 public class CollectionRepositoryImpl implements CollectionRepository {
 
-    private final WebClient webClient;
+    private final WebClient collectionWebClient;
+    private final WebClient indexerWebClient;
+    private final WebClient embedWebClient;
     private final CollectionProperty collectionProperty;
     private final IndexerProperty indexerProperty;
+    private final EmbedProperty embedProperty;
+    private final ObjectMapper objectMapper;
 
     public CollectionRepositoryImpl(
-            @Qualifier("collectionWebClient") WebClient webClient,
+            @Qualifier("collectionWebClient") WebClient collectionWebClient,
+            @Qualifier("indexerWebClient") WebClient indexerWebClient,
+            @Qualifier("embedWebClient") WebClient embedWebClient,
             @Autowired CollectionProperty collectionProperty,
-            @Autowired IndexerProperty indexerProperty
+            @Autowired IndexerProperty indexerProperty,
+            @Autowired EmbedProperty embedProperty,
+            @Autowired ObjectMapper objectMapper
     ) {
-        this.webClient = webClient;
+        this.collectionWebClient = collectionWebClient;
+        this.indexerWebClient = indexerWebClient;
+        this.embedWebClient = embedWebClient;
         this.collectionProperty = collectionProperty;
         this.indexerProperty = indexerProperty;
+        this.embedProperty = embedProperty;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -55,163 +72,33 @@ public class CollectionRepositoryImpl implements CollectionRepository {
     @Override
     public Optional<CollectionEntity> findCollectionByCollectionId(String collectionId) {
 
-        ResponseEntity<GetCollectionResponse> responseEntity = webClient.get()
-                .uri(collectionProperty.getSelectUrl(collectionId))
+        ResponseEntity<Map<String, Object>> responseEntity = collectionWebClient.get()
+                .uri(collectionProperty.getUrl() + "/" + collectionId)
                 .accept(MediaType.APPLICATION_JSON)
-                .exchangeToMono(response -> response
-                        .bodyToMono(GetCollectionResponse.class)
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .block();
-
-        if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful()) {
-            return Optional.empty();
-        }
-
-        GetCollectionResponse responseBody = responseEntity.getBody();
-
-        if (responseBody == null) {
-            return Optional.empty();
-        }
-
-        return Optional.of(
-                CollectionEntity.builder()
-                        .collectionId(responseBody.getCollectionId())
-                        .numOfShards(responseBody.getNumOfShards())
-                        .numOfReplication(responseBody.getNumOfReplication())
-                        .numOfIndexThreads(responseBody.getNumOfIndexThreads())
-                        .searchRoutingStrategy(responseBody.getSearchRoutingStrategy())
-                        .recentQuery(responseBody.getRecentQuery())
-                        .maxQueryCacheCount(responseBody.getMaxQueryCacheCount())
-                        .maxQueryCacheRamBytesUsed(responseBody.getMaxQueryCacheRamBytesUsed())
-                        .mappingTableId(responseBody.getMappingTableId())
-                        .fields(responseBody.getFields())
-                        .indexFields(responseBody.getIndexFields())
-                        .advancedSettings(responseBody.getAdvancedSettings())
-                        .build()
-        );
-    }
-
-    /**
-     * 컬렉션 등록
-     *
-     * @param collectionId     컬렉션 ID
-     * @param collectionEntity 컬렉션
-     * @return 컬렉션
-     */
-    @Transactional
-    @Override
-    public CollectionEntity createCollection(String collectionId, CollectionEntity collectionEntity) {
-
-        // 컬렉션 생성 요청 바디
-        CreateCollectionRequest requestBody = CreateCollectionRequest.builder()
-                .numOfShards(collectionEntity.getNumOfShards())
-                .numOfReplication(collectionEntity.getNumOfReplication())
-                .numOfIndexThreads(collectionEntity.getNumOfIndexThreads())
-                .searchRoutingStrategy(collectionEntity.getSearchRoutingStrategy())
-                .recentQuery(collectionEntity.getRecentQuery())
-                .maxQueryCacheCount(collectionEntity.getMaxQueryCacheCount())
-                .maxQueryCacheRamBytesUsed(collectionEntity.getMaxQueryCacheRamBytesUsed())
-                .mappingTableId(collectionEntity.getMappingTableId())
-                .fields(collectionEntity.getFields())
-                .indexFields(collectionEntity.getIndexFields())
-                .advancedSettings(collectionEntity.getAdvancedSettings())
-                .build();
-
-        ResponseEntity<GetCollectionResponse> responseEntity = webClient.post()
-                .uri(collectionProperty.getCreateUrl(collectionId))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .exchangeToMono(response -> response
-                        .bodyToMono(GetCollectionResponse.class)
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .block();
-
-        if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful()) {
-            throw new CollectionErrorException(collectionId);
-        }
-
-        GetCollectionResponse responseBody = responseEntity.getBody();
-
-        if (responseBody == null) {
-            throw new CollectionErrorException(collectionId);
-        }
-
-        return CollectionEntity.builder()
-                .collectionId(responseBody.getCollectionId())
-                .numOfShards(responseBody.getNumOfShards())
-                .numOfReplication(responseBody.getNumOfReplication())
-                .numOfIndexThreads(responseBody.getNumOfIndexThreads())
-                .searchRoutingStrategy(responseBody.getSearchRoutingStrategy())
-                .recentQuery(responseBody.getRecentQuery())
-                .maxQueryCacheCount(responseBody.getMaxQueryCacheCount())
-                .maxQueryCacheRamBytesUsed(responseBody.getMaxQueryCacheRamBytesUsed())
-                .mappingTableId(responseBody.getMappingTableId())
-                .fields(responseBody.getFields())
-                .indexFields(responseBody.getIndexFields())
-                .advancedSettings(responseBody.getAdvancedSettings())
-                .build();
-    }
-
-    /**
-     * 컬렉션 삭제
-     *
-     * @param collectionId 컬렉션 ID
-     */
-    @Transactional
-    @Override
-    public void deleteCollection(String collectionId) {
-
-        ResponseEntity<Map<String, Object>> responseEntity = webClient.post()
-                .uri(collectionProperty.getDeleteUrl(collectionId))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
                 .exchangeToMono(response -> response
                         .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                         })
                         .map(body -> new ResponseEntity<>(body, response.statusCode())))
                 .block();
 
-        if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-            throw new CollectionErrorException(collectionId);
-        }
-    }
-
-    /**
-     * 색인 정보 조회
-     *
-     * @param collectionId 컬렉션 ID
-     * @return 색인 엔티티
-     */
-    @Override
-    public Optional<IndexEntity> findIndexByCollectionId(String collectionId) {
-
-        ResponseEntity<GetIndexResponse> responseEntity = webClient.get()
-                .uri(indexerProperty.getSelectUrl(collectionId))
-                .accept(MediaType.APPLICATION_JSON)
-                .exchangeToMono(response -> response
-                        .bodyToMono(GetIndexResponse.class)
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .block();
-
         if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful()) {
             return Optional.empty();
         }
 
-        GetIndexResponse responseBody = responseEntity.getBody();
+        Map<String, Object> responseBody = responseEntity.getBody();
 
-        if (responseBody == null) {
+        if (responseBody == null || !responseBody.containsKey(collectionId)) {
             return Optional.empty();
         }
 
-        return Optional.of(
-                IndexEntity.builder()
-                        .totalDocs(responseBody.getTotalDocs())
-                        .totalSize(responseBody.getTotalSize())
-                        .enableShards(responseBody.getEnableShards())
-                        .disableShards(responseBody.getDisableShards())
-                        .build()
-        );
+        GetCollectionResponse getCollectionResponse = objectMapper.convertValue(responseBody.get(collectionId), GetCollectionResponse.class);
+
+        return Optional.of(CollectionEntity.builder()
+                .collectionId(collectionId)
+                .numOfShards(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfShards()))
+                .numOfReplication(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfReplicas()))
+                .fields(getCollectionResponse.getMappings().getProperties().keySet().stream().toList())
+                .build());
     }
 
     /**
@@ -225,41 +112,39 @@ public class CollectionRepositoryImpl implements CollectionRepository {
     @Override
     public List<DocumentEntity> convertVector(String collectionId, List<DocumentEntity> documentEntities) {
 
-        if (documentEntities.isEmpty()) {
-            return documentEntities;
-        }
+        if (documentEntities.isEmpty()) return documentEntities;
 
         List<ConvertVectorVO> convertVectorVos = documentEntities.stream()
                 .map(documentEntity -> ConvertVectorVO.builder()
-                        .chunkId(documentEntity.getChunkId())
-                        .context(documentEntity.getContext())
-                        .contextVector(documentEntity.getContextVector())
+                        .id(documentEntity.getChunkId())
+                        .content(documentEntity.getContext())
                         .build())
                 .toList();
 
-        // TODO: 최적화 작업 필요 (nested exception is org.springframework.core.io.buffer.DataBufferLimitException: Exceeded limit on max bytes to buffer : 10485760)
-        convertVectorVos = webClient.post()
-                .uri(indexerProperty.getConvertVectorUrl(collectionId))
+        convertVectorVos = embedWebClient.post()
+                .uri(embedProperty.getUrl())
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .bodyValue(convertVectorVos)
                 .retrieve()
                 .onStatus(HttpStatus::isError, response ->
-                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                })
                                 .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
                 )
-                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {})
+                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {
+                })
                 .blockOptional()
                 .orElseThrow(() -> new CollectionErrorException(collectionId));
 
-        Map<String, ConvertVectorVO> convertVectorVoMap = convertVectorVos.stream()
-                .collect(Collectors.toMap(ConvertVectorVO::getChunkId, convertVectorVo -> convertVectorVo));
+        Map<Long, ConvertVectorVO> convertVectorVoMap = convertVectorVos.stream()
+                .collect(Collectors.toMap(ConvertVectorVO::getId, convertVectorVo -> convertVectorVo));
 
         return documentEntities.stream()
                 .peek(documentEntity -> {
                     ConvertVectorVO convertVectorVo = convertVectorVoMap.get(documentEntity.getChunkId());
-                    String convertVector = convertVectorVo != null ? convertVectorVo.getContextVector() : "";
-                    documentEntity.setContextVector(convertVector);
+                    List<Float> vector = convertVectorVo != null ? convertVectorVo.getVector() : Collections.emptyList();
+                    documentEntity.setContextVector(vector);
                 })
                 .toList();
     }
@@ -269,44 +154,55 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      *
      * @param collectionId     컬렉션 ID
      * @param documentEntities 색인 대상 문서 목록
-     * @param isStatic         정적 색인 여부
      */
-    @Transactional
     @Override
-    public void createIndex(String collectionId, List<DocumentEntity> documentEntities, boolean isStatic) {
+    public void createIndex(String collectionId, List<DocumentEntity> documentEntities) {
 
         if (documentEntities.isEmpty()) return;
 
-        // 정적 색인 전환
-        if (isStatic) {
-            ResponseEntity<Map<String, Object>> responseEntity = webClient.post()
-                    .uri(indexerProperty.getReadyStaticUrl(collectionId))
-                    .accept(MediaType.APPLICATION_JSON)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .exchangeToMono(response -> response
-                            .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                            })
-                            .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                    .block();
+        int batchSize = 500;
+        for (int batchIndex = 0; batchIndex < documentEntities.size(); batchIndex += batchSize) {
+            StringBuilder requestBodyJsonBuilder = new StringBuilder();
 
-            if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
+            for (int documentIndex = batchIndex; documentIndex < Math.min(documentEntities.size(), batchIndex + batchSize); documentIndex++) {
+                try {
+                    DocumentEntity documentEntity = documentEntities.get(documentIndex);
+
+                    CreateIndexBulkRequest createIndexBulkRequest = CreateIndexBulkRequest.builder()
+                            .index(CreateIndexBulkRequest.Index.builder()
+                                    .collectionId(collectionId)
+                                    .id(String.valueOf(documentEntity.getChunkId()))
+                                    .build())
+                            .build();
+
+                    String createIndexBulkRequestJson = objectMapper.writeValueAsString(createIndexBulkRequest);
+                    String documentEntityJson = objectMapper.writeValueAsString(documentEntity);
+
+                    requestBodyJsonBuilder.append(createIndexBulkRequestJson).append("\n");
+                    requestBodyJsonBuilder.append(documentEntityJson).append("\n");
+
+                } catch (JsonProcessingException ignored) {
+                }
+            }
+
+            CreateIndexBulkResponse responseBody = indexerWebClient.put()
+                    .uri(indexerProperty.getUrl() + "/_bulk")
+                    .contentType(MediaType.APPLICATION_NDJSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBodyJsonBuilder.toString())
+                    .retrieve()
+                    .onStatus(HttpStatus::isError, response ->
+                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                    })
+                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
+                    )
+                    .bodyToMono(CreateIndexBulkResponse.class)
+                    .blockOptional()
+                    .orElseThrow(() -> new CollectionErrorException(collectionId));
+
+            if (responseBody.getErrors()) {
                 throw new CollectionErrorException(collectionId);
             }
-        }
-
-        ResponseEntity<Map<String, Object>> responseEntity = webClient.post()
-                .uri(indexerProperty.getCreateIndexUrl(collectionId))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(documentEntities)
-                .exchangeToMono(response -> response
-                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                        })
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .block();
-
-        if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-            throw new CollectionErrorException(collectionId);
         }
     }
 
@@ -316,25 +212,49 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param collectionId 컬렉션 ID
      * @param chunkIds     chunkId 목록
      */
-    @Transactional
     @Override
     public void deleteIndex(String collectionId, List<String> chunkIds) {
 
         if (chunkIds.isEmpty()) return;
 
-        ResponseEntity<Map<String, Object>> responseEntity = webClient.post()
-                .uri(indexerProperty.getDeleteIndexUrl(collectionId))
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(chunkIds)
-                .exchangeToMono(response -> response
-                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                        })
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .block();
+        int batchSize = 500;
+        for (int batchIndex = 0; batchIndex < chunkIds.size(); batchIndex += batchSize) {
+            StringBuilder requestBodyJsonBuilder = new StringBuilder();
 
-        if (responseEntity == null || responseEntity.getBody() == null) {
-            throw new CollectionErrorException(collectionId);
+            for (int chunkIdIndex = batchIndex; chunkIdIndex < Math.min(chunkIds.size(), batchIndex + batchSize); chunkIdIndex++) {
+                try {
+                    DeleteIndexBulkRequest deleteIndexBulkRequest = DeleteIndexBulkRequest.builder()
+                            .delete(DeleteIndexBulkRequest.Delete.builder()
+                                    .id(String.valueOf(chunkIds.get(chunkIdIndex)))
+                                    .build())
+                            .build();
+
+                    String deleteIndexBulkRequestJson = objectMapper.writeValueAsString(deleteIndexBulkRequest);
+
+                    requestBodyJsonBuilder.append(deleteIndexBulkRequestJson).append("\n");
+
+                } catch (JsonProcessingException ignored) {
+                }
+            }
+
+            DeleteIndexBulkResponse responseBody = indexerWebClient.post()
+                    .uri(indexerProperty.getUrl() + "/" + collectionId + "/_bulk")
+                    .contentType(MediaType.APPLICATION_NDJSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBodyJsonBuilder.toString())
+                    .retrieve()
+                    .onStatus(HttpStatus::isError, response ->
+                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                    })
+                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
+                    )
+                    .bodyToMono(DeleteIndexBulkResponse.class)
+                    .blockOptional()
+                    .orElseThrow(() -> new CollectionErrorException(collectionId));
+
+            if (responseBody.getErrors()) {
+                throw new CollectionErrorException(collectionId);
+            }
         }
     }
 }

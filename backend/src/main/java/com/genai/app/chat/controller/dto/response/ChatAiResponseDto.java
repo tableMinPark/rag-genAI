@@ -15,6 +15,4 @@ public class ChatAiResponseDto {
     private String sessionId;
 
     private String query;
-
-    private List<DocumentVO> documents;
 }

@@ -3,7 +3,6 @@ package com.genai.app.chat.controller.dto.request;
 import lombok.*;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,7 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class ChatAiRequestDto {
 
-    @NotNull
+    @NotBlank
     private String sessionId;
 
     @NotBlank

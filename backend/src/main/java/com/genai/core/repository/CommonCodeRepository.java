@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface CommonCodeRepository extends JpaRepository<CommonCodeEntity, Long> {
+public interface CommonCodeRepository extends JpaRepository<CommonCodeEntity, String> {
 
     /**
      * 코드 기준 공통 코드 조회

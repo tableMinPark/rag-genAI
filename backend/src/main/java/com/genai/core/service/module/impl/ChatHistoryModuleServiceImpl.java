@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -27,35 +26,23 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
     /**
      * 대화 이력 저장
      *
-     * @param chatId 대화 ID
-     * @param chatDetailId 대화 상세 ID
-     * @param answer 답변
-     */
-    @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateChatDetail(Long chatId, Long chatDetailId, String answer) {
-        this.updateChatDetail(chatId, chatDetailId, answer, Collections.emptyList());
-    }
-
-    /**
-     * 대화 이력 저장
-     *
-     * @param chatId 대화 ID
-     * @param chatDetailId 대화 상세 ID
-     * @param answer 답변
+     * @param chatId              대화 ID
+     * @param chatDetailId        대화 상세 ID
+     * @param answer              답변
      * @param chatPassageEntities 참고 문서 목록
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateChatDetail(Long chatId, Long chatDetailId, String answer, List<ChatPassageEntity> chatPassageEntities) {
-        // 1. 답변 내용 업데이트
+    public void updateChatDetail(Long chatId, Long chatDetailId, String rewriteQuery, String answer, List<ChatPassageEntity> chatPassageEntities) {
+        // 답변 내용 업데이트
         ChatDetailEntity chatDetailEntity = chatDetailRepository.findById(chatDetailId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
 
+        chatDetailEntity.setRewriteQuery(rewriteQuery);
         chatDetailEntity.setAnswer(answer);
         chatDetailRepository.save(chatDetailEntity);
 
-        // 2. 참고 문서 저장
+        // 참고 문서 저장
         if (!chatPassageEntities.isEmpty()) {
             chatPassageRepository.saveAll(chatPassageEntities);
         }
@@ -64,14 +51,14 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
     /**
      * 대화 상태 업데이트
      *
-     * @param chatId 대화 ID
+     * @param chatId    대화 ID
      * @param chatState 대화 상태
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void updateChatState(Long chatId, String chatState) {
 
-        // 3. 상태 업데이트 (필요 시)
+        // 상태 업데이트 (필요 시)
         if (!chatState.isBlank()) {
             ChatEntity chatEntity = chatRepository.findById(chatId)
                     .orElseThrow(() -> new NotFoundException("대화"));

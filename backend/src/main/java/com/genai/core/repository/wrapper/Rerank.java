@@ -13,6 +13,7 @@ import lombok.*;
 @AllArgsConstructor
 public class Rerank {
 
+    @Setter
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private double rerankScore;
 

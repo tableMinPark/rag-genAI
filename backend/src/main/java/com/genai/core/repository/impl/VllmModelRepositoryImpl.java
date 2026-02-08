@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -56,10 +57,10 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * @return 답변 응답 문자열
      */
     @Override
-    public String generateAnswerStr(String query, String context, String sessionId, PromptEntity promptEntity) {
+    public String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity) {
 
         StringBuilder answerBuilder = new StringBuilder();
-        this.generateAnswer(query, context, null, Collections.emptyList(), sessionId, promptEntity).forEach(answerEntity -> {
+        this.generateAnswerSync(query, context, null, Collections.emptyList(), sessionId, promptEntity).forEach(answerEntity -> {
             if (!answerEntity.getIsInference()) {
                 answerBuilder.append(answerEntity.getContent());
             }
@@ -68,39 +69,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
         return answerBuilder.toString().trim();
     }
 
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
     @Override
-    public String generateAnswerStr(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-
-        StringBuilder answerBuilder = new StringBuilder();
-        this.generateAnswer(query, context, chatState, conversations, sessionId, promptEntity).forEach(answerEntity -> {
-            if (!answerEntity.getIsInference()) {
-                answerBuilder.append(answerEntity.getContent());
-            }
-        });
-
-        return answerBuilder.toString().trim();
-    }
-
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답
-     */
-    @Override
-    public List<AnswerEntity> generateAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
@@ -121,7 +91,70 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         try {
             log.info("{}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException ignored) {}
+        } catch (JsonProcessingException ignored) {
+        }
+
+        return webClient.post()
+                .uri(llmProperty.getUrl())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .exchangeToMono(response -> response
+                        .bodyToMono(VllmAnswerResponse.class)
+                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
+                .handle((responseBody, sink) -> {
+                    if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
+                        sink.error(new ModelErrorException("LLM(" + llmProperty.getModelName() + ")"));
+                        return;
+                    }
+
+                    List<AnswerEntity> answerEntities = new ArrayList<>();
+
+                    if (responseBody.getBody() != null) {
+                        responseBody.getBody().getChoices().forEach(choice -> {
+                            String id = responseBody.getBody().getId();
+                            answerEntities.add(new AnswerEntity(id, choice.getMessage().getReasoningContent(), choice.getFinishReason(), true));
+                            answerEntities.add(new AnswerEntity(id, choice.getMessage().getContent(), choice.getFinishReason(), false));
+                        });
+                    }
+
+                    sink.next(answerEntities);
+                });
+    }
+
+    /**
+     * 답변 생성 요청
+     *
+     * @param query        질의문
+     * @param context      검색 결과 데이터
+     * @param sessionId    세션 식별자
+     * @param promptEntity 프롬 프트
+     * @return 답변 응답
+     */
+    @Override
+    public List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+
+        int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
+
+        VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
+                .modelName(llmProperty.getModelName())
+                .temperature(promptEntity.getTemperature())
+                .topP(promptEntity.getTopP())
+                .minP(0)
+                .topK(20)
+                .maxTokens(maxTokens)
+                .stream(false)
+                .prompt(promptEntity.getPromptContent())
+                .chatState(chatState)
+                .conversations(conversations)
+                .context(context)
+                .query(query)
+                .build();
+
+        try {
+            log.info("{}", objectMapper.writeValueAsString(requestBody));
+        } catch (JsonProcessingException ignored) {
+        }
 
         ResponseEntity<VllmAnswerResponse> responseBody = webClient.post()
                 .uri(llmProperty.getUrl())
@@ -154,26 +187,13 @@ public class VllmModelRepositoryImpl implements ModelRepository {
      * 답변 실시간 생성 요청
      *
      * @param query        질의문
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 Flux
-     */
-    @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
-        return this.generateStreamAnswer(query, null, null, conversations, sessionId, promptEntity);
-    }
-
-    /**
-     * 답변 실시간 생성 요청
-     *
-     * @param query        질의문
      * @param context      검색 결과 데이터
      * @param sessionId    세션 식별자
      * @param promptEntity 프롬 프트
      * @return 답변 Flux
      */
     @Override
-    public Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
+    public Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
@@ -194,7 +214,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         try {
             log.info("{}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException ignored) {}
+        } catch (JsonProcessingException ignored) {
+        }
 
         return webClient.post()
                 .uri(llmProperty.getUrl())
@@ -206,7 +227,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .mapNotNull(raw -> raw.replaceFirst("^data:", "").trim())
                 .filter(raw -> !raw.equals("[DONE]"))
                 .filter(raw -> !raw.isEmpty())
-                .mapNotNull(json -> {
+                .flatMapIterable(json -> {
                     try {
                         VllmAnswerStreamResponse vllmAnswerStreamResponse = objectMapper.readValue(json, VllmAnswerStreamResponse.class);
                         return vllmAnswerStreamResponse.getChoices().stream()

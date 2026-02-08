@@ -4,65 +4,17 @@ import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.vo.ConversationVO;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
 public interface ModelRepository {
 
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
-    String generateAnswerStr(String query, String context, String sessionId, PromptEntity promptEntity);
+    String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity);
 
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
-    String generateAnswerStr(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
+    List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
 
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답
-     */
-    List<AnswerEntity> generateAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
+    Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
 
-    /**
-     * 답변 실시간 생성 요청
-     *
-     * @param query        질의문
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 Flux
-     */
-    Flux<List<AnswerEntity>> generateStreamAnswer(String query, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
-
-    /**
-     * 답변 실시간 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param chatState 대화 요약
-     * @param conversations 이전 대화 목록
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 Flux
-     */
-    Flux<List<AnswerEntity>> generateStreamAnswer(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
-
+    Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
 }

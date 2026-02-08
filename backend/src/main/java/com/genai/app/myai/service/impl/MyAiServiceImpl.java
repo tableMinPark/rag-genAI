@@ -1,24 +1,21 @@
 package com.genai.app.myai.service.impl;
 
-import com.genai.core.constant.PromptConst;
+import com.genai.app.myai.constant.MyAiConst;
+import com.genai.app.myai.repository.ProjectRepository;
+import com.genai.app.myai.repository.entity.ProjectEntity;
+import com.genai.app.myai.service.MyAiService;
+import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.exception.NotFoundException;
-import com.genai.core.repository.FileRepository;
-import com.genai.core.repository.PromptRepository;
-import com.genai.core.repository.entity.FileDetailEntity;
-import com.genai.core.repository.entity.FileEntity;
-import com.genai.core.repository.entity.PromptEntity;
+import com.genai.core.repository.*;
+import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.EmbedCoreService;
+import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.global.wrapper.PageWrapper;
 import com.genai.core.type.CollectionType;
 import com.genai.global.utils.FileUtil;
 import com.genai.global.utils.UploadFile;
-import com.genai.app.myai.constant.MyAiConst;
-import com.genai.app.myai.repository.entity.ProjectEntity;
-import com.genai.app.myai.repository.ProjectRepository;
-import com.genai.app.myai.service.MyAiService;
-import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -40,6 +37,10 @@ public class MyAiServiceImpl implements MyAiService {
     private final FileRepository fileRepository;
     private final FileProperty fileProperty;
     private final PromptRepository promptRepository;
+    private final SourceRepository sourceRepository;
+    private final ChunkRepository chunkRepository;
+    private final CommonCodeRepository commonCodeRepository;
+    private final PromptCoreService promptCoreService;
 
     /**
      * 프로젝트 조회
@@ -54,6 +55,20 @@ public class MyAiServiceImpl implements MyAiService {
         ProjectEntity projectEntity = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
+        List<Long> fileDetailIds = projectEntity.getFile().getFileDetails().stream()
+                .map(FileDetailEntity::getFileDetailId)
+                .toList();
+
+        List<SourceEntity> sourceEntities = sourceRepository.findByFileDetailIdIn(fileDetailIds);
+
+        int sourceCount = sourceEntities.size();
+        int chunkCount = 0;
+        for (SourceEntity sourceEntity : sourceEntities) {
+            for (PassageEntity passageEntity : sourceEntity.getPassages()) {
+                chunkCount += passageEntity.getChunks().size();
+            }
+        }
+
         return ProjectVO.builder()
                 .projectId(projectEntity.getProjectId())
                 .projectName(projectEntity.getProjectName())
@@ -62,8 +77,8 @@ public class MyAiServiceImpl implements MyAiService {
                 .sysModifyDt(projectEntity.getSysModifyDt())
                 .fileId(projectEntity.getFile().getFileId())
                 .promptId(projectEntity.getPrompt().getPromptId())
-                .sourceCount(0)
-                .chunkCount(0)
+                .sourceCount(sourceCount)
+                .chunkCount(chunkCount)
                 .build();
     }
 
@@ -86,25 +101,39 @@ public class MyAiServiceImpl implements MyAiService {
         if (keyword == null) {
             projectEntityPage = projectRepository.findAll(pageable);
         } else {
-            projectEntityPage = projectRepository.findAllByProjectName(keyword, pageable);
+            projectEntityPage = projectRepository.findAllByProjectNameLike("%" + keyword.replace(" ", "%") + "%", pageable);
         }
 
         return PageWrapper.<ProjectVO>builder()
                 .content(projectEntityPage.getContent().stream()
-                        .map(projectEntity -> ProjectVO.builder()
-                                .projectId(projectEntity.getProjectId())
-                                .projectName(projectEntity.getProjectName())
-                                .projectDesc(projectEntity.getProjectDesc())
-                                .sysCreateDt(projectEntity.getSysCreateDt())
-                                .sysModifyDt(projectEntity.getSysModifyDt())
-                                .fileId(projectEntity.getFile().getFileId())
-                                .promptId(projectEntity.getPrompt().getPromptId())
-                                .sourceCount(0)
-                                .chunkCount(0)
-                                .build())
+                        .map(projectEntity -> {
+
+                            List<Long> fileDetailIds = projectEntity.getFile().getFileDetails().stream()
+                                    .map(FileDetailEntity::getFileDetailId)
+                                    .toList();
+
+                            List<SourceEntity> sourceEntities = sourceRepository.findByFileDetailIdIn(fileDetailIds);
+                            List<Long> sourceIds = sourceEntities.stream().map(SourceEntity::getSourceId).toList();
+
+                            int sourceCount = sourceEntities.size();
+                            int chunkCount = chunkRepository.countBySourceIdIn(sourceIds);
+
+                            return ProjectVO.builder()
+                                    .projectId(projectEntity.getProjectId())
+                                    .projectName(projectEntity.getProjectName())
+                                    .projectDesc(projectEntity.getProjectDesc())
+                                    .sysCreateDt(projectEntity.getSysCreateDt())
+                                    .sysModifyDt(projectEntity.getSysModifyDt())
+                                    .fileId(projectEntity.getFile().getFileId())
+                                    .promptId(projectEntity.getPrompt().getPromptId())
+                                    .sourceCount(sourceCount)
+                                    .chunkCount(chunkCount)
+                                    .build();
+
+                        })
                         .toList())
                 .isLast(projectEntityPage.isLast())
-                .pageNo(projectEntityPage.getNumber())
+                .pageNo(projectEntityPage.getNumber() + 1)
                 .pageSize(projectEntityPage.getSize())
                 .totalCount(projectEntityPage.getTotalElements())
                 .totalPages(projectEntityPage.getTotalPages())
@@ -116,19 +145,52 @@ public class MyAiServiceImpl implements MyAiService {
      *
      * @param projectName    프로젝트명
      * @param projectDesc    프로젝트 설명
+     * @param roleCode       역할 코드
+     * @param toneCode       답변 톤 코드
+     * @param styleCode      답변 스타일 코드
      * @param multipartFiles 임베딩 문서 목록
      */
     @Transactional
     @Override
-    public void createProject(String projectName, String projectDesc, MultipartFile[] multipartFiles) {
-        // 프롬프트 조회
-        PromptEntity promptEntity = promptRepository.findById(PromptConst.QUESTION_MYAI_PROMPT_ID)
-                .orElseThrow(() -> new NotFoundException("나만의 AI 질의 프롬프트"));
+    public void createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
+        // 프롬프트 등록
+        CommonCodeEntity role = commonCodeRepository.findByCode(roleCode)
+                .orElseThrow(() -> new NotFoundException("역할 코드"));
 
-        List<FileDetailEntity> fileDetailEntities = Arrays.stream(multipartFiles)
-                .map(multipartFile -> {
-                    UploadFile uploadFile = FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath());
-                    return FileDetailEntity.builder()
+        CommonCodeEntity tone = commonCodeRepository.findByCode(toneCode)
+                .orElseThrow(() -> new NotFoundException("톤 코드"));
+
+        CommonCodeEntity style = commonCodeRepository.findByCode(styleCode)
+                .orElseThrow(() -> new NotFoundException("스타일 코드"));
+
+        String promptContent = promptCoreService.generateMyAiPrompt(role.getCodeName(), tone.getCodeName(), style.getCodeName());
+
+        PromptEntity promptEntity = promptRepository.save(PromptEntity.builder()
+                .promptName("'" + projectName + "' 프로젝트 프롬프트")
+                .promptContent(promptContent)
+                .temperature(0.7D)
+                .topP(0.95D)
+                .build());
+
+        List<FileDetailEntity> fileDetailEntities = new ArrayList<>();
+
+        if (multipartFiles != null) {
+            // 파일 업로드
+            List<UploadFile> uploadFiles = new ArrayList<>();
+            try {
+                for (MultipartFile multipartFile : multipartFiles) {
+                    uploadFiles.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
+                }
+            } catch (RuntimeException e) {
+                for (UploadFile uploadFile : uploadFiles) {
+                    FileUtil.deleteFile(uploadFile.getFilePath());
+                }
+                throw e;
+            }
+
+            // 새로운 파일 등록
+            fileDetailEntities.addAll(uploadFiles.stream()
+                    .map(uploadFile -> FileDetailEntity.builder()
                             .fileOriginName(uploadFile.getOriginFileName())
                             .fileName(uploadFile.getFileName())
                             .ip(uploadFile.getIp())
@@ -136,9 +198,9 @@ public class MyAiServiceImpl implements MyAiService {
                             .fileSize(uploadFile.getFileSize())
                             .ext(uploadFile.getExt())
                             .url(uploadFile.getUrl())
-                            .build();
-                })
-                .toList();
+                            .build())
+                    .toList());
+        }
 
         // 파일 목록 등록
         FileEntity fileEntity = fileRepository.save(FileEntity.builder()
@@ -157,7 +219,7 @@ public class MyAiServiceImpl implements MyAiService {
         embedCoreService.syncEmbedSources(
                 CollectionType.myai(),
                 fileEntity.getFileId(),
-                MyAiConst.MYAI_CATEGORY_CODE(projectEntity.getProjectId()));
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
     }
 
     /**
@@ -173,7 +235,10 @@ public class MyAiServiceImpl implements MyAiService {
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         // 임베딩 문서 삭제
-        embedCoreService.deleteEmbedSources(CollectionType.myai(), projectEntity.getFile().getFileId());
+        embedCoreService.deleteEmbedSources(
+                CollectionType.myai(),
+                projectEntity.getFile().getFileId(),
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
 
         // 프로젝트 삭제
         projectRepository.deleteById(projectId);
@@ -219,13 +284,26 @@ public class MyAiServiceImpl implements MyAiService {
         FileEntity fileEntity = projectEntity.getFile();
 
         // 삭제 대상 파일 상세 삭제
-        fileEntity.getFileDetails().removeIf(fileDetailEntity -> deleteFileDetailIds.contains(fileDetailEntity.getFileDetailId()));
+        fileEntity.getFileDetails()
+                .removeIf(fileDetailEntity -> deleteFileDetailIds.contains(fileDetailEntity.getFileDetailId()));
 
-        // 새로운 파일 등록
-        fileEntity.getFileDetails().addAll(Arrays.stream(multipartFiles)
-                .map(multipartFile -> {
-                    UploadFile uploadFile = FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath());
-                    return FileDetailEntity.builder()
+        if (multipartFiles != null) {
+            // 파일 업로드
+            List<UploadFile> uploadFiles = new ArrayList<>();
+            try {
+                for (MultipartFile multipartFile : multipartFiles) {
+                    uploadFiles.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
+                }
+            } catch (RuntimeException e) {
+                for (UploadFile uploadFile : uploadFiles) {
+                    FileUtil.deleteFile(uploadFile.getFilePath());
+                }
+                throw e;
+            }
+
+            // 새로운 파일 등록
+            fileEntity.getFileDetails().addAll(uploadFiles.stream()
+                    .map(uploadFile -> FileDetailEntity.builder()
                             .fileOriginName(uploadFile.getOriginFileName())
                             .fileName(uploadFile.getFileName())
                             .ip(uploadFile.getIp())
@@ -233,9 +311,9 @@ public class MyAiServiceImpl implements MyAiService {
                             .fileSize(uploadFile.getFileSize())
                             .ext(uploadFile.getExt())
                             .url(uploadFile.getUrl())
-                            .build();
-                })
-                .toList());
+                            .build())
+                    .toList());
+        }
 
         // 파일 목록 수정
         fileEntity = fileRepository.save(fileEntity);
@@ -244,7 +322,7 @@ public class MyAiServiceImpl implements MyAiService {
         embedCoreService.syncEmbedSources(
                 CollectionType.myai(),
                 fileEntity.getFileId(),
-                MyAiConst.MYAI_CATEGORY_CODE(projectEntity.getProjectId()));
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
 
         // 새로운 파일로 업데이트
         projectEntity.setFile(fileEntity);

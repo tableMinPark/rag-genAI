@@ -27,7 +27,7 @@ export const randomUUID = (): string => {
  */
 export const replaceEventDataToText = (eventData: string) => {
   return eventData
-    .replaceAll('&nbsp', ' ')
+    .replaceAll('&nbsp;', ' ')
     .replaceAll('\\n', '\n')
     .replaceAll(`"**`, `\"**`)
     .replaceAll(`**"`, `**\"`)

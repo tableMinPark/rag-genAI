@@ -1,4 +1,3 @@
-import { config } from '@/public/ts/config'
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
 import { TranslateLanguage } from '@/types/domain'

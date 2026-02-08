@@ -2,6 +2,8 @@ import { Project } from '@/types/domain'
 import { client } from './client'
 import { ApiResponse, PageResponse } from '@/types/api'
 
+export interface GetProjectResponseDto extends Project {}
+
 export interface GetProjectsResponseDto extends PageResponse {
   content: Project[]
 }
@@ -11,6 +13,18 @@ export interface GetProjectSources {
   fileOriginName: string
   ext: string
   fileSize: number
+}
+
+/**
+ * 프로젝트 조회 API
+ *
+ * @param projectId 프로젝트 ID
+ */
+export const getProjectApi = async (
+  projectId: number,
+): Promise<ApiResponse<GetProjectResponseDto>> => {
+  const response = await client.get(`/myai/${projectId}`)
+  return response.data
 }
 
 /**
@@ -40,11 +54,17 @@ export const getProjectsApi = async (
  *
  * @param projectName 프로젝트명
  * @param projectDesc 프로젝트 설명
+ * @param roleCode 역할 코드
+ * @param toneCode 톤 코드
+ * @param styleCode 스타일 코드
  * @param uploadFiles 임베딩 문서 목록
  */
 export const createProjectApi = async (
   projectName: string,
   projectDesc: string,
+  roleCode: string,
+  toneCode: string,
+  styleCode: string,
   uploadFiles: File[],
 ): Promise<ApiResponse<void>> => {
   const formData = new FormData()
@@ -53,13 +73,23 @@ export const createProjectApi = async (
   )
   formData.append(
     'requestDto',
-    new Blob([JSON.stringify({ projectName, projectDesc })], {
-      type: 'application/json',
-    }),
+    new Blob(
+      [
+        JSON.stringify({
+          projectName,
+          roleCode,
+          toneCode,
+          styleCode,
+          projectDesc,
+        }),
+      ],
+      {
+        type: 'application/json',
+      },
+    ),
   )
 
   const response = await client.post<ApiResponse<void>>(`/myai`, formData)
-
   return response.data
 }
 

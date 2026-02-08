@@ -1,5 +1,6 @@
 package com.genai.core.repository.wrapper;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.genai.core.repository.entity.DocumentEntity;
 import lombok.*;
 
@@ -10,11 +11,9 @@ import lombok.*;
 @AllArgsConstructor
 public class Search<T extends DocumentEntity> {
 
-    private double distance;
-
+    @JsonProperty("_score")
     private double score;
 
-    private double weight;
-
+    @JsonProperty("_source")
     private T fields;
 }
