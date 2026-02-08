@@ -28,5 +28,4 @@ public interface PromptCoreService {
      * @return 프롬프트 VO
      */
     String generatePrompt(long promptId, String content);
-
 }

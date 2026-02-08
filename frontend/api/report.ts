@@ -16,7 +16,7 @@ export interface GenerateReportResponse {
  */
 export const generateReportTextApi = async (
   sessionId: string,
-  prompt: string,
+  requestContent: string,
   title: string,
   context: string,
 ): Promise<ApiResponse<GenerateReportResponse>> => {
@@ -24,7 +24,7 @@ export const generateReportTextApi = async (
     `/report/text`,
     {
       sessionId,
-      prompt,
+      requestContent,
       title,
       context,
     },
@@ -43,7 +43,7 @@ export const generateReportTextApi = async (
  */
 export const generateReportFileApi = async (
   sessionId: string,
-  prompt: string,
+  requestContent: string,
   title: string,
   uploadFile: File[],
 ): Promise<ApiResponse<GenerateReportResponse>> => {
@@ -51,7 +51,7 @@ export const generateReportFileApi = async (
   uploadFile.forEach((file) => formData.append('uploadFile', file))
   formData.append(
     'requestDto',
-    new Blob([JSON.stringify({ sessionId, prompt, title })], {
+    new Blob([JSON.stringify({ sessionId, requestContent, title })], {
       type: 'application/json',
     }),
   )

@@ -29,7 +29,7 @@ export default function ReportPage() {
   // 입력 텍스트
   const [title, setTitle] = useState('')
   // 시스템 프롬프트 입력 상태 (보고서 양식)
-  const [prompt, setPrompt] = useState('')
+  const [requestContent, setRequestContent] = useState('')
   // 참고 문서 입력 상태
   const [context, setContext] = useState('')
   // 파일 상태
@@ -95,7 +95,7 @@ export default function ReportPage() {
         onConnect: async (_) => {
           console.log(`📡 보고서 생성 요청 : ${title}`)
           if (selectedFile.length == 0) {
-            await generateReportTextApi(sessionId, prompt, title, context)
+            await generateReportTextApi(sessionId, requestContent, title, context)
               .then((response) => {
                 console.log(`📡 ${response.message}`)
               })
@@ -109,7 +109,7 @@ export default function ReportPage() {
                 streamRef.current = null
               })
           } else {
-            await generateReportFileApi(sessionId, prompt, title, selectedFile)
+            await generateReportFileApi(sessionId, requestContent, title, selectedFile)
               .then((response) => {
                 console.log(`📡 ${response.message}`)
               })
@@ -194,14 +194,14 @@ export default function ReportPage() {
           {/* 1. 보고서 양식/프롬프트 입력 (상단) */}
           <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              보고서 양식 (Prompt) <span className="text-red-500">*</span>
+              작성 요청 사항 <span className="text-red-500">*</span>
             </label>
             <textarea
               disabled={isStreaming}
               className="focus:border-primary focus:ring-primary h-24 w-full resize-none rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm leading-relaxed focus:ring-1 focus:outline-none"
               placeholder="작성할 보고서의 목차, 스타일, 필수 포함 사항 등을 입력하세요."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              value={requestContent}
+              onChange={(e) => setRequestContent(e.target.value)}
             />
           </div>
           <div className="flex min-h-37.5 flex-1 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -335,7 +335,7 @@ export default function ReportPage() {
               disabled={
                 isStreaming ||
                 !title ||
-                !prompt ||
+                !requestContent ||
                 (!context && selectedFile.length == 0)
               }
               className={`group relative z-10 flex h-12 w-12 items-center justify-center rounded-full shadow-md transition-all ${!isStreaming ? 'hover:scale-110' : ''} active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-300 ${

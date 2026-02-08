@@ -1,5 +1,6 @@
 package com.genai.app.translate.controller;
 
+import com.genai.app.chat.service.ChatService;
 import com.genai.app.translate.controller.dto.request.TranslateFileRequestDto;
 import com.genai.app.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.app.translate.controller.dto.response.GetTranslateLanguageResponseDto;
@@ -12,6 +13,7 @@ import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
 import com.genai.global.dto.ResponseDto;
+import com.genai.global.enums.Menu;
 import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -30,8 +32,9 @@ import java.util.List;
 public class TranslateController {
 
     private final TranslateCoreService translateCoreService;
-    private final CommonCodeModuleService commonCodeModuleService;
     private final StreamCoreService streamCoreService;
+    private final CommonCodeModuleService commonCodeModuleService;
+    private final ChatService chatService;
 
     /**
      * 번역 요청
@@ -47,12 +50,10 @@ public class TranslateController {
         boolean containDic = translateTextRequestDto.isContainDic();
         String context = translateTextRequestDto.getContext();
 
-        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
-
-        long chatId = 4L;
+        long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, context, sessionId, chatId, containDic);
 
-        translateVO.getAnswerStream().subscribe(streamSubscriber);
+        translateVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)
@@ -68,8 +69,7 @@ public class TranslateController {
      */
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseDto<TranslateResponseDto>> translateFile(
-            @Valid
-            @RequestPart("requestDto") TranslateFileRequestDto translateFileRequestDto,
+            @Valid @RequestPart("requestDto") TranslateFileRequestDto translateFileRequestDto,
             @RequestPart("uploadFile") MultipartFile multipartFile
     ) {
 
@@ -78,12 +78,10 @@ public class TranslateController {
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();
 
-        StreamSubscriber streamSubscriber = streamCoreService.getStream(sessionId);
-
-        long chatId = 4L;
+        long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(beforeLang, afterLang, multipartFile, sessionId, chatId, containDic);
 
-        translateVO.getAnswerStream().subscribe(streamSubscriber);
+        translateVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)

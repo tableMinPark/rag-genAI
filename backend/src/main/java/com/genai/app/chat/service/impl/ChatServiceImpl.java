@@ -4,6 +4,7 @@ import com.genai.app.chat.service.ChatService;
 import com.genai.app.chat.service.vo.ChatVO;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.entity.ChatEntity;
+import com.genai.global.enums.Menu;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,18 +19,18 @@ public class ChatServiceImpl implements ChatService {
      * 대화 조회
      *
      * @param userId 사용자 식별자
-     * @param title 대화 제목
-     * @param menuCode 메뉴 코드
+     * @param title  대화 제목
+     * @param menu   메뉴
      * @return 대화 VO
      */
     @Transactional
     @Override
-    public ChatVO getChat(String userId, String title, String menuCode) {
+    public ChatVO getChat(String userId, String title, Menu menu) {
 
         ChatEntity chatEntity = chatRepository.findBySysCreateUser(userId)
                 .orElseGet(() -> chatRepository.save(ChatEntity.builder()
                         .title(title)
-                        .menuCode(menuCode)
+                        .menuCode(menu.name())
                         .sysCreateUser(userId)
                         .build()));
 

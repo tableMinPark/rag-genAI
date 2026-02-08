@@ -62,5 +62,4 @@ public class VllmAnswerResponse {
         @JsonProperty("reasoning_content")
         private String reasoningContent;
     }
-
 }

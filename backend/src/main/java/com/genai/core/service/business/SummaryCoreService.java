@@ -39,5 +39,4 @@ public interface SummaryCoreService {
      * @return 요약 결과 문자열
      */
     SummaryVO summary(float lengthRatio, List<String> contents, String sessionId, long chatId);
-
 }

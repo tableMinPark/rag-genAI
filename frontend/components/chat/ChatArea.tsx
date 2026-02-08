@@ -91,6 +91,7 @@ export default function ChatArea({
                 <QueryMessage content={message.content} />
               ) : (
                 <AnswerMessage
+                  isStreaming={isStreaming}
                   content={message.content}
                   inference={message.inference}
                   documents={message.documents}

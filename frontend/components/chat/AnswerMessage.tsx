@@ -48,6 +48,7 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
 }
 
 interface AnswerMessageProps {
+  isStreaming: boolean
   content: string
   inference?: string
   documents?: Document[]
@@ -55,34 +56,34 @@ interface AnswerMessageProps {
 }
 
 export default React.memo(function AnswerMessage({
+  isStreaming,
   content,
   inference,
   documents,
   onSelectDocument: onSelectDocument,
 }: AnswerMessageProps) {
+  // ###################################################
+  // 상태 관리
+  // ###################################################
   const containerRef = useRef<HTMLDivElement>(null)
   const [uid] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`)
-
   const convertContent = useMemo(() => {
     if (!content) return ''
-
     return content.replace(/```mermaid([\s\S]*?)```/g, (match, code) => {
       const converted = code.replace(/\[([^\[\]]+)\]/g, '["$1"]')
       return `\`\`\`mermaid${converted}\`\`\``
     })
   }, [content])
 
-  /**
-   * Mermaid 렌더링 이펙트
-   */
+  // ###################################################
+  // 랜더링 이펙트
+  // ###################################################
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     let cancelled = false
-    let rafId: number
-
-    const renderMermaid = async () => {
+    const rafId = requestAnimationFrame(async () => {
       if (cancelled || !containerRef.current) return
 
       const blocks = container.querySelectorAll('.mermaid-block')
@@ -103,9 +104,7 @@ export default React.memo(function AnswerMessage({
           block.dataset.processed = 'true'
         }
       }
-    }
-
-    rafId = requestAnimationFrame(renderMermaid)
+    })
 
     return () => {
       cancelled = true
@@ -113,16 +112,18 @@ export default React.memo(function AnswerMessage({
     }
   }, [convertContent])
 
+  // ###################################################
+  // 렌더링 (Render)
+  // ###################################################
   return (
     <div className="mb-6 flex items-start gap-3">
-      {/* 1. 봇 아이콘 */}
       <div className="text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100">
         <Bot className="h-5 w-5" />
       </div>
       <div className="flex w-full max-w-[90%] flex-col gap-2">
-        {/* 2. 추론 과정 (Optional) */}
-        {inference && <InferenceAccordion content={inference} />}
-        {/* 3. 답변 내용 (Markdown + Mermaid) */}
+        {(isStreaming || inference) && (
+          <InferenceAccordion content={inference || 'thinking...'} />
+        )}
         {convertContent && (
           <div className="rounded-2xl rounded-tl-none border border-gray-200 bg-white px-5 py-3 text-sm leading-relaxed text-gray-800 shadow-sm">
             <div
@@ -132,7 +133,6 @@ export default React.memo(function AnswerMessage({
             />
           </div>
         )}
-        {/* 4. 출처 확인 버튼 */}
         {documents && documents.length > 0 && (
           <div className="flex">
             <button

@@ -16,7 +16,6 @@ import com.genai.core.repository.response.DeleteIndexBulkResponse;
 import com.genai.core.repository.response.GetCollectionResponse;
 import com.genai.core.repository.vo.ConvertVectorVO;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.asm.TypeReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
@@ -77,7 +76,8 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                 .uri(collectionProperty.getUrl() + "/" + collectionId)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchangeToMono(response -> response
-                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                        })
                         .map(body -> new ResponseEntity<>(body, response.statusCode())))
                 .block();
 
@@ -94,11 +94,11 @@ public class CollectionRepositoryImpl implements CollectionRepository {
         GetCollectionResponse getCollectionResponse = objectMapper.convertValue(responseBody.get(collectionId), GetCollectionResponse.class);
 
         return Optional.of(CollectionEntity.builder()
-                        .collectionId(collectionId)
-                        .numOfShards(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfShards()))
-                        .numOfReplication(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfReplicas()))
-                        .fields(getCollectionResponse.getMappings().getProperties().keySet().stream().toList())
-                        .build());
+                .collectionId(collectionId)
+                .numOfShards(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfShards()))
+                .numOfReplication(Integer.parseInt(getCollectionResponse.getSettings().getIndex().getNumberOfReplicas()))
+                .fields(getCollectionResponse.getMappings().getProperties().keySet().stream().toList())
+                .build());
     }
 
     /**
@@ -128,10 +128,12 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                 .bodyValue(convertVectorVos)
                 .retrieve()
                 .onStatus(HttpStatus::isError, response ->
-                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                })
                                 .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
                 )
-                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {})
+                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {
+                })
                 .blockOptional()
                 .orElseThrow(() -> new CollectionErrorException(collectionId));
 
@@ -190,7 +192,8 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                     .bodyValue(requestBodyJsonBuilder.toString())
                     .retrieve()
                     .onStatus(HttpStatus::isError, response ->
-                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                    })
                                     .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
                     )
                     .bodyToMono(CreateIndexBulkResponse.class)
@@ -241,7 +244,8 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                     .bodyValue(requestBodyJsonBuilder.toString())
                     .retrieve()
                     .onStatus(HttpStatus::isError, response ->
-                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                            response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                    })
                                     .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
                     )
                     .bodyToMono(DeleteIndexBulkResponse.class)

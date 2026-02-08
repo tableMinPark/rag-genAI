@@ -9,5 +9,4 @@ import java.util.List;
 public interface ChatDetailRepository extends JpaRepository<ChatDetailEntity, Long> {
 
     List<ChatDetailEntity> findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(Long chatId, Pageable pageable);
-
 }

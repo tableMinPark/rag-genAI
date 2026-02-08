@@ -71,7 +71,7 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @param query          질의문
      * @param topK           top K
      * @param sessionId      세션 식별자
-     * @param aliases          필터 코드 목록
+     * @param aliases        필터 코드 목록
      * @return 키워드 검색 결과 목록
      */
     @Override
@@ -120,7 +120,7 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @param collectionType 컬렉션 타입
      * @param query          질의문
      * @param topK           top K
-     * @param aliases          필터 코드 목록
+     * @param aliases        필터 코드 목록
      * @return 벡터 검색 결과 목록
      */
     @Override
@@ -138,10 +138,12 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .bodyValue(List.of(convertVectorVO))
                 .retrieve()
                 .onStatus(HttpStatus::isError, response ->
-                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                                })
                                 .flatMap(errorBody -> Mono.error(new SearchErrorException("vector/" + collectionType.getCollectionId())))
                 )
-                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {})
+                .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {
+                })
                 .blockOptional()
                 .orElseThrow(() -> new SearchErrorException("vector/" + collectionType.getCollectionId()))
                 .getFirst();

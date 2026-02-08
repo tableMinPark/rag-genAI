@@ -64,9 +64,6 @@ public class VllmAnswerRequest {
         if (chatState != null && !chatState.isBlank()) {
             this.messages.add(Message.builder().role("system").content("이전 대화 요약:\n" + chatState).build());
         }
-        if (context != null && !context.isBlank()) {
-            this.messages.add(Message.builder().role("user").content("참고 문서:\n\n```" + context + "```").build());
-        }
         // 이전 대화 목록
         if (conversations != null && !conversations.isEmpty()) {
             StringBuilder conversionsBuilder = new StringBuilder();
@@ -76,6 +73,9 @@ public class VllmAnswerRequest {
                 conversionsBuilder.append("A").append(index).append(": ").append(conversation.getAnswer()).append("\n");
             }
             this.messages.add(Message.builder().role("system").content("이전 대화 내역:\n" + conversionsBuilder.toString().trim()).build());
+        }
+        if (context != null && !context.isBlank()) {
+            this.messages.add(Message.builder().role("user").content("참고 문서:\n\n```" + context + "```").build());
         }
         if (query != null && !query.isBlank()) {
             this.messages.add(Message.builder().role("user").content(query).build());

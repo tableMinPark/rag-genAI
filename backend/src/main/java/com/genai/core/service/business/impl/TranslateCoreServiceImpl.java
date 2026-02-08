@@ -51,16 +51,6 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final TranslateModuleService translateModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
 
-//    private final AhoCorasick ahoCorasick = new AhoCorasick();
-//
-//    @EventListener(ApplicationReadyEvent.class)
-//    public void init() {
-//        dictionaryRepository.findAll().forEach(dictionaryEntity -> {
-//            this.ahoCorasick.insert(dictionaryEntity.getDictionary().toLowerCase());
-//        });
-//        this.ahoCorasick.build();
-//    }
-
     /**
      * 파일 번역
      *
@@ -207,10 +197,10 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
 
                                     if (!dictionaryContentBuilder.isEmpty()) {
                                         dictionaryContent = """
-                                        ## Reference Dictionary
-                                        |word|replace_word|
-                                        |---|---|
-                                        """ + dictionaryContentBuilder.toString().trim();
+                                                ## Reference Dictionary
+                                                |word|replace_word|
+                                                |---|---|
+                                                """ + dictionaryContentBuilder.toString().trim();
                                     }
                                 }
 
@@ -220,7 +210,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                                                 .message("부분 번역 진행중")
                                                 .build())));
 
-                            } , TranslateCoreConst.CHUNK_PART_BATCH_SIZE))
+                            }, TranslateCoreConst.CHUNK_PART_BATCH_SIZE))
                     .collectList()
                     .flatMapMany(partTranslates -> Flux.fromIterable(partTranslates)
                             .flatMapSequential(partTranslate ->

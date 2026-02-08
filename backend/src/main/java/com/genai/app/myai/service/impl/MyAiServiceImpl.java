@@ -6,13 +6,11 @@ import com.genai.app.myai.repository.entity.ProjectEntity;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.core.config.properties.FileProperty;
-import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
-import com.genai.core.repository.FileRepository;
-import com.genai.core.repository.PromptRepository;
-import com.genai.core.repository.SourceRepository;
+import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.EmbedCoreService;
+import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.core.type.CollectionType;
 import com.genai.global.utils.FileUtil;
@@ -40,6 +38,9 @@ public class MyAiServiceImpl implements MyAiService {
     private final FileProperty fileProperty;
     private final PromptRepository promptRepository;
     private final SourceRepository sourceRepository;
+    private final ChunkRepository chunkRepository;
+    private final CommonCodeRepository commonCodeRepository;
+    private final PromptCoreService promptCoreService;
 
     /**
      * 프로젝트 조회
@@ -112,14 +113,10 @@ public class MyAiServiceImpl implements MyAiService {
                                     .toList();
 
                             List<SourceEntity> sourceEntities = sourceRepository.findByFileDetailIdIn(fileDetailIds);
+                            List<Long> sourceIds = sourceEntities.stream().map(SourceEntity::getSourceId).toList();
 
                             int sourceCount = sourceEntities.size();
-                            int chunkCount = 0;
-                            for (SourceEntity sourceEntity : sourceEntities) {
-                                for (PassageEntity passageEntity : sourceEntity.getPassages()) {
-                                    chunkCount += passageEntity.getChunks().size();
-                                }
-                            }
+                            int chunkCount = chunkRepository.countBySourceIdIn(sourceIds);
 
                             return ProjectVO.builder()
                                     .projectId(projectEntity.getProjectId())
@@ -148,14 +145,32 @@ public class MyAiServiceImpl implements MyAiService {
      *
      * @param projectName    프로젝트명
      * @param projectDesc    프로젝트 설명
+     * @param roleCode       역할 코드
+     * @param toneCode       답변 톤 코드
+     * @param styleCode      답변 스타일 코드
      * @param multipartFiles 임베딩 문서 목록
      */
     @Transactional
     @Override
-    public void createProject(String projectName, String projectDesc, MultipartFile[] multipartFiles) {
-        // 프롬프트 조회
-        PromptEntity promptEntity = promptRepository.findById(PromptConst.QUESTION_MYAI_PROMPT_ID)
-                .orElseThrow(() -> new NotFoundException("나만의 AI 질의 프롬프트"));
+    public void createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
+        // 프롬프트 등록
+        CommonCodeEntity role = commonCodeRepository.findByCode(roleCode)
+                .orElseThrow(() -> new NotFoundException("역할 코드"));
+
+        CommonCodeEntity tone = commonCodeRepository.findByCode(toneCode)
+                .orElseThrow(() -> new NotFoundException("톤 코드"));
+
+        CommonCodeEntity style = commonCodeRepository.findByCode(styleCode)
+                .orElseThrow(() -> new NotFoundException("스타일 코드"));
+
+        String promptContent = promptCoreService.generateMyAiPrompt(role.getCodeName(), tone.getCodeName(), style.getCodeName());
+
+        PromptEntity promptEntity = promptRepository.save(PromptEntity.builder()
+                .promptName("'" + projectName + "' 프로젝트 프롬프트")
+                .promptContent(promptContent)
+                .temperature(0.7D)
+                .topP(0.95D)
+                .build());
 
         List<FileDetailEntity> fileDetailEntities = new ArrayList<>();
 
@@ -204,7 +219,7 @@ public class MyAiServiceImpl implements MyAiService {
         embedCoreService.syncEmbedSources(
                 CollectionType.myai(),
                 fileEntity.getFileId(),
-                MyAiConst.MYAI_CATEGORY_CODE(projectEntity.getProjectId()));
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
     }
 
     /**
@@ -223,7 +238,7 @@ public class MyAiServiceImpl implements MyAiService {
         embedCoreService.deleteEmbedSources(
                 CollectionType.myai(),
                 projectEntity.getFile().getFileId(),
-                MyAiConst.MYAI_CATEGORY_CODE(projectEntity.getProjectId()));
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
 
         // 프로젝트 삭제
         projectRepository.deleteById(projectId);
@@ -307,7 +322,7 @@ public class MyAiServiceImpl implements MyAiService {
         embedCoreService.syncEmbedSources(
                 CollectionType.myai(),
                 fileEntity.getFileId(),
-                MyAiConst.MYAI_CATEGORY_CODE(projectEntity.getProjectId()));
+                MyAiConst.categoryCode(projectEntity.getProjectId()));
 
         // 새로운 파일로 업데이트
         projectEntity.setFile(fileEntity);

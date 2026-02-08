@@ -15,9 +15,12 @@ import NotFound from '@/components/NotFound'
 import { Project } from '@/types/domain'
 import { useUiStore } from '@/stores/uiStore'
 import { getProjectApi } from '@/api/myai'
+import { ArrowLeft, Plus } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 function MyAiContent() {
   const menuInfo = menuInfos.myai
+  const router = useRouter()
   const uiStore = useUiStore()
   const modalStore = useModalStore()
   const searchParams = useSearchParams()
@@ -209,6 +212,13 @@ function MyAiContent() {
       })
   }
 
+  /**
+   * 프로젝트 목록 이동 핸들러
+   */
+  const handleCloseProject = () => {
+    router.back()
+  }
+
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
@@ -227,6 +237,15 @@ function MyAiContent() {
               {menuInfo.description}
             </p>
           </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleCloseProject()}
+            className="bg-primary hover:bg-primary-hover flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold text-white shadow-md transition-all active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            프로젝트 목록
+          </button>
         </div>
       </div>
       {/* 채팅 영역 */}

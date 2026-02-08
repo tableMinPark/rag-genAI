@@ -49,7 +49,7 @@ public class ProjectEntity {
     @JoinColumn(name = "file_id")
     private FileEntity file;
 
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.REFRESH)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "prompt_id")
     private PromptEntity prompt;
 }

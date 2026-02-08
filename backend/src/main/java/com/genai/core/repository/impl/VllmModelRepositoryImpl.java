@@ -91,7 +91,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         try {
             log.info("{}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException ignored) {}
+        } catch (JsonProcessingException ignored) {
+        }
 
         return webClient.post()
                 .uri(llmProperty.getUrl())
@@ -101,9 +102,10 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                 .exchangeToMono(response -> response
                         .bodyToMono(VllmAnswerResponse.class)
                         .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .map(responseBody -> {
+                .handle((responseBody, sink) -> {
                     if (responseBody == null || !responseBody.getStatusCode().is2xxSuccessful()) {
-                        throw new ModelErrorException("LLM(" + llmProperty.getModelName() + ")");
+                        sink.error(new ModelErrorException("LLM(" + llmProperty.getModelName() + ")"));
+                        return;
                     }
 
                     List<AnswerEntity> answerEntities = new ArrayList<>();
@@ -116,7 +118,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                         });
                     }
 
-                    return answerEntities;
+                    sink.next(answerEntities);
                 });
     }
 
@@ -151,7 +153,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         try {
             log.info("{}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException ignored) {}
+        } catch (JsonProcessingException ignored) {
+        }
 
         ResponseEntity<VllmAnswerResponse> responseBody = webClient.post()
                 .uri(llmProperty.getUrl())
@@ -211,7 +214,8 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         try {
             log.info("{}", objectMapper.writeValueAsString(requestBody));
-        } catch (JsonProcessingException ignored) {}
+        } catch (JsonProcessingException ignored) {
+        }
 
         return webClient.post()
                 .uri(llmProperty.getUrl())

@@ -12,7 +12,7 @@ import javax.validation.constraints.NotNull;
 @AllArgsConstructor
 public class ChatMyAiRequestDto {
 
-    @NotNull
+    @NotBlank
     private String sessionId;
 
     @NotBlank

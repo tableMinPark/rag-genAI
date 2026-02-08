@@ -106,7 +106,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      *
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
-     * @param content      참고 문서
+     * @param content       참고 문서
      * @param sessionId     사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
@@ -142,12 +142,12 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     public ReportVO generateReport(String reportTitle, String promptContext, List<String> contents, String sessionId, long chatId) {
 
         String query = String.format("""
-        > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
-        # 보고서 제목
-        %s
-        # 보고서 생성 참고 사항
-        %s
-        """, reportTitle, promptContext);
+                > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
+                # 보고서 제목
+                %s
+                # 보고서 생성 참고 사항
+                %s
+                """, reportTitle, promptContext);
 
         PromptEntity promptEntity = promptRepository.findById(PromptConst.REPORT_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));

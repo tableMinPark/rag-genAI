@@ -8,10 +8,14 @@ import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import javax.validation.constraints.NotBlank;
+
 @Slf4j
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/stream")
@@ -26,7 +30,7 @@ public class StreamController {
      * @return SSE Emitter
      */
     @GetMapping("/{sessionId}")
-    public SseEmitter stream(@PathVariable("sessionId") String sessionId) throws InterruptedException {
+    public SseEmitter stream(@NotBlank @PathVariable("sessionId") String sessionId) throws InterruptedException {
 
         log.info("사용자 스트림 요청 : {}", sessionId);
 
@@ -60,7 +64,7 @@ public class StreamController {
      * @param sessionId 세션 ID
      */
     @DeleteMapping("/{sessionId}")
-    public ResponseEntity<ResponseDto<StreamCancelResponseDto>> cancelStream(@PathVariable("sessionId") String sessionId) {
+    public ResponseEntity<ResponseDto<StreamCancelResponseDto>> cancelStream(@NotBlank @PathVariable("sessionId") String sessionId) {
 
         log.info("사용자 스트림 중지 요청 : {}", sessionId);
 

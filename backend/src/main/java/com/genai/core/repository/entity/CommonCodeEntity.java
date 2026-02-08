@@ -17,7 +17,7 @@ import javax.persistence.Table;
 public class CommonCodeEntity {
 
     @Id
-    @Column(name = "code", unique = true)
+    @Column(name = "code", nullable = false, unique = true)
     @Comment("공통 코드")
     private String code;
 

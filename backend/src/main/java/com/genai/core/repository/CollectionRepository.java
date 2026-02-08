@@ -40,5 +40,4 @@ public interface CollectionRepository {
      * @param chunkIds     chunkId 목록
      */
     void deleteIndex(String collectionId, List<String> chunkIds);
-
 }

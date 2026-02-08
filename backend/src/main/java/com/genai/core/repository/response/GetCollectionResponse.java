@@ -70,6 +70,5 @@ public class GetCollectionResponse {
                 private String created;
             }
         }
-
     }
 }

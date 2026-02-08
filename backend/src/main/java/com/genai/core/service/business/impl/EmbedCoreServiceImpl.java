@@ -35,8 +35,8 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
      * 임베딩 문서 동기화
      *
      * @param collectionType 컬렉션 타입
-     * @param fileId 파일 ID
-     * @param categoryCode 카테고리 코드
+     * @param fileId         파일 ID
+     * @param categoryCode   카테고리 코드
      */
     @Transactional
     @Override
@@ -58,8 +58,8 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
         // 삭제 예정 문서 목록 조회
         List<SourceEntity> deleteSourceEntities = fileDetailIds.isEmpty()
-            ? sourceRepository.findByCollectionIdAndCategoryCode(collectionType.getCollectionId(), categoryCode)
-            : sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIsNotIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
+                ? sourceRepository.findByCollectionIdAndCategoryCode(collectionType.getCollectionId(), categoryCode)
+                : sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIsNotIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
         List<SourceEntity> existSourceEntities = sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
 
         List<Long> existsFileDetailIds = existSourceEntities.stream()
@@ -143,10 +143,10 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
             for (PassageEntity passageEntity : sourceEntity.getPassages()) {
                 for (ChunkEntity chunkEntity : passageEntity.getChunks()) {
                     String context = chunkEntity.getTitle() + "\n" +
-                            chunkEntity.getSubTitle()       + "\n" +
-                            chunkEntity.getThirdTitle()     + "\n" +
-                            chunkEntity.getContent()        + "\n" +
-                            chunkEntity.getSubContent()     + "\n";
+                            chunkEntity.getSubTitle() + "\n" +
+                            chunkEntity.getThirdTitle() + "\n" +
+                            chunkEntity.getContent() + "\n" +
+                            chunkEntity.getSubContent() + "\n";
 
                     documentEntities.add(DocumentEntity.builder()
                             .chunkId(chunkEntity.getChunkId())
@@ -199,8 +199,9 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
 
     /**
      * 임베딩 문서 삭제
+     *
      * @param collectionType 컬렉션 타입
-     * @param fileId 파일 ID
+     * @param fileId         파일 ID
      */
     @Transactional
     @Override

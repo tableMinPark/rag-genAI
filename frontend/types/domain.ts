@@ -44,6 +44,12 @@ export interface Category {
   name: string
 }
 
+// 프롬프트 파라미터
+export interface PromptParameter {
+  code: string
+  name: string
+}
+
 // 문서 추출 본문
 export interface ExtractContent {
   type: string

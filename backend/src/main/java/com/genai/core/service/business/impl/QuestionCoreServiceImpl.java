@@ -122,30 +122,30 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 검색
         Mono<List<Rerank>> rerankFlux = rewriteQueryMono.flatMap(rewriteQuery ->
-                Mono.fromCallable(() -> {
-                    // 검색 결과 목록 (key 를 통한 중복 제거)
-                    Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
+                        Mono.fromCallable(() -> {
+                            // 검색 결과 목록 (key 를 통한 중복 제거)
+                            Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
 
-                    // 키워드 검색
-                    List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, QuestionCoreConst.KEYWORD_TOP_K, sessionId, categoryCodes);
-                    keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+                            // 키워드 검색
+                            List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, QuestionCoreConst.KEYWORD_TOP_K, sessionId, categoryCodes);
+                            keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
 
-                    // 벡터 검색
-                    List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, QuestionCoreConst.VECTOR_TOP_K, categoryCodes);
-                    vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
+                            // 벡터 검색
+                            List<Search<DocumentEntity>> vectorSearchEntities = searchRepository.vectorSearch(collectionType, rewriteQuery, QuestionCoreConst.VECTOR_TOP_K, categoryCodes);
+                            vectorSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
 
-                    // 키워드 검색 결과, 벡터 검색 결과 변환
-                    List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
-                            .filter(searchEntity -> searchEntity.getScore() >= QuestionCoreConst.SEARCH_SCORE_MIN)
-                            .map(searchEntity -> Rerank.builder()
-                                    .document(searchEntity.getFields())
-                                    .build())
-                            .toList());
+                            // 키워드 검색 결과, 벡터 검색 결과 변환
+                            List<Rerank> rerankEntities = searchRepository.rerank(rewriteQuery, searchEntityMap.values().stream()
+                                    .filter(searchEntity -> searchEntity.getScore() >= QuestionCoreConst.SEARCH_SCORE_MIN)
+                                    .map(searchEntity -> Rerank.builder()
+                                            .document(searchEntity.getFields())
+                                            .build())
+                                    .toList());
 
-                    // 상위 RERANK_TOP_K 개 추출
-                    return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
+                            // 상위 RERANK_TOP_K 개 추출
+                            return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
 
-                }).subscribeOn(Schedulers.boundedElastic()))
+                        }).subscribeOn(Schedulers.boundedElastic()))
                 .cache();
 
         Mono<QuestionContextVO> contextMono = Mono.zip(conversationMono, rewriteQueryMono, rerankFlux)
@@ -243,22 +243,22 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             String rewriteQuery = ctx.getRewriteQuery();
             List<Rerank> rerankEntities = ctx.getReranks();
 
-                // 1. 대화 상태 요약
-                Mono<Void> summaryMono = !DecisionDetectUtil.detect(query, answer)
+            // 1. 대화 상태 요약
+            Mono<Void> summaryMono = !DecisionDetectUtil.detect(query, answer)
                     ? Mono.empty()
                     : questionModuleService.summaryState(chatState, conversations, sessionId).flatMap(newChatState ->
-                        Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
+                    Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
 
-                // 2. passage + answer 저장
-                Mono<Void> saveMono = Mono.fromRunnable(() -> {
-                    List<ChatPassageEntity> chatPassageEntities = rerankEntities.stream()
+            // 2. passage + answer 저장
+            Mono<Void> saveMono = Mono.fromRunnable(() -> {
+                List<ChatPassageEntity> chatPassageEntities = rerankEntities.stream()
                         .map(rerank -> {
                             String context =
                                     rerank.getDocument().getTitle() + "\n" +
-                                    rerank.getDocument().getSubTitle() + "\n" +
-                                    rerank.getDocument().getThirdTitle() + "\n" +
-                                    rerank.getDocument().getContent() + "\n" +
-                                    rerank.getDocument().getSubContent() + "\n";
+                                            rerank.getDocument().getSubTitle() + "\n" +
+                                            rerank.getDocument().getThirdTitle() + "\n" +
+                                            rerank.getDocument().getContent() + "\n" +
+                                            rerank.getDocument().getSubContent() + "\n";
 
                             context = context.replace("\\n", "\n");
 
@@ -272,17 +272,17 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         })
                         .toList();
 
-                        chatHistoryModuleService.updateChatDetail(
-                                chatId,
-                                chatDetailEntity.getMsgId(),
-                                rewriteQuery,
-                                answer,
-                                chatPassageEntities
-                        );
-                    });
-
-                return Mono.when(summaryMono, saveMono).subscribeOn(Schedulers.boundedElastic());
+                chatHistoryModuleService.updateChatDetail(
+                        chatId,
+                        chatDetailEntity.getMsgId(),
+                        rewriteQuery,
+                        answer,
+                        chatPassageEntities
+                );
             });
+
+            return Mono.when(summaryMono, saveMono).subscribeOn(Schedulers.boundedElastic());
+        });
 
         Flux<StreamEvent> answerStream = Flux
                 .concat(answerFlux, referenceMono)
@@ -374,7 +374,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             Mono<Void> summaryMono = !DecisionDetectUtil.detect(query, answer)
                     ? Mono.empty()
                     : questionModuleService.summaryState(chatState, conversations, sessionId).flatMap(newChatState ->
-                            Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
+                    Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
 
             Mono<Void> saveMono = Mono.fromRunnable(() -> chatHistoryModuleService.updateChatDetail(
                     chatId,

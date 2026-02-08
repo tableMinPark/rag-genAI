@@ -25,6 +25,13 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
     private final ChatDetailRepository chatDetailRepository;
     private final ModelRepository modelRepository;
 
+    /**
+     * 대화 이력 목록 조회
+     *
+     * @param chatId 대화 ID
+     * @param size   대화 수
+     * @return 대화 이력 목록
+     */
     @Override
     public Flux<ConversationVO> getConversations(long chatId, int size) {
 
@@ -45,6 +52,14 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                 .flatMapMany(Flux::fromIterable);
     }
 
+    /**
+     * 질의 재작성
+     *
+     * @param query         질의
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 ID
+     * @return 재작성 질의
+     */
     @Override
     public Mono<String> rewriteQuery(String query, List<ConversationVO> conversations, String sessionId) {
 
@@ -68,6 +83,14 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                 .map(rewriteQuery -> rewriteQuery.trim().isBlank() ? query : rewriteQuery);
     }
 
+    /**
+     * 대화 상태 요약 생성
+     *
+     * @param chatState     이전 대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 ID
+     * @return 대화 상태 요약
+     */
     @Override
     public Mono<String> summaryState(String chatState, List<ConversationVO> conversations, String sessionId) {
 

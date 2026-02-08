@@ -31,10 +31,10 @@ public class PromptCoreServiceImpl implements PromptCoreService {
     public String generateMyAiPrompt(String role, String answerTone, String answerStyle) {
 
         String context = String.format("""
-        1. 당신은 "%s" 역할을 합니다.
-        2. "%s" 톤으로 답변 합니다.
-        3. "%s" 스타일로 문장을 구성하여 답변 합니다.
-        """, role, answerTone, answerStyle);
+                1. 당신은 "%s" 역할을 합니다.
+                2. "%s" 톤으로 답변 합니다.
+                3. "%s" 스타일로 문장을 구성하여 답변 합니다.
+                """, role, answerTone, answerStyle);
 
         return this.generatePrompt(PromptConst.GENERATE_MYAI_PROMPT_ID, context);
     }
@@ -63,13 +63,13 @@ public class PromptCoreServiceImpl implements PromptCoreService {
     public String generatePrompt(long promptId, String content) {
 
         String userInput = """
-        "## 답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성 해줘.
-        """;
+                "## 답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성 해줘.
+                """;
 
         String context = String.format("""
-        ## 답변 규칙
-        %s
-        """, content);
+                ## 답변 규칙
+                %s
+                """, content);
 
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
