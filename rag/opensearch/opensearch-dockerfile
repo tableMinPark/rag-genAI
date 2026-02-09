@@ -1,0 +1,6 @@
+FROM opensearchproject/opensearch:2.11.0
+
+RUN /usr/share/opensearch/bin/opensearch-plugin install analysis-nori
+
+# 권한 문제 방지
+RUN chown -R opensearch:opensearch /usr/share/opensearch

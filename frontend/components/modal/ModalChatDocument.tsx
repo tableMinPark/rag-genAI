@@ -1,3 +1,4 @@
+import { replaceEventDataToText } from '@/public/ts/commonUtil'
 import { Document } from '@/types/domain'
 import { BookOpen, X } from 'lucide-react'
 
@@ -43,7 +44,7 @@ export default function ModalChatDocument({
                 {/* (1) 상단: 원본 파일명 (Badge 형태) */}
                 <div className="mb-4 flex items-center justify-between">
                   <span className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
-                    📄 {document.originFileName}
+                    📄 {replaceEventDataToText(document.originFileName)}
                   </span>
                 </div>
                 {/* (2) 중단: 제목 계층 구조 (Title > Sub > Third) */}
@@ -51,21 +52,21 @@ export default function ModalChatDocument({
                   {/* 대제목 */}
                   {document.title && (
                     <h4 className="text-lg font-bold text-gray-900">
-                      {document.title}
+                      {replaceEventDataToText(document.title)}
                     </h4>
                   )}
                   {/* 중제목 */}
                   {document.subTitle && (
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
                       <span className="text-gray-300">↳</span>
-                      {document.subTitle}
+                      {replaceEventDataToText(document.subTitle)}
                     </div>
                   )}
                   {/* 소제목 */}
                   {document.thirdTitle && (
                     <div className="ml-4 flex items-center gap-1.5 text-xs font-medium text-gray-500">
                       <span className="text-gray-300">-</span>
-                      {document.thirdTitle}
+                      {replaceEventDataToText(document.thirdTitle)}
                     </div>
                   )}
                 </div>
