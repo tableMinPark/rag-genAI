@@ -1,0 +1,56 @@
+services:
+  # 검색 엔진 (Open Search)
+  opensearch:
+    build:
+      context: ./docker/opensearch
+      dockerfile: ./opensearch-dockerfile
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - ./volume/opensearch/data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    restart: unless-stopped
+    networks:
+      - rag-net
+  # 임베딩 API
+  embedding:
+    build:
+      context: ./docker/embedding
+      dockerfile: ./embedding-dockerfile
+    container_name: embedding
+    environment:
+      - MODEL_NAME=BAAI/bge-base-en-v1.5
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    networks:
+      - rag-net
+  # 리랭킹 API
+  reranker:
+    build:
+      context: ./docker/reranker
+      dockerfile: ./reranker-dockerfile
+    container_name: reranker
+    ports:
+      - "8001:8000"
+    environment:
+      - MODEL_NAME=BAAI/bge-reranker-base
+    restart: unless-stopped
+    networks:
+      - rag-net
+networks:
+  rag-net:
+    name: "rag-net"
+    driver: bridge

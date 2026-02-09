@@ -28,12 +28,12 @@ public class ChatDetailEntity {
     @Comment("대화 ID")
     private Long chatId;
 
-    @Column(name = "query")
+    @Column(name = "query", length = 4000)
     @Comment("질문")
     private String query;
 
     @Setter
-    @Column(name = "rewrite_query")
+    @Column(name = "rewrite_query", length = 4000)
     @Comment("질문")
     private String rewriteQuery;
 
