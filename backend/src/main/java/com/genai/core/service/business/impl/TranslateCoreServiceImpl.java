@@ -2,7 +2,6 @@ package com.genai.core.service.business.impl;
 
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.exception.NotFoundException;
-import com.genai.core.exception.TranslateErrorException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.DictionaryRepository;
@@ -18,9 +17,11 @@ import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.TranslateModuleService;
-import com.genai.global.utils.AhoCorasick;
-import com.genai.global.utils.CommonUtil;
-import com.genai.global.utils.ExtractUtil;
+import com.genai.common.utils.AhoCorasick;
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.utils.HtmlUtil;
+import com.genai.common.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,9 +29,6 @@ import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,7 +44,6 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final DictionaryRepository dictionaryRepository;
-    private final ExtractUtil extractUtil;
     private final FileProperty fileProperty;
     private final TranslateModuleService translateModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
@@ -67,35 +64,22 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
 
         List<String> contents = new ArrayList<>();
 
-        String originFileName = file.getOriginalFilename();
-        String fileName = CommonUtil.generateRandomId();
-        Path fullPath = Paths.get(fileProperty.getFileStorePath(), fileProperty.getTempDir(), fileName);
+        UploadFileVO uploadFile = FileUtil.uploadFileTemp(file);
 
-        if (fullPath.toFile().exists()) {
-            throw new TranslateErrorException(originFileName);
+        String extractContent = ExtractUtil.extractText(uploadFile.getUrl(), uploadFile.getExt());
+        String content = HtmlUtil.convertTableHtmlToMarkdown(extractContent);
+
+        StringBuilder contentBuilder = new StringBuilder();
+        for (String line : content.lines().toList()) {
+            if (contentBuilder.length() + line.length() > TranslateCoreConst.CHUNK_PART_TOKEN_SIZE) {
+                contents.add(contentBuilder.toString().trim());
+                contentBuilder = new StringBuilder();
+            }
+            contentBuilder.append(line).append("\n");
         }
 
-        try {
-            file.transferTo(fullPath);
-
-            String content = extractUtil.extract(fullPath.toString());
-            StringBuilder contentBuilder = new StringBuilder();
-            for (String line : content.lines().toList()) {
-                if (contentBuilder.length() + line.length() > TranslateCoreConst.CHUNK_PART_TOKEN_SIZE) {
-                    contents.add(contentBuilder.toString().trim());
-                    contentBuilder = new StringBuilder();
-                }
-                contentBuilder.append(line).append("\n");
-            }
-
-            if (!contentBuilder.toString().trim().isEmpty()) {
-                contents.add(contentBuilder.toString().trim());
-            }
-
-        } catch (IOException e) {
-            throw new TranslateErrorException(originFileName);
-        } finally {
-            extractUtil.removeFile(fullPath);
+        if (!contentBuilder.toString().trim().isEmpty()) {
+            contents.add(contentBuilder.toString().trim());
         }
 
         return this.translate(beforeLang, afterLang, contents, sessionId, chatId, containDic);

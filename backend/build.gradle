@@ -4,7 +4,7 @@ buildscript {
         springDependencyManagementVersion = "1.1.6"
         jupiterVersion                    = "5.9.3"
         mockitoVersion                    = "4.8.1"
-        assertjVersion                    = "3.24.2"
+        assertjVersion                    = '3.27.7'
         lombokVersion                     = "1.18.30"
         jsoupVersion                      = "1.18.1"
         securityVersion                   = "5.8.13"
@@ -54,6 +54,17 @@ dependencies {
 
     // tokenizer
     implementation 'com.knuddels:jtokkit:0.6.1'
+
+    // hwpx lib
+    implementation 'kr.dogfoot:hwplib:1.1.10'
+    implementation 'kr.dogfoot:hwpxlib:1.0.8'
+    implementation fileTree(dir: 'libs', includes: ['hwp2hwpx-1.0.1.jar'])
+
+    // html parser
+    implementation "org.jsoup:jsoup:${jsoupVersion}"
+
+    // pdf
+    implementation 'com.github.lanit-exp:tabula:1.0.0'
 
     // test
     testImplementation "org.springframework.boot:spring-boot-starter-test"

@@ -6,7 +6,7 @@ import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.PromptCoreService;
-import com.genai.global.utils.CommonUtil;
+import com.genai.common.utils.StringUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,6 +74,6 @@ public class PromptCoreServiceImpl implements PromptCoreService {
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        return modelRepository.generateAnswerSyncStr(userInput, context, CommonUtil.generateRandomId(), promptEntity);
+        return modelRepository.generateAnswerSyncStr(userInput, context, StringUtil.generateRandomId(), promptEntity);
     }
 }

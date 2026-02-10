@@ -19,7 +19,7 @@ import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.QuestionModuleService;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
-import com.genai.global.utils.DecisionDetectUtil;
+import com.genai.core.utils.DecisionDetectUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

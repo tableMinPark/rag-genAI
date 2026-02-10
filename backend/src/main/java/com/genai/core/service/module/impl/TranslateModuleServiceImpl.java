@@ -5,7 +5,7 @@ import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
 import com.genai.core.service.module.TranslateModuleService;
-import com.genai.global.utils.CommonUtil;
+import com.genai.common.utils.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,7 +49,7 @@ public class TranslateModuleServiceImpl implements TranslateModuleService {
                 .map(promptEntity -> {
                     String query = String.format("Translate %s to %s\n\n%s", beforeLang, afterLang, dictionary).trim();
                     log.info("부분 번역 | {}", content.replace("\n", "\\n"));
-                    String partTranslate = modelRepository.generateAnswerSyncStr(query, content, CommonUtil.generateRandomId(), promptEntity);
+                    String partTranslate = modelRepository.generateAnswerSyncStr(query, content, StringUtil.generateRandomId(), promptEntity);
                     return partTranslate + "\n";
                 })
                 .subscribeOn(Schedulers.boundedElastic());

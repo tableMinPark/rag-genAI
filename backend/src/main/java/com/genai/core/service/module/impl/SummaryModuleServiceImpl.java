@@ -4,7 +4,7 @@ import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.core.service.module.constant.SummaryModuleConst;
-import com.genai.global.utils.CommonUtil;
+import com.genai.common.utils.StringUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,7 +38,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
 
         return Mono.fromCallable(() -> {
             log.info("부분 요약 | {}", content.replace("\n", "\\n"));
-            return modelRepository.generateAnswerSyncStr("", content, CommonUtil.generateRandomId(), promptEntity);
+            return modelRepository.generateAnswerSyncStr("", content, StringUtil.generateRandomId(), promptEntity);
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -78,7 +78,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                 .flatMap(targetContents -> Mono.fromCallable(() -> {
                     String context = String.join("\n\n---\n\n", targetContents);
                     log.info("전체 요약 | {}", context.replace("\n", "\\n"));
-                    return modelRepository.generateAnswerSyncStr("", context, CommonUtil.generateRandomId(), promptEntity);
+                    return modelRepository.generateAnswerSyncStr("", context, StringUtil.generateRandomId(), promptEntity);
                 })).subscribeOn(Schedulers.boundedElastic());
     }
 }

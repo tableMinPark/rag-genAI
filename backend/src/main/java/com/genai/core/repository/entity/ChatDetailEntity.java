@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -52,4 +53,8 @@ public class ChatDetailEntity {
     @Column(name = "sys_modify_dt")
     @Comment("수정 일자")
     private LocalDateTime sysModifyDt;
+
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JoinColumn(name = "msg_id")
+    private List<ChatPassageEntity> chatPassages;
 }

@@ -12,6 +12,4 @@ import org.springframework.stereotype.Component;
 public class FileProperty {
 
     private String fileStorePath;
-
-    private String tempDir;
 }

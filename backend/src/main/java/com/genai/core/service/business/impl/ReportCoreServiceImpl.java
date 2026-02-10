@@ -1,9 +1,7 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.config.properties.FileProperty;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
-import com.genai.core.exception.ReportErrorException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.ModelRepository;
@@ -19,8 +17,10 @@ import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
-import com.genai.global.utils.CommonUtil;
-import com.genai.global.utils.ExtractUtil;
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.utils.HtmlUtil;
+import com.genai.common.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,9 +29,6 @@ import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -47,8 +44,6 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     private final ModelRepository modelRepository;
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
-    private final ExtractUtil extractUtil;
-    private final FileProperty fileProperty;
     private final SummaryModuleService summaryModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
 
@@ -69,31 +64,18 @@ public class ReportCoreServiceImpl implements ReportCoreService {
         List<String> contents = new ArrayList<>();
 
         for (MultipartFile file : files) {
-            String originFileName = file.getOriginalFilename();
-            String fileName = CommonUtil.generateRandomId();
-            Path fullPath = Paths.get(fileProperty.getFileStorePath(), fileProperty.getTempDir(), fileName);
 
-            if (fullPath.toFile().exists()) {
-                throw new ReportErrorException(originFileName);
-            }
+            UploadFileVO uploadFile = FileUtil.uploadFileTemp(file);
 
-            try {
-                file.transferTo(fullPath);
+            String extractContent = ExtractUtil.extractText(uploadFile.getUrl(), uploadFile.getExt());
+            String content = HtmlUtil.convertTableHtmlToMarkdown(extractContent);
 
-                String content = extractUtil.extract(fullPath.toString());
+            int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
-                int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
-
-                contents.addAll(IntStream.iterate(0, i -> i + step)
-                        .limit((content.length() + step - 1) / step)
-                        .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
-                        .toList());
-
-            } catch (IOException e) {
-                throw new ReportErrorException(originFileName);
-            } finally {
-                extractUtil.removeFile(fullPath);
-            }
+            contents.addAll(IntStream.iterate(0, i -> i + step)
+                    .limit((content.length() + step - 1) / step)
+                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
+                    .toList());
         }
 
         contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));

@@ -1,4 +1,4 @@
-package com.genai.global.utils;
+package com.genai.common.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,7 +7,7 @@ import lombok.Getter;
 @Builder
 @Getter
 @AllArgsConstructor
-public class UploadFile {
+public class UploadFileVO {
 
     private final String ip;
 

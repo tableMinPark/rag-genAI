@@ -13,8 +13,8 @@ import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.core.type.CollectionType;
-import com.genai.global.utils.FileUtil;
-import com.genai.global.utils.UploadFile;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.vo.UploadFileVO;
 import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -176,28 +176,28 @@ public class MyAiServiceImpl implements MyAiService {
 
         if (multipartFiles != null) {
             // 파일 업로드
-            List<UploadFile> uploadFiles = new ArrayList<>();
+            List<UploadFileVO> uploadFileVOS = new ArrayList<>();
             try {
                 for (MultipartFile multipartFile : multipartFiles) {
-                    uploadFiles.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
+                    uploadFileVOS.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
                 }
             } catch (RuntimeException e) {
-                for (UploadFile uploadFile : uploadFiles) {
-                    FileUtil.deleteFile(uploadFile.getFilePath());
+                for (UploadFileVO uploadFileVO : uploadFileVOS) {
+                    FileUtil.deleteFile(uploadFileVO.getFilePath());
                 }
                 throw e;
             }
 
             // 새로운 파일 등록
-            fileDetailEntities.addAll(uploadFiles.stream()
-                    .map(uploadFile -> FileDetailEntity.builder()
-                            .fileOriginName(uploadFile.getOriginFileName())
-                            .fileName(uploadFile.getFileName())
-                            .ip(uploadFile.getIp())
-                            .filePath(uploadFile.getFilePath())
-                            .fileSize(uploadFile.getFileSize())
-                            .ext(uploadFile.getExt())
-                            .url(uploadFile.getUrl())
+            fileDetailEntities.addAll(uploadFileVOS.stream()
+                    .map(uploadFileVO -> FileDetailEntity.builder()
+                            .fileOriginName(uploadFileVO.getOriginFileName())
+                            .fileName(uploadFileVO.getFileName())
+                            .ip(uploadFileVO.getIp())
+                            .filePath(uploadFileVO.getFilePath())
+                            .fileSize(uploadFileVO.getFileSize())
+                            .ext(uploadFileVO.getExt())
+                            .url(uploadFileVO.getUrl())
                             .build())
                     .toList());
         }
@@ -289,28 +289,28 @@ public class MyAiServiceImpl implements MyAiService {
 
         if (multipartFiles != null) {
             // 파일 업로드
-            List<UploadFile> uploadFiles = new ArrayList<>();
+            List<UploadFileVO> uploadFileVOS = new ArrayList<>();
             try {
                 for (MultipartFile multipartFile : multipartFiles) {
-                    uploadFiles.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
+                    uploadFileVOS.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
                 }
             } catch (RuntimeException e) {
-                for (UploadFile uploadFile : uploadFiles) {
-                    FileUtil.deleteFile(uploadFile.getFilePath());
+                for (UploadFileVO uploadFileVO : uploadFileVOS) {
+                    FileUtil.deleteFile(uploadFileVO.getFilePath());
                 }
                 throw e;
             }
 
             // 새로운 파일 등록
-            fileEntity.getFileDetails().addAll(uploadFiles.stream()
-                    .map(uploadFile -> FileDetailEntity.builder()
-                            .fileOriginName(uploadFile.getOriginFileName())
-                            .fileName(uploadFile.getFileName())
-                            .ip(uploadFile.getIp())
-                            .filePath(uploadFile.getFilePath())
-                            .fileSize(uploadFile.getFileSize())
-                            .ext(uploadFile.getExt())
-                            .url(uploadFile.getUrl())
+            fileEntity.getFileDetails().addAll(uploadFileVOS.stream()
+                    .map(uploadFileVO -> FileDetailEntity.builder()
+                            .fileOriginName(uploadFileVO.getOriginFileName())
+                            .fileName(uploadFileVO.getFileName())
+                            .ip(uploadFileVO.getIp())
+                            .filePath(uploadFileVO.getFilePath())
+                            .fileSize(uploadFileVO.getFileSize())
+                            .ext(uploadFileVO.getExt())
+                            .url(uploadFileVO.getUrl())
                             .build())
                     .toList());
         }

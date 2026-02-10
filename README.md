@@ -39,15 +39,15 @@ Spring WebFlux 기반 비동기 백엔드 + Next.js 프론트와 함께
 
 ## 🛠 기술 스택
 
-| 영역       | 기술                                  |
-| ---------- | ------------------------------------- |
-| LLM        | vLLM + GPT-OSS 120B                   |
-| 언어       | Java21, TypeScript                    |
-| 백앤드     | Spring Boot 3, **WebFlux (Reactive)** |
-| 프론트앤드 | Next.js + Tailwind CSS                |
-| 검색       | OpenSearch Vector DB                  |
-| 리랭킹     | FastAPI + BAAI/bge-reranker-base      |
-| 임베딩     | FastAPI + BAAI/bge-base-en-v1.5       |
+| 영역       | 기술                                     |
+| ---------- | ---------------------------------------- |
+| LLM        | vLLM + GPT-OSS 120B                      |
+| 언어       | Java21, TypeScript                       |
+| 백앤드     | Spring Boot 2.7 + **WebFlux (Reactive)** |
+| 프론트앤드 | Next.js + Tailwind CSS                   |
+| 검색       | OpenSearch Vector DB                     |
+| 리랭킹     | FastAPI + BAAI/bge-reranker-base         |
+| 임베딩     | FastAPI + BAAI/bge-base-en-v1.5          |
 
 ---
 
@@ -215,8 +215,6 @@ engine:
     # 최대 출력 토큰
     max-output-tokens: 4096
 file:
-  # 임시 파일 디렉토리명
-  temp-dir: temp
   # 파일 저장 루트 디렉토리 경로
   file-store-path: ${FILE_STORE_PATH}
 chunk:

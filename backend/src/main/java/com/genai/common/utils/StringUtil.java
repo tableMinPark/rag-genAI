@@ -1,4 +1,8 @@
-package com.genai.global.utils;
+package com.genai.common.utils;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.util.*;
 
@@ -12,6 +16,22 @@ public class StringUtil {
             0x325A, 0x325B, 0x325C, 0x325D, 0x325E, 0x325F, 0x32B1, 0x32B2, 0x32B3, 0x32B4,
             0x32B5, 0x32B6, 0x32B7, 0x32B8, 0x32B9, 0x32BA, 0x32BB, 0x32BC, 0x32BD, 0x32BE
     };
+
+    public static final ObjectMapper objectMapper;
+
+    static {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    /**
+     * 랜덤 ID 값 생성
+     *
+     * @return 랜덤 ID
+     */
+    public static String generateRandomId() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
 
     /**
      * 파일 확장자 제거
@@ -48,15 +68,21 @@ public class StringUtil {
     }
 
     /**
-     * 공백/개행 정리
+     * JSON 직렬화
      *
-     * @param str 원본 문자열
-     * @return 공백 정리 문자열
+     * @param object 객체
+     * @return 직렬화 문자열
      */
-    public static String normalize(String str) {
-        str = str.replaceAll("[ \\t\\f\\r]+", " ");   // 연속 공백 → 하나
-        str = str.replaceAll(" *\\n+ *", "\n");       // 개행 여러 개 → 하나
-        return str.trim();
+    public static String writeJson(Object object) {
+
+        String json = "{}";
+
+        try {
+            json = objectMapper.writeValueAsString(object);
+        } catch (JsonProcessingException ignored) {
+        }
+
+        return json;
     }
 
     /**

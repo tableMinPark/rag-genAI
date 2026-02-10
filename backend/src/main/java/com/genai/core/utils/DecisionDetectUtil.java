@@ -1,4 +1,4 @@
-package com.genai.global.utils;
+package com.genai.core.utils;
 
 import java.util.List;
 
@@ -44,8 +44,6 @@ public class DecisionDetectUtil {
             return false;
         }
 
-        return DECISION_KEYWORDS.stream()
-                .anyMatch(text::contains);
+        return DECISION_KEYWORDS.stream().anyMatch(text::contains);
     }
-
 }

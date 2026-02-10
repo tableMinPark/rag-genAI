@@ -1,15 +1,16 @@
 package com.genai.core.service.business.impl;
 
 import com.genai.core.config.properties.ChunkProperty;
-import com.genai.core.service.business.constant.EmbedCoreConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;
 import com.genai.core.repository.FileRepository;
 import com.genai.core.repository.SourceRepository;
 import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.EmbedCoreService;
+import com.genai.core.service.business.constant.EmbedCoreConst;
 import com.genai.core.type.CollectionType;
-import com.genai.global.utils.ExtractUtil;
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.HtmlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,6 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
     private final FileRepository fileRepository;
     private final SourceRepository sourceRepository;
     private final CollectionRepository collectionRepository;
-    private final ExtractUtil extractUtil;
     private final ChunkProperty chunkProperty;
 
     /**
@@ -75,14 +75,16 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
         List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
         for (FileDetailEntity targetFileDetailEntity : targetFileDetailEntities) {
             String fullPath = targetFileDetailEntity.getUrl();
+            String ext = targetFileDetailEntity.getExt();
 
             // 파일 존재 여부 체크
             if (!new File(fullPath).exists()) {
                 throw new NotFoundException(fullPath);
             }
 
-            // SNF 문자열 추출
-            String content = extractUtil.extract(fullPath);
+            // 문자열 추출
+            String extractContent = ExtractUtil.extractText(fullPath, ext);
+            String content = HtmlUtil.convertTableHtmlToMarkdown(extractContent);
 
             int step = chunkProperty.getTokenSize() - chunkProperty.getOverlapSize();
             List<String> chunks = IntStream.iterate(0, i -> i + step)

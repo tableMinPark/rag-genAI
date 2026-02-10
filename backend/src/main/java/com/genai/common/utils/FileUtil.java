@@ -1,8 +1,11 @@
-package com.genai.global.utils;
+package com.genai.common.utils;
 
+import com.genai.common.vo.UploadFileVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -15,6 +18,8 @@ import java.text.Normalizer;
 import java.time.LocalDate;
 import java.util.Enumeration;
 import java.util.UUID;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class FileUtil {
 
@@ -22,12 +27,14 @@ public class FileUtil {
      * 파일 업로드
      *
      * @param multipartFile 업로드 파일
-     * @param fileStorePath 파일 저장소 경로
      */
-    public static UploadFile uploadFile(MultipartFile multipartFile, String fileStorePath) {
-        LocalDate date = LocalDate.now();
-        String filePath = String.format("%02d-%02d-%02d", date.getYear(), date.getMonthValue(), date.getDayOfMonth());
-        return uploadFile(multipartFile, fileStorePath, filePath);
+    public static UploadFileVO uploadFileTemp(MultipartFile multipartFile) {
+        try {
+            Path fileStorePath = Files.createTempDirectory("fileStorePath-");
+            return uploadFile(multipartFile, fileStorePath.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -35,9 +42,21 @@ public class FileUtil {
      *
      * @param multipartFile 업로드 파일
      * @param fileStorePath 파일 저장소 경로
-     * @param filePath      파일 경로
      */
-    public static UploadFile uploadFile(MultipartFile multipartFile, String fileStorePath, String filePath) {
+    public static UploadFileVO uploadFile(MultipartFile multipartFile, String fileStorePath) {
+        LocalDate date = LocalDate.now();
+        String filePath = String.format("%02d-%02d-%02d", date.getYear(), date.getMonthValue(), date.getDayOfMonth());
+        Path fullPath = Paths.get(fileStorePath, filePath);
+        return uploadFile(multipartFile, fullPath);
+    }
+
+    /**
+     * 파일 업로드
+     *
+     * @param multipartFile 업로드 파일
+     * @param fullPath      파일 경로
+     */
+    private static UploadFileVO uploadFile(MultipartFile multipartFile, Path fullPath) {
         try {
             // 원본 파일명
             String originFileName = multipartFile.getOriginalFilename();
@@ -68,12 +87,10 @@ public class FileUtil {
             }
 
             // 파일 확장자
-            String[] extSplit = originFileName.trim().split("\\.");
-            String ext = extSplit[extSplit.length - 1];
+            String ext = extractExt(originFileName);
 
             // 파일 저장 경로
-            Path fullPath = Paths.get(fileStorePath, filePath);
-            Path fullFilePath = Paths.get(fileStorePath, filePath, fileName);
+            Path fullFilePath = Paths.get(fullPath.toString(), fileName);
 
             // 저장 경로 디렉토리 생성
             if (!fullPath.toFile().exists()) {
@@ -89,7 +106,7 @@ public class FileUtil {
             multipartFile.transferTo(fullFilePath);
 
             // 파일 정보 반환
-            return UploadFile.builder()
+            return UploadFileVO.builder()
                     .originFileName(originFileName)
                     .fileName(fileName)
                     .ip(ip)
@@ -101,6 +118,23 @@ public class FileUtil {
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }
+    }
+
+    /**
+     * 파일 확장자 추출
+     *
+     * @param fullPath 파일 경로
+     * @return 파일 확장자
+     */
+    public static String extractExt(String fullPath) {
+        // 파일 확장자
+        String[] extSplit = fullPath.trim().split("\\.");
+
+        if (extSplit.length > 1) {
+            return extSplit[extSplit.length - 1];
+        }
+
+        return "";
     }
 
     /**
@@ -144,10 +178,10 @@ public class FileUtil {
     /**
      * 파일 삭제
      *
-     * @param target 파일 경로
+     * @param fullPath 파일 경로
      */
-    public static void deleteFile(String target) {
-        Path targetPath = Paths.get(target);
+    public static void deleteFile(String fullPath) {
+        Path targetPath = Paths.get(fullPath);
 
         if (targetPath.toFile().exists()) {
             boolean isSuccess = targetPath.toFile().exists() && targetPath.toFile().delete();
@@ -219,5 +253,69 @@ public class FileUtil {
         }
 
         return true;
+    }
+
+    /**
+     * 파일 압축 해제
+     *
+     * @param src 압축 파일
+     */
+    public static String decompression(String src) throws IOException {
+
+        Path srcPath = Paths.get(src);
+        Path dstPath = Files.createTempDirectory("unzipped-");
+
+        if (!srcPath.toFile().exists()) {
+            throw new RuntimeException("not found zip file");
+        }
+
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(srcPath.toFile()))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                File newFile = newFile(dstPath.toFile(), entry);
+
+                if (entry.isDirectory()) {
+                    // 폴더는 생성만 하고 넘어감
+                    if (!newFile.isDirectory() && !newFile.mkdirs()) {
+                        throw new RuntimeException("failed to create directory " + newFile);
+                    }
+                } else {
+                    // 부모 폴더가 없으면 생성
+                    File parent = newFile.getParentFile();
+                    if (!parent.isDirectory() && !parent.mkdirs()) {
+                        throw new RuntimeException("failed to create directory " + parent);
+                    }
+
+                    // 파일 추출
+                    try (FileOutputStream fos = new FileOutputStream(newFile)) {
+                        byte[] buffer = new byte[1024];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                    }
+                }
+                zis.closeEntry();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("decompression error");
+        }
+
+        return dstPath.toString();
+    }
+
+    /**
+     * 보안 문제 방지 파일 생성 (Zip Slip 방어)
+     */
+    private static File newFile(File dstDir, ZipEntry zipEntry) throws IOException {
+        File dstFile = new File(dstDir, zipEntry.getName());
+
+        String dst = dstDir.getCanonicalPath();
+
+        if (!dstFile.getCanonicalPath().startsWith(dst + File.separator)) {
+            throw new IOException("entry is outside of the target dir: " + zipEntry.getName());
+        }
+
+        return dstFile;
     }
 }

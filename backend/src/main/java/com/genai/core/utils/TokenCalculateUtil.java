@@ -1,4 +1,4 @@
-package com.genai.global.utils;
+package com.genai.core.utils;
 
 import com.genai.core.config.properties.LlmProperty;
 import com.genai.core.repository.vo.ConversationVO;

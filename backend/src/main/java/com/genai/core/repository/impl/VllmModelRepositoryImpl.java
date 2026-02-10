@@ -11,7 +11,7 @@ import com.genai.core.repository.request.VllmAnswerRequest;
 import com.genai.core.repository.response.VllmAnswerResponse;
 import com.genai.core.repository.response.VllmAnswerStreamResponse;
 import com.genai.core.repository.vo.ConversationVO;
-import com.genai.global.utils.TokenCalculateUtil;
+import com.genai.core.utils.TokenCalculateUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
