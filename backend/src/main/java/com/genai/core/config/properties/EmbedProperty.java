@@ -31,6 +31,19 @@ public class EmbedProperty {
      * @return 리랭킹 요청 URL
      */
     public String getUrl() {
-        return String.format("http://%s:%d/%s", host, port, path);
+
+        StringBuilder url = new StringBuilder();
+
+        if (!host.startsWith("http")) {
+            url.append("http://");
+        }
+
+        url.append(host);
+        url.append(":");
+        url.append(port);
+        url.append(path.startsWith("/") ? "" : "/");
+        url.append(path);
+
+        return url.toString().trim();
     }
 }

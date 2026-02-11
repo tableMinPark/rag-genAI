@@ -12,7 +12,7 @@ import java.util.List;
 
 @ToString
 @Getter
-public class VllmAnswerRequest {
+public class OpenAIAnswerRequest {
 
     @JsonProperty("model")
     @ToString.Include(name = "model")
@@ -39,8 +39,8 @@ public class VllmAnswerRequest {
     private final List<Message> messages;
 
     @Builder
-    public VllmAnswerRequest(String modelName, double temperature, double topP, int maxTokens, boolean stream,
-                             String prompt, String chatState, List<ConversationVO> conversations, String context, String query) {
+    public OpenAIAnswerRequest(String modelName, double temperature, double topP, int maxTokens, boolean stream,
+                               String prompt, String chatState, List<ConversationVO> conversations, String context, String query) {
         this.stream = stream;
         this.maxTokens = maxTokens;
         this.topP = topP;

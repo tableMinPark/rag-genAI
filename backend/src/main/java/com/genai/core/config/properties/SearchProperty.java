@@ -29,6 +29,17 @@ public class SearchProperty {
      * @return 검색 요청 URL
      */
     public String getUrl() {
-        return String.format("http://%s:%d", host, port);
+
+        StringBuilder url = new StringBuilder();
+
+        if (!host.startsWith("http")) {
+            url.append("http://");
+        }
+
+        url.append(host);
+        url.append(":");
+        url.append(port);
+
+        return url.toString().trim();
     }
 }

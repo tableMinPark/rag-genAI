@@ -176,20 +176,20 @@ public class MyAiServiceImpl implements MyAiService {
 
         if (multipartFiles != null) {
             // 파일 업로드
-            List<UploadFileVO> uploadFileVOS = new ArrayList<>();
+            List<UploadFileVO> uploadFiles = new ArrayList<>();
             try {
                 for (MultipartFile multipartFile : multipartFiles) {
-                    uploadFileVOS.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
+                    uploadFiles.add(FileUtil.uploadFile(multipartFile, fileProperty.getFileStorePath()));
                 }
             } catch (RuntimeException e) {
-                for (UploadFileVO uploadFileVO : uploadFileVOS) {
-                    FileUtil.deleteFile(uploadFileVO.getFilePath());
+                for (UploadFileVO uploadFile : uploadFiles) {
+                    FileUtil.deleteFile(uploadFile.getFilePath());
                 }
                 throw e;
             }
 
             // 새로운 파일 등록
-            fileDetailEntities.addAll(uploadFileVOS.stream()
+            fileDetailEntities.addAll(uploadFiles.stream()
                     .map(uploadFileVO -> FileDetailEntity.builder()
                             .fileOriginName(uploadFileVO.getOriginFileName())
                             .fileName(uploadFileVO.getFileName())

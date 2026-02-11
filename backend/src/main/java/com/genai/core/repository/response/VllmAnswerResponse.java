@@ -1,5 +1,6 @@
 package com.genai.core.repository.response;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
@@ -36,7 +37,8 @@ public class VllmAnswerResponse {
 
         private Integer index;
 
-        private Delta message;
+        @JsonAlias({"message", "delta"})
+        private Delta data;
 
         @JsonProperty("logprobs")
         private String logProbs;

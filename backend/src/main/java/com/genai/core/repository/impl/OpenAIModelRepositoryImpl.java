@@ -7,8 +7,8 @@ import com.genai.core.config.properties.LlmProperty;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
-import com.genai.core.repository.request.VllmAnswerRequest;
-import com.genai.core.repository.response.VllmAnswerResponse;
+import com.genai.core.repository.request.OpenAIAnswerRequest;
+import com.genai.core.repository.response.OpenAIAnswerResponse;
 import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.utils.TokenCalculateUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class VllmModelRepositoryImpl implements ModelRepository {
+public class OpenAIModelRepositoryImpl implements ModelRepository {
 
     private final LlmClient llmClient;
     private final TokenCalculateUtil tokenCalculateUtil;
@@ -67,7 +67,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
-        VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
+        OpenAIAnswerRequest requestBody = OpenAIAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
                 .temperature(promptEntity.getTemperature())
                 .topP(promptEntity.getTopP())
@@ -83,7 +83,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
         try {
             String responseBodyJson = llmClient.generateAnswerSync(requestBody);
 
-            VllmAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, VllmAnswerResponse.class);
+            OpenAIAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, OpenAIAnswerResponse.class);
 
             List<AnswerEntity> answerEntities = new ArrayList<>();
 
@@ -105,7 +105,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
-        VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
+        OpenAIAnswerRequest requestBody = OpenAIAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
                 .temperature(promptEntity.getTemperature())
                 .topP(promptEntity.getTopP())
@@ -122,7 +122,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
                     .map(responseBodyJson -> {
                         try {
                             List<AnswerEntity> answerEntities = new ArrayList<>();
-                            VllmAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, VllmAnswerResponse.class);
+                            OpenAIAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, OpenAIAnswerResponse.class);
 
                             responseBody.getChoices().forEach(choice -> {
                                 String id = responseBody.getId();
@@ -152,7 +152,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
 
         int maxTokens = tokenCalculateUtil.calculateMaxTokens(promptEntity.getPromptContent(), query, chatState, conversations, context);
 
-        VllmAnswerRequest requestBody = VllmAnswerRequest.builder()
+        OpenAIAnswerRequest requestBody = OpenAIAnswerRequest.builder()
                 .modelName(llmProperty.getModelName())
                 .temperature(promptEntity.getTemperature())
                 .topP(promptEntity.getTopP())
@@ -168,7 +168,7 @@ public class VllmModelRepositoryImpl implements ModelRepository {
         return llmClient.generateStreamAnswerAsync(requestBody)
                 .flatMapIterable(responseBodyJson -> {
                     try {
-                        VllmAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, VllmAnswerResponse.class);
+                        OpenAIAnswerResponse responseBody = objectMapper.readValue(responseBodyJson, OpenAIAnswerResponse.class);
 
                         return responseBody.getChoices().stream()
                                 .filter(choice -> {

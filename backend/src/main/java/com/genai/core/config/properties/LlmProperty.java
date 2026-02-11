@@ -11,13 +11,15 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "engine.llm")
 public class LlmProperty {
 
-    private int connectTimeout;
+    private String platform;
 
     private int responseTimeout;
 
     private int readTimeout;
 
     private int writeTimeout;
+
+    private int connectTimeout;
 
     private String host;
 
@@ -26,8 +28,6 @@ public class LlmProperty {
     private String path;
 
     private String modelName;
-
-    private String platform;
 
     private int modelContextLimit;
 
@@ -39,12 +39,27 @@ public class LlmProperty {
 
     private int maxOutputTokens;
 
+    private String apiKey;
+
     /**
      * LLM 요청 URL 조회
      *
      * @return LLM 요청 URL
      */
     public String getUrl() {
-        return String.format("http://%s:%d/%s", host, port, path);
+
+        StringBuilder url = new StringBuilder();
+
+        if (!host.startsWith("http")) {
+            url.append("http://");
+        }
+
+        url.append(host);
+        url.append(":");
+        url.append(port);
+        url.append(path.startsWith("/") ? "" : "/");
+        url.append(path);
+
+        return url.toString().trim();
     }
 }
