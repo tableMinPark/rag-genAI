@@ -121,7 +121,7 @@ http://localhost:3000
 
 ---
 
-## ⚙️ 백엔드 설정 (`application.yml`)
+## ⚙️ 백앤드 기본 설정 (`application.yml`)
 
 ```yaml
 server:
@@ -193,27 +193,6 @@ engine:
     host: localhost
     port: 8001
     path: /rerank
-  # LLM
-  llm:
-    connect-time-out: 5000
-    response-time-out: 300000
-    read-time-out: 300000
-    write-time-out: 300000
-    host: ${LLM_SERVER_HOST}
-    port: ${LLM_SERVER_PORT}
-    path: ${LLM_SERVER_PATH}
-    model-name: openai/gpt-oss-120b
-    # 모델 응답 형식 지정 (VLLM)
-    platform: vllm
-    # 모델 지원 토큰 수
-    model-context-limit: 128000
-    internal-token-overhead: 120
-    # 출력 토큰 계산 안전 마진 값
-    safety-margin: 256
-    # 최소 출력 토큰
-    min-output-tokens: 64
-    # 최대 출력 토큰
-    max-output-tokens: 4096
 file:
   # 파일 저장 루트 디렉토리 경로
   file-store-path: ${FILE_STORE_PATH}
@@ -224,7 +203,71 @@ chunk:
   overlap-size: 200
 ```
 
-LLM Stream 응답 형식:
+## ⚙️ [VLLM] 백앤드 LLM 설정 (`application.yml`)
+
+```yaml
+engine:
+  # VLLM
+  llm:
+    # 모델 응답 형식 지정 (VLLM)
+    platform: vllm
+    # 연결 타임 아웃
+    connect-time-out: 5000
+    # 응답 타임 아웃
+    response-time-out: 300000
+    # 리드 타임 아웃
+    read-time-out: 300000
+    # 쓰기 타임 아웃
+    write-time-out: 300000
+    api-key: ${LLM_SERVER_API_KEY}
+    host: ${LLM_SERVER_HOST}
+    port: ${LLM_SERVER_PORT}
+    path: ${LLM_SERVER_PATH}
+    model-name: openai/gpt-oss-120b
+    # 최대 제한 토큰 수
+    model-context-limit: 128000
+    internal-token-overhead: 120
+    # 출력 토큰 계산 안전 마진 값
+    safety-margin: 256
+    # 최소 출력 토큰
+    min-output-tokens: 64
+    # 최대 출력 토큰
+    max-output-tokens: 4096
+```
+
+## ⚙️ [OpenAI] 백앤드 LLM 설정 (`application.yml`)
+
+```yaml
+engine:
+  # OPENAI
+  llm:
+    # 모델 응답 형식 지정 (OpenAI)
+    platform: openai
+    # 연결 타임 아웃
+    connect-time-out: 5000
+    # 응답 타임 아웃
+    response-time-out: 300000
+    # 리드 타임 아웃
+    read-time-out: 300000
+    # 쓰기 타임 아웃
+    write-time-out: 300000
+    api-key: ${LLM_SERVER_API_KEY}
+    host: https://api.openai.com
+    port: ${LLM_SERVER_PORT}
+    path: ${LLM_SERVER_PATH}
+    model-name: gpt-3.5-turbo
+    # 최대 제한 토큰 수
+    model-context-limit: 12800
+    internal-token-overhead: 120
+    # 출력 토큰 계산 안전 마진 값
+    safety-margin: 256
+    # 최소 출력 토큰
+    min-output-tokens: 64
+    # 최대 출력 토큰
+    max-output-tokens: 2048
+```
+
+**VLLM** Stream 응답 형식:
 
 ```json
 {
@@ -263,6 +306,47 @@ LLM Stream 응답 형식:
   "prompt_logprobs": null,
   "prompt_token_ids": null,
   "kv_transfer_params": null
+}
+```
+
+**OpenAI** Stream 응답 형식:
+
+```json
+{
+  "id": "chatcmpl-id",
+  "object": "chat.completion",
+  "created": 1770822388,
+  "model": "gpt-3.5-turbo",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "안녕하세요! 무엇을 도와드릴까요?",
+        "refusal": null,
+        "annotations": []
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 13,
+    "completion_tokens": 21,
+    "total_tokens": 34,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "service_tier": "default",
+  "system_fingerprint": null
 }
 ```
 
