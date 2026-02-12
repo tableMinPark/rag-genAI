@@ -10,13 +10,14 @@ import lombok.ToString;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @ToString
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class OpenAIAnswerResponse {
+public class OpenAIAnswerResponse implements AnswerResponse {
 
     private String id;
 
@@ -28,6 +29,17 @@ public class OpenAIAnswerResponse {
 
     private List<Choice> choices = Collections.emptyList();
 
+    @Override
+    public List<Data> getDatas() {
+        return choices.stream()
+                .map(choice -> AnswerResponse.Data.builder()
+                        .reasoningContent(choice.getMessage().getReasoningContent())
+                        .content(choice.getMessage().getContent())
+                        .finishReason(choice.getFinishReason())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     @ToString
     @Getter
     @NoArgsConstructor
@@ -38,7 +50,7 @@ public class OpenAIAnswerResponse {
         private Integer index;
 
         @JsonAlias({"message", "delta"})
-        private Delta data;
+        private Delta message;
 
         @JsonProperty("logprobs")
         private String logProbs;

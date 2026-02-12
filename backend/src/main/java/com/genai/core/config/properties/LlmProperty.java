@@ -2,14 +2,16 @@ package com.genai.core.config.properties;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import lombok.ToString;
 import org.springframework.stereotype.Component;
 
+@ToString
 @Getter
 @Setter
 @Component
-@ConfigurationProperties(prefix = "engine.llm")
 public class LlmProperty {
+
+    private String type;
 
     private String platform;
 
