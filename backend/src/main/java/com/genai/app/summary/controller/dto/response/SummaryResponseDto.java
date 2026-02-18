@@ -12,4 +12,6 @@ public class SummaryResponseDto {
     private String sessionId;
 
     private long msgId;
+
+    private long fullMsgId;
 }

@@ -1,5 +1,9 @@
 package com.genai.core.service.business.impl;
 
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.utils.HtmlUtil;
+import com.genai.common.vo.UploadFileVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
@@ -10,22 +14,19 @@ import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.SummaryCoreService;
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.constant.SummaryCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
+import com.genai.core.service.business.vo.SummaryResultVO;
 import com.genai.core.service.business.vo.SummaryVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
-import com.genai.common.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -109,7 +110,8 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     @Override
     public SummaryVO summary(float lengthRatio, List<String> contents, String sessionId, long chatId) {
 
-        String query = String.format("길이 비율 값이 %.2f 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.", lengthRatio);
+        String query = String.format("길이 비율 값이 **%.2f** 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.", lengthRatio);
+        String fullQuery = "길이 비율 값에 대한 설정은 무시하고, 컨텍스트의 문서를 요약 해줘.";
 
         PromptEntity promptEntity = promptRepository.findById(PromptConst.SUMMARY_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
@@ -123,14 +125,20 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                 .query(query)
                 .build());
 
-        Flux<StreamEvent> answerStream = Flux.create(sink -> {
+        // 전체 요약 답변 이력 생성
+        ChatDetailEntity fullChatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
+                .chatId(chatEntity.getChatId())
+                .query(fullQuery)
+                .build());
 
+        Flux<StreamEvent> answerStream = Flux.create(sink -> {
             // 답변
             StringBuilder answerAccumulator = new StringBuilder();
+            StringBuilder fullAnswerAccumulator = new StringBuilder();
             AtomicReference<Float> progressAtomic = new AtomicReference<>(0f);
             float interval = 1f / (contents.size() + 1);
 
-            Disposable disposable = Flux.fromIterable(contents)
+            Mono<String> wholeSummaryMono = Flux.fromIterable(contents)
                     .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
                             .progress(Math.min(progressAtomic.get(), 1f))
                             .message("부분 요약 시작")
@@ -152,18 +160,25 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                                     .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                     .message("전체 요약 완료")
                                     .build()))))
+                    .cache();
+
+            // 간단 요약
+            Flux<StreamEvent> summaryFlux = wholeSummaryMono
                     .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
-                    .doOnNext(answerEntity -> {
-                        if (answerEntity.getIsInference()) {
-                            answerAccumulator.append(answerEntity.getContent());
-                        }
-                    })
-                    .map(answerEntity -> StreamEvent.builder()
-                            .id(answerEntity.getId())
-                            .content(answerEntity.getContent())
-                            .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                            .build())
-                    .doOnNext(sink::next)
+                    .filter(answerEntity -> !answerEntity.getIsInference())
+                    .doOnNext(answerEntity -> answerAccumulator.append(answerEntity.getContent()))
+                    .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.ratio(answerEntity.getContent())))
+                    .doOnNext(sink::next);
+
+            // 상세 요약
+            Flux<StreamEvent> fullSummaryFlux = wholeSummaryMono
+                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(fullQuery, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
+                    .filter(answerEntity -> !answerEntity.getIsInference())
+                    .doOnNext(answerEntity -> fullAnswerAccumulator.append(answerEntity.getContent()))
+                    .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.full(answerEntity.getContent())))
+                    .doOnNext(sink::next);
+
+            Disposable disposable = Flux.merge(summaryFlux, fullSummaryFlux)
                     .doOnComplete(() -> {
                         // 대화 이력 업데이트
                         chatHistoryModuleService.updateChatDetail(
@@ -171,6 +186,14 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                                 chatDetailEntity.getMsgId(),
                                 "",
                                 answerAccumulator.toString().trim(),
+                                Collections.emptyList()
+                        );
+                        // 대화 이력 업데이트
+                        chatHistoryModuleService.updateChatDetail(
+                                chatId,
+                                fullChatDetailEntity.getMsgId(),
+                                "",
+                                fullAnswerAccumulator.toString().trim(),
                                 Collections.emptyList()
                         );
                         sink.complete();
@@ -185,6 +208,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                 .answerStream(answerStream)
                 .chatId(chatEntity.getChatId())
                 .msgId(chatDetailEntity.getMsgId())
+                .fullMsgId(fullChatDetailEntity.getMsgId())
                 .build();
     }
 }

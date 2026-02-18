@@ -55,3 +55,9 @@ export interface ExtractContent {
   type: string
   content: string
 }
+
+// 요약 결과
+export interface SummaryResult {
+  type: string
+  content: string
+}

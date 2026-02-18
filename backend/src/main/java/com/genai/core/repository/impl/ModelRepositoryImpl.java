@@ -110,7 +110,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                 llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request to {} | {}:{}/{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
 
         try {
             ResponseEntity<String> responseEntity = webClient.post()
@@ -157,7 +157,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                 llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request to {} | {}:{}/{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
 
         return webClient.post()
                 .uri(llmProperty.getUrl())
@@ -213,7 +213,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                 llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), true,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request to {} | {}:{}/{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
 
         return webClient.post()
                 .uri(llmProperty.getUrl())

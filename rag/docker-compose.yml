@@ -2,7 +2,7 @@ services:
   # 검색 엔진 (Open Search)
   opensearch:
     build:
-      context: ./docker/opensearch
+      context: ./opensearch
       dockerfile: ./opensearch-dockerfile
     container_name: opensearch
     environment:
@@ -27,7 +27,7 @@ services:
   # 임베딩 API
   embedding:
     build:
-      context: ./docker/embedding
+      context: ./embedding
       dockerfile: ./embedding-dockerfile
     container_name: embedding
     environment:
@@ -40,7 +40,7 @@ services:
   # 리랭킹 API
   reranker:
     build:
-      context: ./docker/reranker
+      context: ./reranker
       dockerfile: ./reranker-dockerfile
     container_name: reranker
     ports:

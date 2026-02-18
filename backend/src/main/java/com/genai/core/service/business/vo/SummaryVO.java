@@ -15,5 +15,7 @@ public class SummaryVO {
 
     private long msgId;
 
+    private long fullMsgId;
+
     private Flux<StreamEvent> answerStream;
 }

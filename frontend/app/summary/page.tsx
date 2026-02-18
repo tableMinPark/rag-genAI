@@ -10,6 +10,7 @@ import { menuInfos } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 import { streamApi } from '@/api/stream'
+import { SummaryResult } from '@/types/domain'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
 
@@ -21,8 +22,8 @@ const md = new MarkdownIt({
 // 요약 옵션 (짧게/중간/길게)
 const SUMMARY_OPTIONS = [
   { code: 'SHORT', name: '짧게 (Short)', ratio: 0.2 },
-  { code: 'MEDIUM', name: '중간 (Medium)', ratio: 0.7 },
-  { code: 'LONG', name: '길게 (Long)', ratio: 1.0 },
+  { code: 'MEDIUM', name: '중간 (Medium)', ratio: 0.5 },
+  { code: 'LONG', name: '길게 (Long)', ratio: 0.8 },
 ]
 
 export default function SummaryPage() {
@@ -48,6 +49,8 @@ export default function SummaryPage() {
   const [prepare, setPrepare] = useState<Prepare | null>(null)
   // 출력 텍스트
   const [output, setOutput] = useState('')
+  // 제한 없이 요약 출력 텍스트
+  const [outputFull, setOutputFull] = useState('')
 
   // ###################################################
   // 랜더링 이펙트
@@ -69,6 +72,7 @@ export default function SummaryPage() {
     if (file) {
       setSelectedFile(file)
       setOutput('')
+      setOutputFull('')
     }
   }
 
@@ -89,6 +93,7 @@ export default function SummaryPage() {
     setIsStreaming(true)
     // 결과 값 초기화
     setOutput('')
+    setOutputFull('')
     // 세션 기반 SSE 연결
     streamRef.current = streamApi(
       sessionId,
@@ -149,14 +154,25 @@ export default function SummaryPage() {
           setIsStreaming(false)
           streamRef.current = null
         },
-        onInference: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
+        // onInference: (event) => {
+        //   setOutput((prev) => replaceEventDataToText(prev + event.data))
+        // },
         onAnswerStart: (_) => {
           setOutput('')
+          setOutputFull('')
         },
         onAnswer: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
+          const streamEvent = JSON.parse(event.data) as SummaryResult
+
+          if (streamEvent.type === 'ratio') {
+            setOutput((prev) =>
+              replaceEventDataToText(prev + streamEvent.content),
+            )
+          } else if (streamEvent.type === 'full') {
+            setOutputFull((prev) =>
+              replaceEventDataToText(prev + streamEvent.content),
+            )
+          }
         },
         onPrepare: (event) => {
           setPrepare(JSON.parse(event.data))
@@ -404,6 +420,76 @@ export default function SummaryPage() {
               <div
                 className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
                 dangerouslySetInnerHTML={{ __html: md.render(output) }}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
+                {!isStreaming ? (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Play className="h-8 w-8 text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      왼쪽 폼을 입력하고 버튼을 눌러보세요.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-full bg-gray-100 p-4">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
+                    </div>
+                    <p className="mt-4 text-sm">
+                      요약문을 생성중입니다...
+                      {prepare && prepare.progress
+                        ? `(${Math.round(prepare.progress * 100)}%)`
+                        : ''}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        {/* [오른쪽] 요약 결과 영역 */}
+        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          {/* 헤더: 요약 옵션 선택 */}
+          <div className="flex h-13 items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">LENGTH</span>
+              <span className="text-primary hover:text-primary-hover cursor-pointer bg-transparent text-sm font-bold transition-colors focus:outline-none">
+                제한없음
+              </span>
+            </div>
+
+            {outputFull && (
+              <button
+                className="hover:text-primary text-gray-400 transition-colors"
+                onClick={() => navigator.clipboard.writeText(outputFull)}
+                title="결과 복사"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 결과 뷰어 */}
+          <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
+            {outputFull ? (
+              <div
+                className={`${styles.markdown} wrap-break-words text-sm leading-relaxed`}
+                dangerouslySetInnerHTML={{ __html: md.render(outputFull) }}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">

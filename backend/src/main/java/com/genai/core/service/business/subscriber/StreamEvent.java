@@ -1,7 +1,7 @@
 package com.genai.core.service.business.subscriber;
 
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.common.utils.StringUtil;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import lombok.*;
 
 @ToString
@@ -37,6 +37,22 @@ public class StreamEvent {
                 .id(id)
                 .content(StringUtil.writeJson(content))
                 .event(StreamCoreConst.Event.PREPARE)
+                .build();
+    }
+
+    public static <T> StreamEvent inference(String id, T content) {
+        return StreamEvent.builder()
+                .id(id)
+                .content(content instanceof String con  ? con : StringUtil.writeJson(content))
+                .event(StreamCoreConst.Event.INFERENCE)
+                .build();
+    }
+
+    public static <T> StreamEvent answer(String id, T content) {
+        return StreamEvent.builder()
+                .id(id)
+                .content(content instanceof String con  ? con : StringUtil.writeJson(content))
+                .event(StreamCoreConst.Event.ANSWER)
                 .build();
     }
 }

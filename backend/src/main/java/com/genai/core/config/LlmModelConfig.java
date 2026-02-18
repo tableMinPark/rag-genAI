@@ -21,6 +21,7 @@ import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,12 +39,13 @@ public class LlmModelConfig {
 
     @Bean
     public Map<LlmType, List<LlmInstance>> llmInstanceMap() {
+        AtomicInteger indexAtomic = new AtomicInteger(0);
 
         log.info("LLM Instance : {}", llm.size());
 
         Map<LlmType, List<LlmInstance>> llmInstanceMap = new ConcurrentHashMap<>();
 
-        AtomicInteger index = new AtomicInteger(0);
+        Arrays.stream(LlmType.values()).forEach(llmType -> llmInstanceMap.put(llmType, new ArrayList<>()));
 
         llm.stream()
                 .sorted((o1, o2) -> {
@@ -53,9 +55,13 @@ public class LlmModelConfig {
                     return o1.getType().compareTo(o2.getType());
                 })
                 .forEach(llmProperty -> {
-                    String instanceId = String.format("%s-%d", llmProperty.getType(), index.getAndIncrement());
+
                     LlmPlatformType platformType = LlmPlatformType.valueOf(llmProperty.getPlatform().toUpperCase());
                     LlmType llmType = LlmType.valueOf(llmProperty.getType().toUpperCase());
+                    List<LlmInstance> llmInstance = llmInstanceMap.getOrDefault(llmType, new ArrayList<>());
+
+                    int index = llmInstance.size();
+                    String instanceId = String.format("%s-%d", llmProperty.getType(), index);
 
                     HttpClient httpClient = HttpClient.create()
                             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, llmProperty.getConnectTimeout())
@@ -69,8 +75,6 @@ public class LlmModelConfig {
                             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                             .build();
 
-                    List<LlmInstance> llmInstance = llmInstanceMap.getOrDefault(llmType, new ArrayList<>());
-
                     llmInstance.add(LlmInstance.builder()
                             .instanceId(instanceId)
                             .platformType(platformType)
@@ -80,7 +84,7 @@ public class LlmModelConfig {
 
                     llmInstanceMap.put(llmType, llmInstance);
 
-                    log.info("[{}] {} | {} | {}:{}/{}", index.get() - 1, instanceId, platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+                    log.info("[{}] {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
                 });
 
         if (llmInstanceMap.isEmpty()) {
