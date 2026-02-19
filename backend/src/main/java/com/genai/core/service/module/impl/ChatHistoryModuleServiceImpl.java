@@ -24,6 +24,21 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
     private final ChatPassageRepository chatPassageRepository;
 
     /**
+     * 대화 상세 이력 삭제
+     *
+     * @param msgId 대화 상세 ID
+     */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void deleteChatDetail(Long msgId) {
+
+        ChatDetailEntity chatDetailEntity = chatDetailRepository.findById(msgId)
+                .orElseThrow(() -> new NotFoundException("대화 상세 이력"));
+
+        chatDetailRepository.delete(chatDetailEntity);
+    }
+
+    /**
      * 대화 이력 저장
      *
      * @param chatId              대화 ID

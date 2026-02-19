@@ -1,6 +1,10 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.config.properties.FileProperty;
+import com.genai.common.utils.AhoCorasick;
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.utils.HtmlUtil;
+import com.genai.common.vo.UploadFileVO;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
@@ -17,17 +21,13 @@ import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.TranslateModuleService;
-import com.genai.common.utils.AhoCorasick;
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
-import com.genai.common.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -44,7 +44,6 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final DictionaryRepository dictionaryRepository;
-    private final FileProperty fileProperty;
     private final TranslateModuleService translateModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
 
@@ -228,7 +227,10 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                         );
                         sink.complete();
                     })
-                    .doOnError(sink::error)
+                    .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                    .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                    .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } )
+                    .subscribeOn(Schedulers.boundedElastic())
                     .subscribe();
 
             sink.onCancel(disposable);

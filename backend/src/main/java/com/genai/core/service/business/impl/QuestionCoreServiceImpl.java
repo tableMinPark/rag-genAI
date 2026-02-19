@@ -286,7 +286,10 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         Flux<StreamEvent> answerStream = Flux
                 .concat(answerFlux, referenceMono)
-                .concatWith(chatHistoryMono.then(Mono.empty()));
+                .concatWith(chatHistoryMono.then(Mono.empty()))
+                .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } );
 
         return QuestionVO.builder()
                 .answerStream(answerStream)
@@ -387,7 +390,11 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             return Mono.when(summaryMono, saveMono).subscribeOn(Schedulers.boundedElastic());
         });
 
-        Flux<StreamEvent> answerStream = answerFlux.concatWith(chatHistoryMono.then(Mono.empty()));
+        Flux<StreamEvent> answerStream = answerFlux
+                .concatWith(chatHistoryMono.then(Mono.empty()))
+                .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } );
 
         return QuestionVO.builder()
                 .answerStream(answerStream)
@@ -455,7 +462,10 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .id(answerEntity.getId())
                         .content(answerEntity.getContent())
                         .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build());
+                        .build())
+                .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } );
 
         return QuestionVO.builder()
                 .answerStream(answerStream)

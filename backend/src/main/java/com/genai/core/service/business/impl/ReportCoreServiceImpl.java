@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -195,7 +196,10 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                         );
                         sink.complete();
                     })
-                    .doOnError(sink::error)
+                    .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                    .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                    .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } )
+                    .subscribeOn(Schedulers.boundedElastic())
                     .subscribe();
 
             sink.onCancel(disposable);

@@ -7,6 +7,13 @@ import java.util.List;
 public interface ChatHistoryModuleService {
 
     /**
+     * 대화 상세 이력 삭제
+     *
+     * @param msgId 대화 상세 ID
+     */
+    void deleteChatDetail(Long msgId);
+
+    /**
      * 대화 이력 저장
      *
      * @param chatId              대화 ID
