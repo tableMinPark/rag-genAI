@@ -43,7 +43,7 @@ public class LlmInstanceProperty {
 
     private String apiKey;
 
-    private int sessionCount;
+    private int sessionCount = 100;
 
     /**
      * LLM 요청 URL 조회

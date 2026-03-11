@@ -219,6 +219,8 @@ engine:
       # 1) VLLM 설정
       # 모델 응답 형식 지정 (vllm)
       - platform: vllm
+        # Instance 별 최대 session count (최대 LLM 동시 요청 수)
+        session-count: 100
         # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
         type: default
         # 응답 타임 아웃
@@ -247,6 +249,8 @@ engine:
       # 2) OPENAI 설정
       # 모델 응답 형식 지정 (openai)
       - platform: openai
+        # Instance 별 최대 session count (최대 LLM 동시 요청 수)
+        session-count: 100
         # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
         type: default
         # 응답 타임 아웃

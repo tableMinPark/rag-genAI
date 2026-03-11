@@ -85,7 +85,7 @@ public class LlmModelConfig {
 
                     llmInstanceMap.put(llmType, llmInstance);
 
-                    log.info("[{}] {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
+                    log.info("[{}] {} | {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, llmInstanceProperty.getSessionCount(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
                 });
 
         if (llmInstanceMap.isEmpty()) {
