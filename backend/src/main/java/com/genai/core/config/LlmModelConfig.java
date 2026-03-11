@@ -1,7 +1,7 @@
 package com.genai.core.config;
 
 import com.genai.core.config.instance.LlmInstance;
-import com.genai.core.config.properties.LlmProperty;
+import com.genai.core.config.properties.LlmInstanceProperty;
 import com.genai.core.type.LlmPlatformType;
 import com.genai.core.type.LlmType;
 import io.netty.channel.ChannelOption;
@@ -32,43 +32,43 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @Configuration
-@ConfigurationProperties(prefix = "engine")
+@ConfigurationProperties(prefix = "engine.llm")
 public class LlmModelConfig {
 
-    private List<LlmProperty> llm;
+    private List<LlmInstanceProperty> instances;
 
     @Bean
     public Map<LlmType, List<LlmInstance>> llmInstanceMap() {
         AtomicInteger indexAtomic = new AtomicInteger(0);
 
-        log.info("LLM Instance : {}", llm.size());
+        log.info("LLM Instance : {}", instances.size());
 
         Map<LlmType, List<LlmInstance>> llmInstanceMap = new ConcurrentHashMap<>();
 
         Arrays.stream(LlmType.values()).forEach(llmType -> llmInstanceMap.put(llmType, new ArrayList<>()));
 
-        llm.stream()
+        instances.stream()
                 .sorted((o1, o2) -> {
                     if (o1.getType().equals(o2.getType())) {
                         return o1.getPlatform().compareTo(o2.getPlatform());
                     }
                     return o1.getType().compareTo(o2.getType());
                 })
-                .forEach(llmProperty -> {
+                .forEach(llmInstanceProperty -> {
 
-                    LlmPlatformType platformType = LlmPlatformType.valueOf(llmProperty.getPlatform().toUpperCase());
-                    LlmType llmType = LlmType.valueOf(llmProperty.getType().toUpperCase());
+                    LlmPlatformType platformType = LlmPlatformType.valueOf(llmInstanceProperty.getPlatform().toUpperCase());
+                    LlmType llmType = LlmType.valueOf(llmInstanceProperty.getType().toUpperCase());
                     List<LlmInstance> llmInstance = llmInstanceMap.getOrDefault(llmType, new ArrayList<>());
 
                     int index = llmInstance.size();
-                    String instanceId = String.format("%s-%d", llmProperty.getType(), index);
+                    String instanceId = String.format("%s-%d", llmInstanceProperty.getType(), index);
 
                     HttpClient httpClient = HttpClient.create()
-                            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, llmProperty.getConnectTimeout())
-                            .responseTimeout(Duration.ofMillis(llmProperty.getResponseTimeout()))
+                            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, llmInstanceProperty.getConnectTimeout())
+                            .responseTimeout(Duration.ofMillis(llmInstanceProperty.getResponseTimeout()))
                             .doOnConnected(conn ->
-                                    conn.addHandlerLast(new ReadTimeoutHandler(llmProperty.getReadTimeout(), TimeUnit.MILLISECONDS))
-                                            .addHandlerLast(new WriteTimeoutHandler(llmProperty.getWriteTimeout(), TimeUnit.MILLISECONDS)));
+                                    conn.addHandlerLast(new ReadTimeoutHandler(llmInstanceProperty.getReadTimeout(), TimeUnit.MILLISECONDS))
+                                            .addHandlerLast(new WriteTimeoutHandler(llmInstanceProperty.getWriteTimeout(), TimeUnit.MILLISECONDS)));
 
                     WebClient webClient = WebClient.builder()
                             .clientConnector(new ReactorClientHttpConnector(httpClient))
@@ -78,13 +78,14 @@ public class LlmModelConfig {
                     llmInstance.add(LlmInstance.builder()
                             .instanceId(instanceId)
                             .platformType(platformType)
-                            .llmProperty(llmProperty)
+                            .llmInstanceProperty(llmInstanceProperty)
                             .webClient(webClient)
+                            .sessionCount(llmInstanceProperty.getSessionCount())
                             .build());
 
                     llmInstanceMap.put(llmType, llmInstance);
 
-                    log.info("[{}] {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+                    log.info("[{}] {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
                 });
 
         if (llmInstanceMap.isEmpty()) {

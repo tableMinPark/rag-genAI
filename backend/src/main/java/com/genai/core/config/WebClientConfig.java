@@ -113,20 +113,4 @@ public class WebClientConfig {
                         .build())
                 .build();
     }
-
-    @Bean(name = "llmWebClient")
-    public WebClient llmWebClient(LlmProperty property) {
-
-        HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, property.getConnectTimeout())
-                .responseTimeout(Duration.ofMillis(property.getResponseTimeout()))
-                .doOnConnected(conn ->
-                        conn.addHandlerLast(new ReadTimeoutHandler(property.getReadTimeout(), TimeUnit.MILLISECONDS))
-                                .addHandlerLast(new WriteTimeoutHandler(property.getWriteTimeout(), TimeUnit.MILLISECONDS)));
-
-        return WebClient.builder()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-    }
 }

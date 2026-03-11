@@ -3,7 +3,8 @@ package com.genai.core.repository.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.core.config.instance.LlmInstance;
-import com.genai.core.config.properties.LlmProperty;
+import com.genai.core.config.properties.LlmInstanceProperty;
+import com.genai.core.config.properties.LlmRetryProperty;
 import com.genai.core.exception.ModelErrorException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.AnswerEntity;
@@ -15,53 +16,113 @@ import com.genai.core.type.LlmType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ModelRepositoryImpl implements ModelRepository {
-;
+
+    private final LlmRetryProperty llmRetryProperty;
     private final Map<LlmType, List<LlmInstance>> llmInstanceMap;
     private final ObjectMapper objectMapper;
-    private final Map<LlmType, AtomicInteger> llmInstanceCounterMap = Arrays.stream(LlmType.values())
-            .map(llmType -> new AbstractMap.SimpleEntry<>(llmType, new AtomicInteger(0)))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-    private LlmInstance getInstance(LlmType llmType) {
+    /**
+     * LLM Instance 획득
+     *
+     * @param llmType LLM 타입
+     * @return LLM Instance
+     */
+    private Mono<LlmInstance> acquireInstanceAsync(LlmType llmType) {
+        return Mono.fromCallable(() -> {
+                    LlmType finalLlmType = (llmInstanceMap.get(llmType) == null || llmInstanceMap.get(llmType).isEmpty())
+                            ? LlmType.DEFAULT
+                            : llmType;
 
-        List<LlmInstance> instances = llmInstanceMap.get(llmType);
-        if (instances == null || instances.isEmpty()) {
-            return getInstance(LlmType.DEFAULT);
-        } else {
-            int instanceIndex = llmInstanceCounterMap.get(llmType).getAndUpdate(current -> (current + 1) % instances.size());
-            return instances.get(instanceIndex);
-        }
+                    return llmInstanceMap.get(finalLlmType).stream()
+                            .filter(LlmInstance::tryAcquire)
+                            .findAny();
+
+                })
+                .flatMap(Mono::justOrEmpty)
+                .repeatWhenEmpty(repeat -> repeat.delayElements(Duration.ofMillis(llmRetryProperty.getDelayMs())))
+                .timeout(Duration.ofMillis(llmRetryProperty.getTimeoutMs()), Mono.error(new ModelErrorException("LLM(" + llmRetryProperty.getTimeoutMs() + "ms) get llm instance max count reached.")));
     }
 
+    /**
+     * LLM Instance 반납
+     *
+     * @param instance LLM Instance
+     */
+    private Mono<Void> releaseInstance(LlmInstance instance) {
+        return Mono.fromRunnable(() -> {
+            instance.release();
+            log.debug("[{}] Session released. Remaining capacity: {}", instance.getInstanceId(), instance.getSessionCount().get());
+        });
+    }
+
+    /**
+     * 답변 생성 요청
+     *
+     * @param query        질의문
+     * @param context      검색 결과 데이터
+     * @param sessionId    세션 식별자
+     * @param promptEntity 프롬 프트
+     * @return 답변 응답 문자열
+     */
     @Override
     public String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity) {
         return this.generateAnswerSyncStr(query, context, sessionId, promptEntity, LlmType.DEFAULT);
     }
 
+    /**
+     * 답변 생성 요청
+     *
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @return 답변 엔티티 목록
+     */
     @Override
     public List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
         return this.generateAnswerSync(query, context, chatState, conversations, sessionId, promptEntity, LlmType.DEFAULT);
     }
 
+    /**
+     * 답변 생성 요청
+     *
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @return 답변 엔티티 목록 Mono
+     */
     @Override
     public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
         return this.generateAnswerAsync(query, context, chatState, conversations, sessionId, promptEntity, LlmType.DEFAULT);
     }
 
+    /**
+     * 답변 생성 요청
+     *
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @return 답변 엔티티 Flux
+     */
     @Override
     public Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity) {
         return this.generateStreamAnswerAsync(query, context, chatState, conversations, sessionId, promptEntity, LlmType.DEFAULT);
@@ -92,166 +153,163 @@ public class ModelRepositoryImpl implements ModelRepository {
     /**
      * 답변 생성 요청
      *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @param llmType       LLM 타입
+     * @return 답변 엔티티 목록
      */
     @Override
     public List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType) {
-
-        LlmInstance instance = getInstance(llmType);
-        LlmPlatformType platformType = instance.getPlatformType();
-        LlmProperty llmProperty = instance.getLlmProperty();
-        WebClient webClient = instance.getWebClient();
-
-        Object requestBody = platformType.request(
-                llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
-                promptEntity.getPromptContent(), query, context, chatState, conversations);
-
-        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
-
-        try {
-            ResponseEntity<String> responseEntity = webClient.post()
-                    .uri(llmProperty.getUrl())
-                    .accept(MediaType.APPLICATION_JSON)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + llmProperty.getApiKey())
-                    .bodyValue(requestBody)
-                    .exchangeToMono(response -> response
-                            .bodyToMono(String.class)
-                            .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                    .block();
-
-            if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-                throw new ModelErrorException("LLM(" + llmProperty.getModelName() + ")");
-            }
-
-            AnswerResponse responseBody = objectMapper.readValue(responseEntity.getBody(), platformType.getResponseClass());
-
-            List<AnswerEntity> answerEntities = new ArrayList<>();
-
-            responseBody.getDatas().forEach(choice -> {
-                String id = responseBody.getId();
-                answerEntities.add(new AnswerEntity(id, choice.getReasoningContent(), choice.getFinishReason(), true));
-                answerEntities.add(new AnswerEntity(id, choice.getContent(), choice.getFinishReason(), false));
-            });
-
-            return answerEntities;
-
-        } catch (JsonProcessingException ignored) {
-            return Collections.emptyList();
-        }
-    }
-
-    @Override
-    public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType) {
-
-        LlmInstance instance = getInstance(llmType);
-        LlmPlatformType platformType = instance.getPlatformType();
-        LlmProperty llmProperty = instance.getLlmProperty();
-        WebClient webClient = instance.getWebClient();
-
-        Object requestBody = platformType.request(
-                llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
-                promptEntity.getPromptContent(), query, context, chatState, conversations);
-
-        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
-
-        return webClient.post()
-                .uri(llmProperty.getUrl())
-                .accept(MediaType.APPLICATION_JSON)
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Bearer " + llmProperty.getApiKey())
-                .bodyValue(requestBody)
-                .exchangeToMono(response -> response
-                        .bodyToMono(String.class)
-                        .map(body -> new ResponseEntity<>(body, response.statusCode())))
-                .handle((responseEntity, sink) -> {
-                    if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-                        sink.error(new ModelErrorException("LLM(" + llmProperty.getModelName() + ") | " + responseEntity));
-                    } else {
-
-                        try {
-                            List<AnswerEntity> answerEntities = new ArrayList<>();
-                            AnswerResponse responseBody = objectMapper.readValue(responseEntity.getBody(), platformType.getResponseClass());
-
-                            responseBody.getDatas().forEach(choice -> {
-                                String id = responseBody.getId();
-                                answerEntities.add(new AnswerEntity(id, choice.getReasoningContent(), choice.getFinishReason(), true));
-                                answerEntities.add(new AnswerEntity(id, choice.getContent(), choice.getFinishReason(), false));
-                            });
-
-                            sink.next(answerEntities);
-
-                        } catch (JsonProcessingException ignored) {
-                            sink.next(Collections.emptyList());
-                        }
-                    }
-                });
+        return this.generateAnswerAsync(query, context, chatState, conversations, sessionId, promptEntity, llmType)
+                .block();
     }
 
     /**
-     * 답변 실시간 생성 요청
+     * 답변 생성 요청
      *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 Flux
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @param llmType       LLM 타입
+     * @return 답변 엔티티 목록 Mono
+     */
+    @Override
+    public Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType) {
+        return Mono.usingWhen(
+                acquireInstanceAsync(llmType),
+                instance -> executeAsyncRequest(instance, query, context, chatState, conversations, promptEntity),
+                this::releaseInstance
+        );
+    }
+
+    /**
+     * 답변 생성 요청
+     *
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param sessionId     세션 식별자
+     * @param promptEntity  프롬 프트
+     * @param llmType       LLM 타입
+     * @return 답변 엔티티 Flux
      */
     @Override
     public Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType) {
+        // [핵심] usingWhen: 획득 -> 스트림 통신 -> (스트림 종료/에러 무관) 반납 보장
+        return Flux.usingWhen(
+                acquireInstanceAsync(llmType),
+                instance -> executeStreamRequest(instance, query, context, chatState, conversations, promptEntity),
+                this::releaseInstance
+        );
+    }
 
-        LlmInstance instance = getInstance(llmType);
+    /**
+     * 답변 생성 요청 (코어)
+     *
+     * @param instance      LLM Instance
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param promptEntity  프롬 프트
+     * @return 답변 엔티티 목록 Mono
+     */
+    private Mono<List<AnswerEntity>> executeAsyncRequest(LlmInstance instance, String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity) {
         LlmPlatformType platformType = instance.getPlatformType();
-        LlmProperty llmProperty = instance.getLlmProperty();
-        WebClient webClient = instance.getWebClient();
+        LlmInstanceProperty llmInstanceProperty = instance.getLlmInstanceProperty();
 
         Object requestBody = platformType.request(
-                llmProperty, promptEntity.getTemperature(), promptEntity.getTopP(), true,
+                llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmProperty.getHost(), llmProperty.getPort(), llmProperty.getPath());
+        log.info("[{}] LLM Request(Async) to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
 
-        return webClient.post()
-                .uri(llmProperty.getUrl())
+        return instance.getWebClient().post()
+                .uri(llmInstanceProperty.getUrl())
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", "Bearer " + llmProperty.getApiKey())
+                .header("Authorization", "Bearer " + llmInstanceProperty.getApiKey())
+                .bodyValue(requestBody)
+                .retrieve() // exchangeToMono 대신 간결한 retrieve 사용
+                .onStatus(status -> !status.is2xxSuccessful(), response ->
+                        Mono.error(new ModelErrorException("LLM(" + llmInstanceProperty.getModelName() + ") API Error")))
+                .bodyToMono(String.class)
+                .map(json -> parseAnswerResponse(json, platformType, false))
+                .onErrorReturn(Collections.emptyList());
+    }
+
+    /**
+     * 답변 생성 요청 (코어)
+     *
+     * @param instance      LLM Instance
+     * @param query         질의문
+     * @param context       검색 결과 데이터
+     * @param chatState     대화 상태
+     * @param conversations 대화 이력 목록
+     * @param promptEntity  프롬 프트
+     * @return 답변 엔티티 Flux
+     */
+    private Flux<AnswerEntity> executeStreamRequest(LlmInstance instance, String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity) {
+        LlmPlatformType platformType = instance.getPlatformType();
+        LlmInstanceProperty llmInstanceProperty = instance.getLlmInstanceProperty();
+
+        Object requestBody = platformType.request(
+                llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), true,
+                promptEntity.getPromptContent(), query, context, chatState, conversations);
+
+        log.info("[{}] LLM Request(Stream) to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
+
+        return instance.getWebClient().post()
+                .uri(llmInstanceProperty.getUrl())
+                .accept(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + llmInstanceProperty.getApiKey())
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToFlux(String.class)
                 .mapNotNull(json -> json.replaceFirst("^data:", "").trim())
-                .filter(json -> !json.equals("[DONE]"))
-                .filter(json -> !json.isEmpty())
-                .flatMapIterable(responseBodyJson -> {
-                    try {
-                        AnswerResponse responseBody = objectMapper.readValue(responseBodyJson, platformType.getResponseClass());
+                .filter(json -> !json.equals("[DONE]") && !json.isEmpty())
+                .flatMapIterable(json -> parseAnswerResponse(json, platformType, true))
+                .onErrorResume(e -> Flux.empty());
+    }
 
-                        return responseBody.getDatas().stream()
-                                .filter(choice -> {
-                                    if (choice.getContent() != null) {
-                                        return !choice.getContent().isEmpty();
-                                    } else if (choice.getReasoningContent() != null) {
-                                        return !choice.getReasoningContent().isEmpty();
-                                    } else return false;
-                                })
-                                .map(choice -> {
-                                    String id = responseBody.getId();
+    /**
+     * 답변 응답 바디 파싱
+     *
+     * @param json         답변 응답 JSON 문자열
+     * @param platformType 플랫폼 타입
+     * @param isStream     스트림 여부
+     * @return 답변 엔티티 목록
+     */
+    private List<AnswerEntity> parseAnswerResponse(String json, LlmPlatformType platformType, boolean isStream) {
+        try {
+            AnswerResponse responseBody = objectMapper.readValue(json, platformType.getResponseClass());
+            List<AnswerEntity> entities = new ArrayList<>();
+            String id = responseBody.getId();
 
-                                    if (choice.getReasoningContent() != null) {
-                                        return new AnswerEntity(id, choice.getReasoningContent(), choice.getFinishReason(), true);
-                                    } else {
-                                        return new AnswerEntity(id, choice.getContent(), choice.getFinishReason(), false);
-                                    }
-                                })
-                                .toList();
+            responseBody.getDatas().forEach(choice -> {
+                boolean hasReasoning = choice.getReasoningContent() != null && !choice.getReasoningContent().isEmpty();
+                boolean hasContent = choice.getContent() != null && !choice.getContent().isEmpty();
 
-                    } catch (JsonProcessingException ignored) {
-                        return Collections.emptyList();
-                    }
-                });
+                if (hasReasoning) {
+                    entities.add(new AnswerEntity(id, choice.getReasoningContent(), choice.getFinishReason(), true));
+                }
+                if (hasContent || (!isStream && !hasReasoning)) {
+                    entities.add(new AnswerEntity(id, choice.getContent(), choice.getFinishReason(), false));
+                }
+            });
+            return entities;
+        } catch (JsonProcessingException e) {
+            log.error("LLM Response JSON Parsing Error", e);
+            return Collections.emptyList();
+        }
     }
 }

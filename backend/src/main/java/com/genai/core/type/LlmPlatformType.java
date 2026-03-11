@@ -1,6 +1,6 @@
 package com.genai.core.type;
 
-import com.genai.core.config.properties.LlmProperty;
+import com.genai.core.config.properties.LlmInstanceProperty;
 import com.genai.core.repository.request.OpenAIAnswerRequest;
 import com.genai.core.repository.request.VllmAnswerRequest;
 import com.genai.core.repository.response.AnswerResponse;
@@ -25,15 +25,15 @@ public enum LlmPlatformType {
     private final Class<? extends AnswerResponse> responseClass;
 
     public Object request(
-            LlmProperty llmProperty, Double temperature, Double topP, boolean stream,
+            LlmInstanceProperty llmInstanceProperty, Double temperature, Double topP, boolean stream,
             String prompt, String query, String context, String chatState, List<ConversationVO> conversations
     ) {
         return switch (this) {
             case VLLM -> VllmAnswerRequest.builder()
-                    .modelName(llmProperty.getModelName())
+                    .modelName(llmInstanceProperty.getModelName())
                     .temperature(temperature)
                     .topP(topP)
-                    .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmProperty, prompt, query, chatState, conversations, context))
+                    .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmInstanceProperty, prompt, query, chatState, conversations, context))
                     .stream(stream)
                     .prompt(prompt)
                     .chatState(chatState)
@@ -43,10 +43,10 @@ public enum LlmPlatformType {
                     .build();
 
             case OPENAI -> OpenAIAnswerRequest.builder()
-                    .modelName(llmProperty.getModelName())
+                    .modelName(llmInstanceProperty.getModelName())
                     .temperature(temperature)
                     .topP(topP)
-                    .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmProperty, prompt, query, chatState, conversations, context))
+                    .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmInstanceProperty, prompt, query, chatState, conversations, context))
                     .stream(stream)
                     .prompt(prompt)
                     .chatState(chatState)

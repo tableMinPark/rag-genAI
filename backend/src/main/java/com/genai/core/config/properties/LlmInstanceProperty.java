@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Getter
 @Setter
 @Component
-public class LlmProperty {
+public class LlmInstanceProperty {
 
     private String type;
 
@@ -42,6 +42,8 @@ public class LlmProperty {
     private int maxOutputTokens;
 
     private String apiKey;
+
+    private int sessionCount;
 
     /**
      * LLM 요청 URL 조회

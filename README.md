@@ -209,61 +209,68 @@ chunk:
 engine:
   # LLM (멀티 모델 설정)
   llm:
-    # 1) VLLM 설정
-    # 모델 응답 형식 지정 (vllm)
-    - platform: vllm
-      # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
-      type: default
-      # 응답 타임 아웃
-      response-timeout: 300000
-      # 리드 타임 아웃
-      read-timeout: 300000
-      # 쓰기 타임 아웃
-      write-timeout: 300000
-      # 연결 타임 아웃
-      connect-timeout: 5000
-      api-key: ${LLM_SERVER_API_KEY}
-      host: ${LLM_SERVER_HOST}
-      port: ${LLM_SERVER_PORT}
-      path: ${LLM_SERVER_PATH}
-      model-name: openai/gpt-oss-120b
-      # 최대 제한 토큰 수
-      model-context-limit: 128000
-      internal-token-overhead: 120
-      # 출력 토큰 계산 안전 마진 값
-      safety-margin: 256
-      # 최소 출력 토큰
-      min-output-tokens: 64
-      # 최대 출력 토큰
-      max-output-tokens: 4096
+    # LLM Instance 획득 재시도 설정
+    retry:
+      # 획득 시도 타임 아웃 (ms)
+      timeout-ms: 300000
+      # 획득 시도 후 대기 시간 (ms)
+      delay-ms: 500
+    instances:
+      # 1) VLLM 설정
+      # 모델 응답 형식 지정 (vllm)
+      - platform: vllm
+        # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
+        type: default
+        # 응답 타임 아웃
+        response-timeout: 300000
+        # 리드 타임 아웃
+        read-timeout: 300000
+        # 쓰기 타임 아웃
+        write-timeout: 300000
+        # 연결 타임 아웃
+        connect-timeout: 5000
+        api-key: ${LLM_SERVER_API_KEY}
+        host: ${LLM_SERVER_HOST}
+        port: ${LLM_SERVER_PORT}
+        path: ${LLM_SERVER_PATH}
+        model-name: openai/gpt-oss-120b
+        # 최대 제한 토큰 수
+        model-context-limit: 128000
+        internal-token-overhead: 120
+        # 출력 토큰 계산 안전 마진 값
+        safety-margin: 256
+        # 최소 출력 토큰
+        min-output-tokens: 64
+        # 최대 출력 토큰
+        max-output-tokens: 4096
 
-    # 2) OPENAI 설정
-    # 모델 응답 형식 지정 (openai)
-    - platform: openai
-      # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
-      type: default
-      # 응답 타임 아웃
-      response-timeout: 300000
-      # 리드 타임 아웃
-      read-timeout: 300000
-      # 쓰기 타임 아웃
-      write-timeout: 300000
-      # 연결 타임 아웃
-      connect-timeout: 5000
-      api-key: ${LLM_SERVER_API_KEY}
-      host: https://api.openai.com
-      port: ${LLM_SERVER_PORT}
-      path: ${LLM_SERVER_PATH}
-      model-name: gpt-3.5-turbo
-      # 최대 제한 토큰 수
-      model-context-limit: 12800
-      internal-token-overhead: 120
-      # 출력 토큰 계산 안전 마진 값
-      safety-margin: 256
-      # 최소 출력 토큰
-      min-output-tokens: 64
-      # 최대 출력 토큰
-      max-output-tokens: 2048
+      # 2) OPENAI 설정
+      # 모델 응답 형식 지정 (openai)
+      - platform: openai
+        # 사용할 기능 타입 (default) -> ex) 요약 기능만을 위한 모델 설정 시 사용
+        type: default
+        # 응답 타임 아웃
+        response-timeout: 300000
+        # 리드 타임 아웃
+        read-timeout: 300000
+        # 쓰기 타임 아웃
+        write-timeout: 300000
+        # 연결 타임 아웃
+        connect-timeout: 5000
+        api-key: ${LLM_SERVER_API_KEY}
+        host: https://api.openai.com
+        port: ${LLM_SERVER_PORT}
+        path: ${LLM_SERVER_PATH}
+        model-name: gpt-3.5-turbo
+        # 최대 제한 토큰 수
+        model-context-limit: 12800
+        internal-token-overhead: 120
+        # 출력 토큰 계산 안전 마진 값
+        safety-margin: 256
+        # 최소 출력 토큰
+        min-output-tokens: 64
+        # 최대 출력 토큰
+        max-output-tokens: 2048
 ```
 
 **VLLM** Stream 응답 형식:

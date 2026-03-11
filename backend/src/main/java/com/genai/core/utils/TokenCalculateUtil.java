@@ -1,6 +1,6 @@
 package com.genai.core.utils;
 
-import com.genai.core.config.properties.LlmProperty;
+import com.genai.core.config.properties.LlmInstanceProperty;
 import com.genai.core.repository.vo.ConversationVO;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
@@ -18,7 +18,7 @@ public class TokenCalculateUtil {
         encoding = registry.getEncoding(EncodingType.CL100K_BASE);
     }
 
-    public static int calculateMaxTokens(LlmProperty llmProperty, String prompt, String query, String chatState, List<ConversationVO> conversations, String context) {
+    public static int calculateMaxTokens(LlmInstanceProperty llmInstanceProperty, String prompt, String query, String chatState, List<ConversationVO> conversations, String context) {
 
         int inputTokens = 0;
 
@@ -35,17 +35,17 @@ public class TokenCalculateUtil {
         }
 
         // 🔧 내부 토큰 보정
-        inputTokens += llmProperty.getInternalTokenOverhead();
+        inputTokens += llmInstanceProperty.getInternalTokenOverhead();
 
         int available =
-                llmProperty.getModelContextLimit()
+                llmInstanceProperty.getModelContextLimit()
                         - inputTokens
-                        - llmProperty.getSafetyMargin();
+                        - llmInstanceProperty.getSafetyMargin();
 
         return clamp(
                 available,
-                llmProperty.getMinOutputTokens(),
-                llmProperty.getMaxOutputTokens()
+                llmInstanceProperty.getMinOutputTokens(),
+                llmInstanceProperty.getMaxOutputTokens()
         );
     }
 
