@@ -50,12 +50,6 @@ export interface PromptParameter {
   name: string
 }
 
-// 문서 추출 본문
-export interface ExtractContent {
-  type: string
-  content: string
-}
-
 // 요약 결과
 export interface SummaryResult {
   type: string
