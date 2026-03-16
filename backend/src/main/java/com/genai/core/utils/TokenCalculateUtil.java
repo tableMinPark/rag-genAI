@@ -1,7 +1,7 @@
 package com.genai.core.utils;
 
 import com.genai.core.config.properties.LlmInstanceProperty;
-import com.genai.core.repository.vo.ConversationVO;
+import com.genai.core.service.module.vo.ConversationVO;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import com.knuddels.jtokkit.api.EncodingRegistry;

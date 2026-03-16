@@ -1,7 +1,7 @@
 package com.genai.core.repository.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.genai.core.repository.vo.ConversationVO;
+import com.genai.core.service.module.vo.ConversationVO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -52,20 +52,22 @@ public class OpenAIAnswerRequest {
         this.messages.add(Message.builder().role("system").content(prompt).build());
         // 장기 기억 (이전 대화 요약)
         if (chatState != null && !chatState.isBlank()) {
-            this.messages.add(Message.builder().role("system").content("이전 대화 요약:\n" + chatState).build());
+            this.messages.add(Message.builder().role("system").content("Conversation State:\n" + chatState).build());
         }
         // 이전 대화 목록
         if (conversations != null && !conversations.isEmpty()) {
             StringBuilder conversionsBuilder = new StringBuilder();
             for (int index = 0; index < conversations.size(); index++) {
                 ConversationVO conversation = conversations.get(index);
-                conversionsBuilder.append("Q").append(index).append(": ").append(conversation.getQuery()).append("\n");
-                conversionsBuilder.append("A").append(index).append(": ").append(conversation.getAnswer()).append("\n");
+                conversionsBuilder.append("# Previous Conversation (").append(index).append(")\n");
+                conversionsBuilder.append("## ID").append("\n").append(conversation.getId()).append("\n");
+                conversionsBuilder.append("## Question").append("\n").append("```plainText\n").append(conversation.getQuery()).append("\n```\n");
+                conversionsBuilder.append("## Answer").append("\n").append("```plainText\n").append(conversation.getAnswer()).append("\n```\n");
             }
-            this.messages.add(Message.builder().role("system").content("이전 대화 내역:\n" + conversionsBuilder.toString().trim()).build());
+            this.messages.add(Message.builder().role("system").content("Previous Conversations:\n" + conversionsBuilder.toString().trim()).build());
         }
         if (context != null && !context.isBlank()) {
-            this.messages.add(Message.builder().role("user").content("참고 문서:\n\n```" + context + "```").build());
+            this.messages.add(Message.builder().role("user").content("Context:\n\n```" + context + "```").build());
         }
         if (query != null && !query.isBlank()) {
             this.messages.add(Message.builder().role("user").content(query).build());

@@ -10,7 +10,7 @@ import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.response.AnswerResponse;
-import com.genai.core.repository.vo.ConversationVO;
+import com.genai.core.service.module.vo.ConversationVO;
 import com.genai.core.type.LlmPlatformType;
 import com.genai.core.type.LlmType;
 import lombok.RequiredArgsConstructor;
@@ -230,7 +230,14 @@ public class ModelRepositoryImpl implements ModelRepository {
                 llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request(Async) to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
+        String requestBodyJson = "";
+
+        try {
+            requestBodyJson = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException ignored) {
+        }
+
+        log.info("[{}] LLM Request(Async) to {} | {}:{}{}\n{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath(), requestBodyJson);
 
         return instance.getWebClient().post()
                 .uri(llmInstanceProperty.getUrl())
@@ -265,7 +272,14 @@ public class ModelRepositoryImpl implements ModelRepository {
                 llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), true,
                 promptEntity.getPromptContent(), query, context, chatState, conversations);
 
-        log.info("[{}] LLM Request(Stream) to {} | {}:{}{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
+        String requestBodyJson = "";
+
+        try {
+            requestBodyJson = objectMapper.writeValueAsString(requestBody);
+        } catch (JsonProcessingException ignored) {
+        }
+
+        log.info("[{}] LLM Request(Stream) to {} | {}:{}{}\n{}", instance.getInstanceId(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath(), requestBodyJson);
 
         return instance.getWebClient().post()
                 .uri(llmInstanceProperty.getUrl())

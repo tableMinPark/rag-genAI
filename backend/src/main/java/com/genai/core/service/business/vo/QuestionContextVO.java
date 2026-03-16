@@ -1,7 +1,7 @@
 package com.genai.core.service.business.vo;
 
-import com.genai.core.repository.vo.ConversationVO;
 import com.genai.core.repository.wrapper.Rerank;
+import com.genai.core.service.module.vo.ConversationVO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,7 +15,11 @@ import java.util.List;
 @AllArgsConstructor
 public class QuestionContextVO {
 
+    private boolean isChangeTopic;
+
     private List<ConversationVO> conversations;
+
+    private List<ConversationVO> multiturnConversations;
 
     private String query;
 

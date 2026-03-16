@@ -169,7 +169,12 @@ export default function TranslatePage() {
           setIsStreaming(false)
           streamRef.current = null
         },
-        onException: (_) => {
+        onException: (event) => {
+          modalStore.setError(
+            '에러 발생',
+            '답변 생성 실패',
+            event.data || '답변 생성 중 에러가 발생했습니다.',
+          )
           setIsStreaming(false)
           streamRef.current = null
         },

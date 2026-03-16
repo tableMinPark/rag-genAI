@@ -1,4 +1,4 @@
-package com.genai.core.repository.vo;
+package com.genai.core.service.module.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,6 +8,8 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class ConversationVO {
+
+    private final Long id;
 
     private final String query;
 

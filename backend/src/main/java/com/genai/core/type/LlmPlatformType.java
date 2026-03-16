@@ -6,7 +6,7 @@ import com.genai.core.repository.request.VllmAnswerRequest;
 import com.genai.core.repository.response.AnswerResponse;
 import com.genai.core.repository.response.OpenAIAnswerResponse;
 import com.genai.core.repository.response.VllmAnswerResponse;
-import com.genai.core.repository.vo.ConversationVO;
+import com.genai.core.service.module.vo.ConversationVO;
 import com.genai.core.utils.TokenCalculateUtil;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

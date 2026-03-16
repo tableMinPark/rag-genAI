@@ -198,7 +198,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                     })
                     .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                     .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
-                    .onErrorComplete(throwable -> { throw new RuntimeException(throwable); } )
+                    .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable))
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe();
 

@@ -107,10 +107,6 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
                     .name(StreamCoreConst.EXCEPTION)
                     .data(throwable.getMessage()));
 
-            stream.getEmitter().send(SseEmitter.event()
-                    .name(StreamCoreConst.DISCONNECT)
-                    .data(StreamCoreConst.DISCONNECT));
-
         } catch (IllegalStateException | IOException ignored) {
         }
 
@@ -130,6 +126,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
             stream.getEmitter().send(SseEmitter.event()
                     .name(StreamCoreConst.DISCONNECT)
                     .data(StreamCoreConst.DISCONNECT));
+
         } catch (IllegalStateException | IOException ignored) {
         }
 

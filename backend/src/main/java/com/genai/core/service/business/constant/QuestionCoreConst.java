@@ -5,7 +5,8 @@ import java.util.List;
 public class QuestionCoreConst {
 
     // 멀티턴 참고 대화 이력 수
-    public static final int     MULTITURN_TURNS   = 3;
+    public static final int     MULTITURN_TURN_CONVERSATION_COUNT = 5;
+    public static final int     MULTITURN_TURNS                   = 3;
 
     // 검색 결과 상위 카운트 옵션
     public static final double  SEARCH_SCORE_MIN  = 0.2;
