@@ -54,7 +54,7 @@ public class ChatController {
         long promptId = PromptConst.QUESTION_AI_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatId, promptId, chatAiRequestDto.getCategoryCodes());
 
-        questionVO.answerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
 
         return ResponseEntity.ok().body(Response.CHAT_AI_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
                 .query(query)
@@ -77,7 +77,7 @@ public class ChatController {
         long promptId = PromptConst.QUESTION_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId, promptId);
 
-        questionVO.answerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
 
         return ResponseEntity.ok().body(Response.CHAT_LLM_SUCCESS.toResponseDto(ChatLlmResponseDto.builder()
                 .query(query)
@@ -104,7 +104,7 @@ public class ChatController {
         String categoryCode = MyAiConst.categoryCode(projectId);
         QuestionVO questionVO = questionCoreService.questionMyAi(query, sessionId, chatId, promptId, categoryCode);
 
-        questionVO.answerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
 
         return ResponseEntity.ok().body(Response.CHAT_MYAI_SUCCESS.toResponseDto(ChatMyAiResponseDto.builder()
                 .query(query)
@@ -132,7 +132,7 @@ public class ChatController {
         QuestionVO questionVO = questionCoreService.questionSimulation(
                 query, sessionId, chatId, context, promptContent, temperature, topP, maxTokens);
 
-        questionVO.answerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux());
 
         return ResponseEntity.ok().body(Response.CHAT_SIMULATION_SUCCESS.toResponseDto(ChatSimulationResponseDto.builder()
                 .query(query)

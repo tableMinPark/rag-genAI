@@ -70,12 +70,11 @@ public class SearchRepositoryImpl implements SearchRepository {
      * @param collectionType 컬렉션 타입
      * @param query          질의문
      * @param topK           top K
-     * @param sessionId      세션 식별자
      * @param aliases        필터 코드 목록
      * @return 키워드 검색 결과 목록
      */
     @Override
-    public <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, String sessionId, List<String> aliases) {
+    public <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, List<String> aliases) {
 
         KeywordSearchRequest keywordSearchRequest = KeywordSearchRequest.builder()
                 .size(topK)

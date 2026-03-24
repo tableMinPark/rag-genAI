@@ -6,7 +6,10 @@ import lombok.Builder;
 import lombok.Getter;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.Semaphore;
 
 @Getter
 public class LlmInstance {
@@ -19,29 +22,38 @@ public class LlmInstance {
 
     private final WebClient webClient;
 
-    private final AtomicInteger sessionCount;
+    private final Semaphore semaphore;
+
+    private final Queue<String> sessionQueue = new ConcurrentLinkedDeque<>();
 
     @Builder
-    public LlmInstance(String instanceId, LlmPlatformType platformType, LlmInstanceProperty llmInstanceProperty, WebClient webClient, int sessionCount) {
+    public LlmInstance(String instanceId, LlmPlatformType platformType, LlmInstanceProperty llmInstanceProperty, WebClient webClient) {
         this.instanceId = instanceId;
         this.platformType = platformType;
         this.llmInstanceProperty = llmInstanceProperty;
         this.webClient = webClient;
-        this.sessionCount = new AtomicInteger(sessionCount);
+        this.semaphore = new Semaphore(this.llmInstanceProperty.getSessionCount());
     }
 
-    public boolean tryAcquire() {
-        int currentCount;
-        while ((currentCount = sessionCount.get()) > 0) {
-            if (sessionCount.compareAndSet(currentCount, currentCount - 1)) {
-                return true;
-            }
+    public Optional<Integer> tryAcquire(String requestId) {
+
+        if (!semaphore.tryAcquire()) {
+            return Optional.empty();
         }
 
-        return false;
+        if (!sessionQueue.add(requestId)) {
+            semaphore.release(); // 롤백
+            return Optional.empty();
+        }
+
+        return Optional.of(semaphore.availablePermits());
     }
 
-    public void release() {
-        sessionCount.incrementAndGet();
+    public int release(String requestId) {
+        sessionQueue.remove(requestId);
+        semaphore.release();
+        return semaphore.availablePermits();
     }
+
+    public record AcquireResult(LlmInstance instance, int sessionCount) { }
 }

@@ -30,7 +30,6 @@ public enum Response {
     MYAI_GET_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2003, "나만의 AI 프로젝트 임베딩 문서 조회에 성공했습니다.", ""),
     MYAI_UPDATE_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2004, "나만의 AI 프로젝트 임베딩 문서 수정에 성공했습니다.", ""),
 
-
     // REPORT
     REPORT_GENERATE_TEXT_SUCCESS(HttpStatus.OK, 3000, "텍스트 참조 보고서 생성 요청에 성공했습니다.", ""),
     REPORT_GENERATE_FILE_SUCCESS(HttpStatus.OK, 3001, "파일 참조 보고서 생성 요청에 성공했습니다.", ""),

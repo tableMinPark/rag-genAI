@@ -32,27 +32,25 @@ public class StreamController {
     @GetMapping("/{sessionId}")
     public SseEmitter stream(@NotBlank @PathVariable("sessionId") String sessionId) throws InterruptedException {
 
-        log.info("사용자 스트림 요청 : {}", sessionId);
-
         // 스트림 등록
         StreamSubscriber streamSubscriber = streamCoreService.createStream(sessionId);
 
         // 연결 끊김 처리
         streamSubscriber.getEmitter().onCompletion(() -> {
             streamCoreService.deleteStream(sessionId);
-            log.info("사용자 SSE 종료 : {}", sessionId);
+            log.info("[{}] " + String.format("%-20s", "Stream SSE complete") + " |", sessionId);
         });
 
         // 세션 만료 처리
         streamSubscriber.getEmitter().onTimeout(() -> {
             streamCoreService.deleteStream(sessionId);
-            log.warn("사용자 SSE 타임 아웃 : {}", sessionId);
+            log.warn("[{}] " + String.format("%-20s", "Stream SSE timeout") + " |", sessionId);
         });
 
         // 에러 처리
         streamSubscriber.getEmitter().onError(throwable -> {
             streamCoreService.deleteStream(sessionId);
-            log.warn("사용자 SSE 에러 : {} | {}", sessionId, throwable.getMessage());
+            log.error("[{}] " + String.format("%-20s", "Stream SSE error") + " |", sessionId, throwable);
         });
 
         return streamSubscriber.getEmitter();
@@ -66,7 +64,7 @@ public class StreamController {
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<ResponseDto<StreamCancelResponseDto>> cancelStream(@NotBlank @PathVariable("sessionId") String sessionId) {
 
-        log.info("사용자 스트림 중지 요청 : {}", sessionId);
+        log.info("[{}] " + String.format("%-20s", "Stream cancel from user" + " |"), sessionId);
 
         // 답변 스트림 삭제
         streamCoreService.deleteStream(sessionId);

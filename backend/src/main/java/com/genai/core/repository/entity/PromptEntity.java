@@ -34,4 +34,19 @@ public class PromptEntity {
     @Column(name = "top_p")
     @Comment("일관성")
     private Double topP;
+
+    public PromptEntity concatPromptContent(String promptContent) {
+        this.promptContent = this.promptContent + "\n\n" + promptContent;
+        return this;
+    }
+
+    public PromptEntity copy() {
+        return PromptEntity.builder()
+                .promptId(this.promptId)
+                .promptName(this.promptName)
+                .promptContent(this.promptContent)
+                .temperature(this.temperature)
+                .topP(this.topP)
+                .build();
+    }
 }

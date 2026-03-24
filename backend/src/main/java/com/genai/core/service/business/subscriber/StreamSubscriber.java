@@ -1,10 +1,14 @@
 package com.genai.core.service.business.subscriber;
 
 import com.genai.core.service.business.constant.StreamCoreConst;
+import com.genai.core.utils.ReactiveLogUtil;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.BaseSubscriber;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.util.List;
@@ -25,6 +29,29 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
 
     public void cancelStream() {
         stream.setCancelled(true);
+    }
+
+    public void subscribeWithTrace(Flux<StreamEvent> streamFlux) {
+        subscribeWithTrace(streamFlux, null);
+    }
+
+    /**
+     * 로그 기반 구독 시작
+     */
+    public void subscribeWithTrace(Flux<StreamEvent> streamFlux, Mono<Void> streamEndMono) {
+        if (streamEndMono == null) {
+            streamFlux
+                    .contextWrite(ctx -> ctx.put(ReactiveLogUtil.TRACE_ID_KEY, stream.getStreamId()))
+                    .subscribe(this);
+        } else {
+            streamFlux
+                    .doOnComplete(() -> streamEndMono
+                            .contextWrite(ctx -> ctx.put(ReactiveLogUtil.TRACE_ID_KEY, stream.getStreamId()))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .subscribe())
+                    .contextWrite(ctx -> ctx.put(ReactiveLogUtil.TRACE_ID_KEY, stream.getStreamId()))
+                    .subscribe(this);
+        }
     }
 
     @Override
@@ -85,7 +112,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
         } catch (IllegalStateException | IOException ignored) {
         }
 
-        log.warn("답변 스트림 중지");
+        log.warn("[{}] " + String.format("%-20s", "Stream cancel") + " |", stream.getStreamId());
         stream.getEmitter().complete();
     }
 
@@ -110,7 +137,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
         } catch (IllegalStateException | IOException ignored) {
         }
 
-        log.error("답변 스트림 비정상 종료 : {}", throwable.getMessage());
+        log.error("[{}] " + String.format("%-20s", "Stream complete with error") + " |", stream.getStreamId(), throwable);
         stream.getEmitter().completeWithError(throwable);
     }
 
@@ -130,7 +157,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
         } catch (IllegalStateException | IOException ignored) {
         }
 
-        log.info("답변 스트림 정상 종료");
+        log.info("[{}] " + String.format("%-20s", "Stream complete") + " |", stream.getStreamId());
         stream.getEmitter().complete();
     }
 }

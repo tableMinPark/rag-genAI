@@ -22,20 +22,18 @@ public interface QuestionModuleService {
      *
      * @param query         질의
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 재작성 질의
      */
-    Mono<String> rewriteQuery(String query, List<ConversationVO> conversations, String sessionId);
+    Mono<String> generateRewriteQuery(String query, List<ConversationVO> conversations);
 
     /**
      * 대화 상태 요약 생성
      *
      * @param query         질의문
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 대화 상태 요약
      */
-    Mono<String> summaryState(String query, List<ConversationVO> conversations, String sessionId);
+    Mono<String> generateChatState(String query, List<ConversationVO> conversations);
 
     /**
      * 멀티턴 여부 확인
@@ -43,8 +41,7 @@ public interface QuestionModuleService {
      * @param query         질의문
      * @param chatState     이전 대화 상태 (주제)
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 멀티턴 여부
      */
-    Mono<MultiturnConversationVO> validMultiturn(String query, String chatState, List<ConversationVO> conversations, String sessionId);
+    Mono<MultiturnConversationVO> validMultiturn(String query, String chatState, List<ConversationVO> conversations);
 }

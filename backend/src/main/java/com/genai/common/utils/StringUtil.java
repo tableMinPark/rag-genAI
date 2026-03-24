@@ -80,6 +80,7 @@ public class StringUtil {
         try {
             json = objectMapper.writeValueAsString(object);
         } catch (JsonProcessingException ignored) {
+            return "{}";
         }
 
         return json;

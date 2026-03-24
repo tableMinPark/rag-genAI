@@ -4,13 +4,11 @@ import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.core.service.module.constant.SummaryModuleConst;
-import com.genai.common.utils.StringUtil;
+import com.genai.core.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 
@@ -22,13 +20,13 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
     private final ModelRepository modelRepository;
 
     /**
-     * 부분 요약
+     * 핵심 부분 추출
      *
      * @param content 본문 분리 부분 문자열
-     * @return 부분 요약 Flux
+     * @return 핵심 부분 추출 Mono
      */
     @Override
-    public Mono<String> partSummary(String content) {
+    public Mono<String> partExport(String content) {
 
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(SummaryModuleConst.PART_SUMMARY_PROMPT)
@@ -36,35 +34,29 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                 .topP(SummaryModuleConst.PART_SUMMARY_TOP_P)
                 .build();
 
-        return Mono.fromCallable(() -> {
-            log.info("부분 요약 | {}", content.replace("\n", "\\n"));
-            return modelRepository.generateAnswerSyncStr("", content, StringUtil.generateRandomId(), promptEntity);
-        }).subscribeOn(Schedulers.boundedElastic());
+        return modelRepository.generateAnswerAsync(null, content, null, null, promptEntity)
+                .map(answerEntities -> {
+                    StringBuilder answerBuilder = new StringBuilder();
+                    answerEntities.forEach(answerEntity -> {
+                        if (!answerEntity.getIsInference()) {
+                            answerBuilder.append(answerEntity.getContent());
+                        }
+                    });
+                    return answerBuilder.toString().trim();
+                })
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PART_EXPORT_MESSAGE, v -> new Object[]{
+                        content.replace("\n", "\\n"), v.replace("\n", "\\n")
+                }));
     }
 
     /**
-     * 부분 요약
+     * 핵심 부분 추출 요약
      *
-     * @param contents 본문 분리 부분 문자열 목록
-     * @return 부분 요약 Flux
+     * @param contents 핵심 추출 문자열 목록
+     * @return 요약 문자열 Mono
      */
     @Override
-    public Flux<String> partSummaries(List<String> contents, int batchSize) {
-
-        return Flux.fromIterable(contents)
-                .buffer(batchSize)
-                .concatMap(batch -> Flux.fromIterable(batch)
-                        .flatMapSequential(this::partSummary, batchSize));
-    }
-
-    /**
-     * 부분 요약문 전체 요약
-     *
-     * @param contents 부분 요약 문자열 목록
-     * @return 전체 요약 Mono
-     */
-    @Override
-    public Mono<String> wholeSummaries(List<String> contents) {
+    public Mono<String> partExportSummary(List<String> contents) {
 
         // 전체 요약
         PromptEntity promptEntity = PromptEntity.builder()
@@ -73,12 +65,28 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                 .topP(SummaryModuleConst.WHOLE_SUMMARY_TOP_P)
                 .build();
 
-        return Flux.fromIterable(contents)
-                .collectList()
-                .flatMap(targetContents -> Mono.fromCallable(() -> {
-                    String context = String.join("\n\n---\n\n", targetContents);
-                    log.info("전체 요약 | {}", context.replace("\n", "\\n"));
-                    return modelRepository.generateAnswerSyncStr("", context, StringUtil.generateRandomId(), promptEntity);
-                })).subscribeOn(Schedulers.boundedElastic());
+        StringBuilder contentMergeBuilder = new StringBuilder();
+
+        for (int index = 0; index < contents.size(); index++) {
+            contentMergeBuilder
+                    .append("# 핵심 추출 내용(").append(index).append(")\n")
+                    .append(contents.get(index))
+                    .append("\n\n---\n\n");
+        }
+
+        return Mono.just(contentMergeBuilder.toString().trim())
+                .flatMap(contentMerge -> modelRepository.generateAnswerAsync(null, contentMerge, null, null, promptEntity))
+                .map(answerEntities -> {
+                    StringBuilder answerBuilder = new StringBuilder();
+                    answerEntities.forEach(answerEntity -> {
+                        if (!answerEntity.getIsInference()) {
+                            answerBuilder.append(answerEntity.getContent());
+                        }
+                    });
+                    return answerBuilder.toString().trim();
+                })
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
+                        contentMergeBuilder.toString().trim().replace("\n", "\\n"), v.replace("\n", "\\n")
+                }));
     }
 }

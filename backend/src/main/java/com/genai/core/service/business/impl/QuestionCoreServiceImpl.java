@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.genai.common.utils.StringUtil;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
@@ -9,7 +9,6 @@ import com.genai.core.repository.wrapper.Rerank;
 import com.genai.core.repository.wrapper.Search;
 import com.genai.core.service.business.QuestionCoreService;
 import com.genai.core.service.business.constant.QuestionCoreConst;
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.DocumentVO;
 import com.genai.core.service.business.vo.QuestionContextVO;
@@ -20,21 +19,17 @@ import com.genai.core.service.module.vo.ConversationVO;
 import com.genai.core.service.module.vo.MultiturnConversationVO;
 import com.genai.core.type.CollectionType;
 import com.genai.core.type.CollectionTypeFactory;
+import com.genai.core.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class QuestionCoreServiceImpl implements QuestionCoreService {
@@ -53,35 +48,35 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      * AI 질문 & 답변
      *
      * @param query         질의문
-     * @param sessionId     사용자 ID
+     * @param userId        사용자 ID
      * @param chatId        대화 ID
      * @param categoryCodes 카테고리 코드 목록
      * @return 답변 VO
      */
     @Override
-    public QuestionVO questionAi(String query, String sessionId, long chatId, long promptId, List<String> categoryCodes) {
-        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.ai(), categoryCodes);
+    public QuestionVO questionAi(String query, String userId, long chatId, long promptId, List<String> categoryCodes) {
+        return this.questionByCollectionId(query, userId, chatId, promptId, collectionTypeFactory.ai(), categoryCodes);
     }
 
     /**
      * AI 질문 & 답변
      *
      * @param query        질의문
-     * @param sessionId    사용자 ID
+     * @param userId       사용자 ID
      * @param chatId       대화 ID
      * @param categoryCode 카테고리 코드
      * @return 답변 VO
      */
     @Override
-    public QuestionVO questionMyAi(String query, String sessionId, long chatId, long promptId, String categoryCode) {
-        return this.questionByCollectionId(query, sessionId, chatId, promptId, collectionTypeFactory.myai(), List.of(categoryCode));
+    public QuestionVO questionMyAi(String query, String userId, long chatId, long promptId, String categoryCode) {
+        return this.questionByCollectionId(query, userId, chatId, promptId, collectionTypeFactory.myai(), List.of(categoryCode));
     }
 
     /**
      * 컬렉션 ID 기준 질문 & 답변
      *
      * @param query          질의문
-     * @param sessionId      세션 ID
+     * @param userId         세션 ID
      * @param promptId       프롬프트 ID
      * @param collectionType 컬렉션
      * @param chatId         대화 ID
@@ -89,7 +84,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      * @return 답변 VO
      */
     @Override
-    public QuestionVO questionByCollectionId(String query, String sessionId, long chatId, long promptId, CollectionType collectionType, List<String> categoryCodes) {
+    public QuestionVO questionByCollectionId(String query, String userId, long chatId, long promptId, CollectionType collectionType, List<String> categoryCodes) {
 
         // 시스템 프롬 프트 조회
         PromptEntity promptEntity = promptRepository.findById(promptId)
@@ -110,26 +105,31 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
                 .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
-                .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
+                .flatMap(conversations -> questionModuleService.generateRewriteQuery(query, conversations))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
                 .cache();
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
-                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1(), sessionId))
+                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
+                        v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
+                }))
                 .cache();
 
-        // 검색
+        // 검색 Mono
         Mono<List<Rerank>> rerankFlux = rewriteQueryMono.flatMap(rewriteQuery ->
                         Mono.fromCallable(() -> {
                             // 검색 결과 목록 (key 를 통한 중복 제거)
                             Map<Long, Search<DocumentEntity>> searchEntityMap = new HashMap<>();
 
                             // 키워드 검색
-                            List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, QuestionCoreConst.KEYWORD_TOP_K, sessionId, categoryCodes);
+                            List<Search<DocumentEntity>> keywordSearchEntities = searchRepository.keywordSearch(collectionType, rewriteQuery, QuestionCoreConst.KEYWORD_TOP_K, categoryCodes);
                             keywordSearchEntities.forEach(searchEntity -> searchEntityMap.put(searchEntity.getFields().getChunkId(), searchEntity));
 
                             // 벡터 검색
@@ -148,9 +148,12 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                             return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
 
                         }).subscribeOn(Schedulers.boundedElastic()))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.RERANK_MESSAGE, v -> new Object[]{
+                        StringUtil.writeJson(v)
+                }))
                 .cache();
 
-        // 컨텍스트 생성
+        // 컨텍스트 Mono
         Mono<QuestionContextVO> contextMono = Mono.zip(multiturnConversationMono, conversationMono, rewriteQueryMono, rerankFlux)
                 .map(tuple -> QuestionContextVO.builder()
                         .conversations(tuple.getT2())
@@ -160,6 +163,9 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .reranks(tuple.getT4())
                         .query(query)
                         .build())
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
+                        v.isChangeTopic(), StringUtil.writeJson(v.getConversations()), StringUtil.writeJson(v.getMultiturnConversations()), v.getQuery(), v.getRewriteQuery(), StringUtil.writeJson(v.getReranks())
+                }))
                 .cache();
 
         // 답변
@@ -181,20 +187,19 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
 
                     // 답변 요청
-                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatState, multiturnConversations, sessionId, promptEntity);
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatState, multiturnConversations, promptEntity);
                 })
                 .doOnNext(answerEntity -> {
                     if (!answerEntity.getIsInference()) {
                         answerAccumulator.append(answerEntity.getContent());
                     }
                 })
-                .map(answerEntity -> StreamEvent.builder()
-                        .id(answerEntity.getId())
-                        .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build());
+                .map(answerEntity -> answerEntity.getIsInference()
+                        ? StreamEvent.inference(answerEntity.getId(), answerEntity.getContent())
+                        : StreamEvent.answer(answerEntity.getId(), answerEntity.getContent())
+                );
 
-        // 참고 문서
+        // 참고 문서 Mono
         Mono<StreamEvent> referenceMono = rerankFlux
                 .map(reranks -> {
                     String answer = answerAccumulator.toString().trim();
@@ -211,35 +216,27 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
                     Pattern referencePattern = Pattern.compile(referencePatternBuilder.toString());
 
-                    String content = "{}";
-
-                    if (!referencePattern.matcher(answer).find()) {
-                        try {
-                            content = objectMapper.writeValueAsString(reranks.stream()
-                                    .map(rerank -> DocumentVO.builder()
-                                            .title(rerank.getDocument().getTitle())
-                                            .subTitle(rerank.getDocument().getSubContent())
-                                            .thirdTitle(rerank.getDocument().getThirdTitle())
-                                            .content(rerank.getDocument().getContent())
-                                            .subContent(rerank.getDocument().getSubContent())
-                                            .originFileName(rerank.getDocument().getOriginFileName())
-                                            .categoryCode(rerank.getDocument().getCategoryCode())
-                                            .sourceType(rerank.getDocument().getSourceType())
-                                            .url(rerank.getDocument().getUrl())
-                                            .ext(rerank.getDocument().getExt())
-                                            .build())
-                                    .toList());
-
-                        } catch (JsonProcessingException ignored) {
-                        }
-                    }
-
-                    return StreamEvent.builder()
-                            .id(sessionId)
-                            .event(StreamCoreConst.Event.REFERENCE)
-                            .content(content)
-                            .build();
-                });
+                    return referencePattern.matcher(answer).find()
+                            ? new ArrayList<DocumentVO>()
+                            : reranks.stream()
+                            .map(rerank -> DocumentVO.builder()
+                                    .title(rerank.getDocument().getTitle())
+                                    .subTitle(rerank.getDocument().getSubContent())
+                                    .thirdTitle(rerank.getDocument().getThirdTitle())
+                                    .content(rerank.getDocument().getContent())
+                                    .subContent(rerank.getDocument().getSubContent())
+                                    .originFileName(rerank.getDocument().getOriginFileName())
+                                    .categoryCode(rerank.getDocument().getCategoryCode())
+                                    .sourceType(rerank.getDocument().getSourceType())
+                                    .url(rerank.getDocument().getUrl())
+                                    .ext(rerank.getDocument().getExt())
+                                    .build())
+                            .toList();
+                })
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REFERENCE_MESSAGE, v -> new Object[]{
+                        StringUtil.writeJson(v)
+                }))
+                .map(reranks -> StreamEvent.reference(StringUtil.generateRandomId(), StringUtil.writeJson(reranks)));
 
         // 대화 이력 업데이트
         Mono<Void> chatHistoryMono = contextMono.flatMap(ctx -> {
@@ -249,35 +246,39 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
             // 대화 상세 이력 업데이트
             return Mono.fromRunnable(() -> {
-                List<ChatPassageEntity> chatPassageEntities = rerankEntities.stream()
-                        .map(rerank -> {
-                            String context =
-                                    rerank.getDocument().getTitle() + "\n" +
-                                            rerank.getDocument().getSubTitle() + "\n" +
-                                            rerank.getDocument().getThirdTitle() + "\n" +
-                                            rerank.getDocument().getContent() + "\n" +
-                                            rerank.getDocument().getSubContent() + "\n";
+                        List<ChatPassageEntity> chatPassageEntities = rerankEntities.stream()
+                                .map(rerank -> {
+                                    String context =
+                                            rerank.getDocument().getTitle() + "\n" +
+                                                    rerank.getDocument().getSubTitle() + "\n" +
+                                                    rerank.getDocument().getThirdTitle() + "\n" +
+                                                    rerank.getDocument().getContent() + "\n" +
+                                                    rerank.getDocument().getSubContent() + "\n";
 
-                            context = context.replace("\\n", "\n");
+                                    context = context.replace("\\n", "\n");
 
-                            return ChatPassageEntity.builder()
-                                    .msgId(chatDetailEntity.getMsgId())
-                                    .fileDetailId(rerank.getDocument().getFileDetailId())
-                                    .sourceType(rerank.getDocument().getSourceType())
-                                    .categoryCode(rerank.getDocument().getCategoryCode())
-                                    .content(context)
-                                    .build();
-                        })
-                        .toList();
+                                    return ChatPassageEntity.builder()
+                                            .msgId(chatDetailEntity.getMsgId())
+                                            .fileDetailId(rerank.getDocument().getFileDetailId())
+                                            .sourceType(rerank.getDocument().getSourceType())
+                                            .categoryCode(rerank.getDocument().getCategoryCode())
+                                            .content(context)
+                                            .build();
+                                })
+                                .toList();
 
-                chatHistoryModuleService.updateChatDetail(
-                        chatId,
-                        chatDetailEntity.getMsgId(),
-                        rewriteQuery,
-                        answer,
-                        chatPassageEntities
-                );
-            });
+                        chatHistoryModuleService.updateChatDetail(
+                                chatId,
+                                chatDetailEntity.getMsgId(),
+                                rewriteQuery,
+                                answer,
+                                chatPassageEntities
+                        );
+                    })
+                    .then()
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                            chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
+                    }));
         });
 
         // 대화 상태 요약
@@ -289,20 +290,24 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
             // 대화 상태 요약 (대화 이력이 존재하고 멀티턴 대화 이력이 없는 경우)
             return multiturnConversations.isEmpty() || isChangeTopic
-                    ? questionModuleService.summaryState(rewriteQuery, conversations, sessionId)
+                    ? questionModuleService.generateChatState(rewriteQuery, conversations)
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_STATE_MESSAGE, v -> new Object[]{
+                            chatId, v
+                    }))
                     .flatMap(newChatState -> Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)))
                     : Mono.empty();
         });
 
-        Flux<StreamEvent> answerStream = Flux.concat(answerFlux, referenceMono)
+        // 스트림 Flux
+        Flux<StreamEvent> streamFlux = Flux.concat(answerFlux, referenceMono)
                 .concatWith(chatHistoryMono.then(Mono.empty()))
-                .doOnComplete(() -> chatStateMono.subscribeOn(Schedulers.boundedElastic()).subscribe())
                 .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable));
 
         return QuestionVO.builder()
-                .answerStream(answerStream)
+                .streamFlux(streamFlux)
+                .streamEndMono(chatStateMono)
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
@@ -310,14 +315,14 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
     /**
      * LLM 질문 & 답변
      *
-     * @param query     질의문
-     * @param sessionId 사용자 ID
-     * @param chatId    대화 ID
-     * @param promptId  프롬프트 ID
+     * @param query    질의문
+     * @param userId   사용자 ID
+     * @param chatId   대화 ID
+     * @param promptId 프롬프트 ID
      * @return 답변 VO
      */
     @Override
-    public QuestionVO questionLlm(String query, String sessionId, long chatId, long promptId) {
+    public QuestionVO questionLlm(String query, String userId, long chatId, long promptId) {
 
         // 시스템 프롬 프트 조회
         PromptEntity promptEntity = promptRepository.findById(promptId)
@@ -337,16 +342,21 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
                 .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
-                .flatMap(conversations -> questionModuleService.rewriteQuery(query, conversations, sessionId))
+                .flatMap(conversations -> questionModuleService.generateRewriteQuery(query, conversations))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
                 .cache();
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
-                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1(), sessionId))
+                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
+                        v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
+                }))
                 .cache();
 
         // 컨텍스트 생성
@@ -359,6 +369,9 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .reranks(Collections.emptyList())
                         .query(query)
                         .build())
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
+                        v.isChangeTopic(), StringUtil.writeJson(v.getConversations()), StringUtil.writeJson(v.getMultiturnConversations()), v.getQuery(), v.getRewriteQuery(), StringUtil.writeJson(v.getReranks())
+                }))
                 .cache();
 
         // 답변
@@ -370,18 +383,17 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     List<ConversationVO> multiturnConversations = ctx.getMultiturnConversations();
                     String rewriteQuery = ctx.getRewriteQuery();
 
-                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, null, chatState, multiturnConversations, sessionId, promptEntity);
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, null, chatState, multiturnConversations, promptEntity);
                 })
                 .doOnNext(answerEntity -> {
                     if (!answerEntity.getIsInference()) {
                         answerAccumulator.append(answerEntity.getContent());
                     }
                 })
-                .map(answerEntity -> StreamEvent.builder()
-                        .id(answerEntity.getId())
-                        .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build());
+                .map(answerEntity -> answerEntity.getIsInference()
+                        ? StreamEvent.inference(answerEntity.getId(), answerEntity.getContent())
+                        : StreamEvent.answer(answerEntity.getId(), answerEntity.getContent())
+                );
 
         // 대화 이력 업데이트
         Mono<Void> chatHistoryMono = contextMono.flatMap(ctx -> {
@@ -390,12 +402,16 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
             // 대화 상세 이력 업데이트
             return Mono.fromRunnable(() -> chatHistoryModuleService.updateChatDetail(
-                    chatId,
-                    chatDetailEntity.getMsgId(),
-                    rewriteQuery,
-                    answer,
-                    Collections.emptyList()
-            ));
+                            chatId,
+                            chatDetailEntity.getMsgId(),
+                            rewriteQuery,
+                            answer,
+                            Collections.emptyList()
+                    ))
+                    .then()
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                            chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
+                    }));
         });
 
         // 대화 상태 요약
@@ -406,21 +422,24 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             List<ConversationVO> multiturnConversations = ctx.getMultiturnConversations();
 
             // 대화 상태 요약 (대화 이력이 존재하고 멀티턴 대화 이력이 없는 경우)
-            return multiturnConversations.isEmpty() || isChangeTopic
-                        ? questionModuleService.summaryState(rewriteQuery, conversations, sessionId)
-                            .flatMap(newChatState -> Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)))
-                        : Mono.empty();
+            return !multiturnConversations.isEmpty() && !isChangeTopic
+                    ? Mono.empty()
+                    : questionModuleService.generateChatState(rewriteQuery, conversations)
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_STATE_MESSAGE, v -> new Object[]{
+                            chatId, v
+                    }))
+                    .flatMap(newChatState -> Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
         });
 
-        Flux<StreamEvent> answerStream = answerFlux
+        Flux<StreamEvent> streamFlux = answerFlux
                 .concatWith(chatHistoryMono.then(Mono.empty()))
-                .doOnComplete(() -> chatStateMono.subscribeOn(Schedulers.boundedElastic()).subscribe())
                 .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable));
 
         return QuestionVO.builder()
-                .answerStream(answerStream)
+                .streamFlux(streamFlux)
+                .streamEndMono(chatStateMono)
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }
@@ -429,7 +448,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      * LLM Simulation 질문 & 답변
      *
      * @param query         질의문
-     * @param sessionId     사용자 ID
+     * @param userId        사용자 ID
      * @param chatId        대화 ID
      * @param context       참고 문서 (Context)
      * @param promptContent 프롬프트 본문
@@ -440,7 +459,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
      */
     @Transactional
     @Override
-    public QuestionVO questionSimulation(String query, String sessionId, long chatId, String context, String promptContent, double temperature, double topP, int maximumTokens) {
+    public QuestionVO questionSimulation(String query, String userId, long chatId, String context, String promptContent, double temperature, double topP, int maximumTokens) {
 
         // 시스템 프롬 프트 조회
         PromptEntity promptEntity = PromptEntity.builder()
@@ -464,34 +483,45 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
         StringBuilder answerAccumulator = new StringBuilder();
 
         // 답변 Flux
-        Flux<StreamEvent> answerStream = modelRepository.generateStreamAnswerAsync(query, context, null, Collections.emptyList(), sessionId, promptEntity)
+        Flux<StreamEvent> answerFlux = modelRepository.generateStreamAnswerAsync(query, context, null, Collections.emptyList(), promptEntity)
                 .doOnNext(answerEntity -> {
                     if (!answerEntity.getIsInference()) {
                         answerAccumulator.append(answerEntity.getContent());
                     }
                 })
-                .map(answerEntity -> StreamEvent.builder()
-                        .id(answerEntity.getId())
-                        .content(answerEntity.getContent())
-                        .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                        .build())
-                .doOnComplete(() -> {
-                    // 대화 이력 업데이트
+                .map(answerEntity -> answerEntity.getIsInference()
+                        ? StreamEvent.inference(answerEntity.getId(), answerEntity.getContent())
+                        : StreamEvent.answer(answerEntity.getId(), answerEntity.getContent())
+                );
+
+        // 대화 이력 업데이트
+        Mono<Void> chatHistoryMono = Mono.empty()
+                .flatMap(o -> {
                     String answer = answerAccumulator.toString().trim();
-                    chatHistoryModuleService.updateChatDetail(
-                            chatId,
-                            chatDetailEntity.getMsgId(),
-                            "",
-                            answer,
-                            Collections.emptyList()
-                    );
-                })
+                    String rewriteQuery = "";
+
+                    return Mono.fromRunnable(() ->
+                                    chatHistoryModuleService.updateChatDetail(
+                                            chatId,
+                                            chatDetailEntity.getMsgId(),
+                                            rewriteQuery,
+                                            answer,
+                                            Collections.emptyList()
+                                    ))
+                            .then()
+                            .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                                    chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
+                            }));
+                });
+
+        Flux<StreamEvent> streamFlux = answerFlux
+                .concatWith(chatHistoryMono.then(Mono.empty()))
                 .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
                 .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable));
 
         return QuestionVO.builder()
-                .answerStream(answerStream)
+                .streamFlux(streamFlux)
                 .msgId(chatDetailEntity.getMsgId())
                 .build();
     }

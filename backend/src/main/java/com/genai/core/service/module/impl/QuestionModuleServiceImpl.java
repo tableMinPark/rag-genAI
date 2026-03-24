@@ -63,11 +63,10 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
      *
      * @param query         질의
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 재작성 질의
      */
     @Override
-    public Mono<String> rewriteQuery(String query, List<ConversationVO> conversations, String sessionId) {
+    public Mono<String> generateRewriteQuery(String query, List<ConversationVO> conversations) {
 
         if (conversations.isEmpty()) {
             return Mono.just(query);
@@ -80,7 +79,7 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                 .build();
 
         return Mono.just(conversations)
-                .flatMap(targetConversions -> modelRepository.generateAnswerAsync(query, null, null, targetConversions, sessionId, promptEntity))
+                .flatMap(targetConversions -> modelRepository.generateAnswerAsync(query, null, null, targetConversions, promptEntity))
                 .map(answerEntities -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answerEntities.forEach(answerEntity -> {
@@ -98,11 +97,10 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
      *
      * @param query         질의문
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 대화 상태 요약
      */
     @Override
-    public Mono<String> summaryState(String query, List<ConversationVO> conversations, String sessionId) {
+    public Mono<String> generateChatState(String query, List<ConversationVO> conversations) {
 
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(QuestionModuleConst.CHAT_STATE_UPDATE_PROMPT)
@@ -110,7 +108,7 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                 .topP(QuestionModuleConst.CHAT_STATE_UPDATE_TOP_P)
                 .build();
 
-        return modelRepository.generateAnswerAsync(query, null, null, conversations, sessionId, promptEntity)
+        return modelRepository.generateAnswerAsync(query, null, null, conversations, promptEntity)
                 .map(answerEntities -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answerEntities.forEach(answerEntity -> {
@@ -118,7 +116,7 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                             answerBuilder.append(answerEntity.getContent());
                         }
                     });
-                    return answerBuilder.toString().trim();
+                    return answerBuilder.toString().trim().replace("\n", "");
                 });
     }
 
@@ -128,11 +126,10 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
      * @param query         질의문
      * @param chatState     이전 대화 상태 (주제)
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 ID
      * @return 멀티턴 참고 대화 이력 목록
      */
     @Override
-    public Mono<MultiturnConversationVO> validMultiturn(String query, String chatState, List<ConversationVO> conversations, String sessionId) {
+    public Mono<MultiturnConversationVO> validMultiturn(String query, String chatState, List<ConversationVO> conversations) {
 
         if (conversations.isEmpty()) {
             return Mono.just(MultiturnConversationVO.builder()
@@ -150,7 +147,7 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
         String context = "Current Query:\n" + query;
 
         return Mono.just(conversations)
-                .flatMap(targetConversions -> modelRepository.generateAnswerAsync(null, context, chatState, targetConversions, sessionId, promptEntity))
+                .flatMap(targetConversions -> modelRepository.generateAnswerAsync(null, context, chatState, targetConversions, promptEntity))
                 .map(answerEntities -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answerEntities.forEach(answerEntity -> {

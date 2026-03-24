@@ -55,4 +55,12 @@ public class StreamEvent {
                 .event(StreamCoreConst.Event.ANSWER)
                 .build();
     }
+
+    public static <T> StreamEvent reference(String id, T content) {
+        return StreamEvent.builder()
+                .id(id)
+                .content(content instanceof String con  ? con : StringUtil.writeJson(content))
+                .event(StreamCoreConst.Event.REFERENCE)
+                .build();
+    }
 }

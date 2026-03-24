@@ -1,5 +1,10 @@
 package com.genai.core.service.business.impl;
 
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.utils.HtmlUtil;
+import com.genai.common.utils.StringUtil;
+import com.genai.common.vo.UploadFileVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
@@ -17,10 +22,6 @@ import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
-import com.genai.common.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -54,13 +55,13 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param files         문서 파일
-     * @param sessionId     사용자 ID
+     * @param userId     사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
     @Transactional
     @Override
-    public ReportVO generateReport(String reportTitle, String promptContext, MultipartFile[] files, String sessionId, long chatId) {
+    public ReportVO generateReport(String reportTitle, String promptContext, MultipartFile[] files, String userId, long chatId) {
 
         List<String> contents = new ArrayList<>();
 
@@ -81,7 +82,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
 
         contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
 
-        return this.generateReport(reportTitle, promptContext, contents, sessionId, chatId);
+        return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
     }
 
     /**
@@ -90,13 +91,13 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param content       참고 문서
-     * @param sessionId     사용자 ID
+     * @param userId     사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
     @Transactional
     @Override
-    public ReportVO generateReport(String reportTitle, String promptContext, String content, String sessionId, long chatId) {
+    public ReportVO generateReport(String reportTitle, String promptContext, String content, String userId, long chatId) {
 
         int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
@@ -107,7 +108,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
 
         contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
 
-        return this.generateReport(reportTitle, promptContext, contents, sessionId, chatId);
+        return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
     }
 
     /**
@@ -116,21 +117,21 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param contents      참고 문서
-     * @param sessionId     사용자 ID
+     * @param userId     사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
     @Transactional
     @Override
-    public ReportVO generateReport(String reportTitle, String promptContext, List<String> contents, String sessionId, long chatId) {
+    public ReportVO generateReport(String reportTitle, String promptContext, List<String> contents, String userId, long chatId) {
 
         String query = String.format("""
-                > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
-                # 보고서 제목
-                %s
-                # 보고서 생성 참고 사항
-                %s
-                """, reportTitle, promptContext);
+        > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
+        # 보고서 제목
+        %s
+        # 보고서 생성 참고 사항
+        %s
+        """, reportTitle, promptContext);
 
         PromptEntity promptEntity = promptRepository.findById(PromptConst.REPORT_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
@@ -152,28 +153,28 @@ public class ReportCoreServiceImpl implements ReportCoreService {
             float interval = 1f / (contents.size() + 1);
 
             Disposable disposable = Flux.fromIterable(contents)
-                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                             .progress(Math.min(progressAtomic.get(), 1f))
                             .message("부분 요약 시작")
                             .build())))
                     .buffer(ReportCoreConst.CHUNK_PART_BATCH_SIZE)
                     .concatMap(batch -> Flux.fromIterable(batch)
-                            .flatMapSequential(content -> summaryModuleService.partSummary(content)
-                                    .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .flatMapSequential(content -> summaryModuleService.partExport(content)
+                                    .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                             .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                             .message("부분 요약 진행중")
                                             .build()))), ReportCoreConst.CHUNK_PART_BATCH_SIZE))
                     .collectList()
-                    .flatMap(partSummaries -> summaryModuleService.wholeSummaries(partSummaries)
-                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                    .flatMap(partSummaries -> summaryModuleService.partExportSummary(partSummaries)
+                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                     .progress(Math.min(progressAtomic.get(), 1f))
                                     .message("전체 요약 시작")
                                     .build())))
-                            .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                     .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                     .message("전체 요약 완료")
                                     .build()))))
-                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
+                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), promptEntity))
                     .doOnNext(answerEntity -> {
                         if (answerEntity.getIsInference()) {
                             answerAccumulator.append(answerEntity.getContent());

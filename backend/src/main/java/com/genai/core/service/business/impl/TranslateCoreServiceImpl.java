@@ -5,14 +5,13 @@ import com.genai.common.utils.ExtractUtil;
 import com.genai.common.utils.FileUtil;
 import com.genai.common.utils.HtmlUtil;
 import com.genai.common.vo.UploadFileVO;
+import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.DictionaryRepository;
-import com.genai.core.repository.entity.AnswerEntity;
-import com.genai.core.repository.entity.ChatDetailEntity;
-import com.genai.core.repository.entity.ChatEntity;
-import com.genai.core.repository.entity.DictionaryEntity;
+import com.genai.core.repository.PromptRepository;
+import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.TranslateCoreService;
 import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.constant.TranslateCoreConst;
@@ -44,13 +43,13 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final ChatRepository chatRepository;
     private final ChatDetailRepository chatDetailRepository;
     private final DictionaryRepository dictionaryRepository;
+    private final PromptRepository promptRepository;
     private final TranslateModuleService translateModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
 
     /**
      * 파일 번역
      *
-     * @param beforeLang 원문 언어 코드
      * @param afterLang  번역 언어 코드
      * @param file       문서 파일
      * @param sessionId  세션 ID
@@ -59,7 +58,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
      * @return 번역 결과 문자열
      */
     @Override
-    public TranslateVO translate(String beforeLang, String afterLang, MultipartFile file, String sessionId, long chatId, boolean containDic) {
+    public TranslateVO translate(String afterLang, MultipartFile file, String sessionId, long chatId, boolean containDic) {
 
         List<String> contents = new ArrayList<>();
 
@@ -81,13 +80,12 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
             contents.add(contentBuilder.toString().trim());
         }
 
-        return this.translate(beforeLang, afterLang, contents, sessionId, chatId, containDic);
+        return this.translate(afterLang, contents, sessionId, chatId, containDic);
     }
 
     /**
      * 텍스트 번역
      *
-     * @param beforeLang 원문 언어 코드
      * @param afterLang  번역 언어 코드
      * @param content    사용자 입력 텍스트
      * @param sessionId  세션 ID
@@ -95,7 +93,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
      * @return 번역 결과 문자열
      */
     @Override
-    public TranslateVO translate(String beforeLang, String afterLang, String content, String sessionId, long chatId, boolean containDic) {
+    public TranslateVO translate(String afterLang, String content, String sessionId, long chatId, boolean containDic) {
 
         List<String> contents = new ArrayList<>();
 
@@ -112,13 +110,12 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
             contents.add(contentBuilder.toString().trim());
         }
 
-        return this.translate(beforeLang, afterLang, contents, sessionId, chatId, containDic);
+        return this.translate(afterLang, contents, sessionId, chatId, containDic);
     }
 
     /**
      * 텍스트 번역
      *
-     * @param beforeLang 원문 언어 코드
      * @param afterLang  번역 언어 코드
      * @param contents   사용자 입력 텍스트 목록
      * @param sessionId  세션 ID
@@ -126,7 +123,13 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
      * @return 번역 결과 문자열
      */
     @Override
-    public TranslateVO translate(String beforeLang, String afterLang, List<String> contents, String sessionId, long chatId, boolean containDic) {
+    public TranslateVO translate(String afterLang, List<String> contents, String sessionId, long chatId, boolean containDic) {
+
+        String translateInfo = String.format("""
+        # 번역 처리 정보
+        - 번역 대상 언어: %s
+        - 사전 사용 여부: %b
+        """, afterLang, containDic);
 
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
@@ -134,8 +137,11 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
         // 답변 이력 생성
         ChatDetailEntity chatDetailEntity = chatDetailRepository.save(ChatDetailEntity.builder()
                 .chatId(chatEntity.getChatId())
-                .query(String.format("Translate %s to %s", beforeLang, afterLang))
+                .query(translateInfo)
                 .build());
+
+        PromptEntity promptEntity = promptRepository.findById(PromptConst.TRANSLATE_PROMPT_ID)
+                .orElseThrow(() -> new NotFoundException("프롬프트"));
 
         // 사전 색인 생성
         AhoCorasick ahoCorasick = new AhoCorasick();
@@ -187,7 +193,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                                     }
                                 }
 
-                                return translateModuleService.partTranslate(beforeLang, afterLang, content, dictionaryContent)
+                                return translateModuleService.partTranslate(translateInfo, content, dictionaryContent, promptEntity)
                                         .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
                                                 .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                                 .message("부분 번역 진행중")

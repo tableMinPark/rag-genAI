@@ -1,10 +1,10 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.service.business.StreamCoreService;
-import com.genai.core.service.business.subscriber.StreamSubscriber;
+import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.subscriber.Stream;
+import com.genai.core.service.business.subscriber.StreamSubscriber;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class StreamCoreServiceImpl implements StreamCoreService {
 
         streamMap.put(streamId, streamSubscriber);
 
-        log.info("스트림 등록 : {} | ({})", streamId, streamMap.size());
+        log.info("[{}] " + String.format("%-20s", "Stream create") + " | stream queue size: {}", streamId, streamMap.size());
 
         return streamSubscriber;
     }
@@ -59,7 +59,7 @@ public class StreamCoreServiceImpl implements StreamCoreService {
     @Override
     public StreamSubscriber getStream(String streamId) {
         if (streamMap.containsKey(streamId)) {
-            log.info("스트림 조회 : {} | ({})", streamId, streamMap.size());
+            log.info("[{}] " + String.format("%-20s", "Stream get") + " | stream queue size: {}", streamId, streamMap.size());
             return streamMap.get(streamId);
         }
 
@@ -77,7 +77,7 @@ public class StreamCoreServiceImpl implements StreamCoreService {
             streamMap.get(streamId).cancelStream();
             streamMap.remove(streamId);
 
-            log.info("스트림 삭제 : {} | ({})", streamId, streamMap.size());
+            log.info("[{}] " + String.format("%-20s", "Stream delete") + " | stream queue size: {}", streamId, streamMap.size());
         }
     }
 }

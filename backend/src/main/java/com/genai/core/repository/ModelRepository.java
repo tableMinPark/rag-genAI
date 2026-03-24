@@ -14,26 +14,14 @@ public interface ModelRepository {
     /**
      * 답변 생성 요청
      *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
-    String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity);
-
-    /**
-     * 답변 생성 요청
-     *
      * @param query         질의문
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @return 답변 엔티티 목록
      */
-    List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
+    List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity);
 
     /**
      * 답변 생성 요청
@@ -42,11 +30,10 @@ public interface ModelRepository {
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @return 답변 엔티티 목록 Mono
      */
-    Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
+    Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity);
 
     /**
      * 답변 생성 요청
@@ -55,22 +42,10 @@ public interface ModelRepository {
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @return 답변 엔티티 Flux
      */
-    Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity);
-
-    /**
-     * 답변 생성 요청
-     *
-     * @param query        질의문
-     * @param context      검색 결과 데이터
-     * @param sessionId    세션 식별자
-     * @param promptEntity 프롬 프트
-     * @return 답변 응답 문자열
-     */
-    String generateAnswerSyncStr(String query, String context, String sessionId, PromptEntity promptEntity, LlmType llmType);
+    Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity);
 
     /**
      * 답변 생성 요청
@@ -79,12 +54,11 @@ public interface ModelRepository {
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @param llmType       LLM 타입
      * @return 답변 엔티티 목록
      */
-    List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType);
+    List<AnswerEntity> generateAnswerSync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity, LlmType llmType);
 
     /**
      * 답변 생성 요청
@@ -93,12 +67,11 @@ public interface ModelRepository {
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @param llmType       LLM 타입
      * @return 답변 엔티티 목록 Mono
      */
-    Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType);
+    Mono<List<AnswerEntity>> generateAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity, LlmType llmType);
 
     /**
      * 답변 생성 요청
@@ -107,10 +80,9 @@ public interface ModelRepository {
      * @param context       검색 결과 데이터
      * @param chatState     대화 상태
      * @param conversations 대화 이력 목록
-     * @param sessionId     세션 식별자
      * @param promptEntity  프롬 프트
      * @param llmType       LLM 타입
      * @return 답변 엔티티 Flux
      */
-    Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, String sessionId, PromptEntity promptEntity, LlmType llmType);
+    Flux<AnswerEntity> generateStreamAnswerAsync(String query, String context, String chatState, List<ConversationVO> conversations, PromptEntity promptEntity, LlmType llmType);
 }

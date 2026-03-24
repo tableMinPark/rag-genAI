@@ -18,9 +18,6 @@ public class TranslateFileRequestDto {
     private String sessionId;
 
     @NotBlank
-    private String beforeLang;
-
-    @NotBlank
     private String afterLang;
 
     @NotNull

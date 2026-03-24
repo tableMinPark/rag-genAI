@@ -4,11 +4,13 @@ import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
+import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.TranslateModuleService;
-import com.genai.common.utils.StringUtil;
+import com.genai.core.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -18,40 +20,35 @@ import reactor.core.scheduler.Schedulers;
 public class TranslateModuleServiceImpl implements TranslateModuleService {
 
     private final ModelRepository modelRepository;
-    private final PromptRepository promptRepository;
 
     /**
      * 부분 번역
      *
-     * @param beforeLang 원문 언어
-     * @param afterLang  번역 언어
-     * @param content    본문 분리 부분 문자열
-     * @return 부분 번역 Mono
-     */
-    @Override
-    public Mono<String> partTranslate(String beforeLang, String afterLang, String content) {
-        return this.partTranslate(beforeLang, afterLang, content, "");
-    }
-
-    /**
-     * 부분 번역
-     *
-     * @param beforeLang 원문 언어
-     * @param afterLang  번역 언어
+     * @param translateInfo  번역 정보
      * @param content    본문 분리 부분 문자열
      * @param dictionary 사전 문자열
+     * @param promptEntity 번역 프롬프트
      * @return 부분 번역 Mono
      */
     @Override
-    public Mono<String> partTranslate(String beforeLang, String afterLang, String content, String dictionary) {
-        return Mono.fromCallable(() -> promptRepository.findById(PromptConst.TRANSLATE_PROMPT_ID)
-                        .orElseThrow(() -> new NotFoundException("프롬프트")))
-                .map(promptEntity -> {
-                    String query = String.format("Translate %s to %s\n\n%s", beforeLang, afterLang, dictionary).trim();
-                    log.info("부분 번역 | {}", content.replace("\n", "\\n"));
-                    String partTranslate = modelRepository.generateAnswerSyncStr(query, content, StringUtil.generateRandomId(), promptEntity);
-                    return partTranslate + "\n";
+    public Mono<String> partTranslate(String translateInfo, String content, String dictionary, PromptEntity promptEntity) {
+
+        PromptEntity translatePromptEntity = promptEntity.copy()
+                .concatPromptContent(translateInfo)
+                .concatPromptContent(dictionary);
+
+        return modelRepository.generateAnswerAsync(null, content, null, null, translatePromptEntity)
+                .map(answerEntities -> {
+                    StringBuilder answerBuilder = new StringBuilder();
+                    answerEntities.forEach(answerEntity -> {
+                        if (!answerEntity.getIsInference()) {
+                            answerBuilder.append(answerEntity.getContent());
+                        }
+                    });
+                    return answerBuilder.toString().trim();
                 })
-                .subscribeOn(Schedulers.boundedElastic());
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PART_TRANSLATE_MESSAGE, v -> new Object[]{
+                        content.replace("\n", "\\n"), v.replace("\n", "\\n")
+                }));
     }
 }

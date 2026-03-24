@@ -41,8 +41,6 @@ public class LlmModelConfig {
     public Map<LlmType, List<LlmInstance>> llmInstanceMap() {
         AtomicInteger indexAtomic = new AtomicInteger(0);
 
-        log.info("LLM Instance : {}", instances.size());
-
         Map<LlmType, List<LlmInstance>> llmInstanceMap = new ConcurrentHashMap<>();
 
         Arrays.stream(LlmType.values()).forEach(llmType -> llmInstanceMap.put(llmType, new ArrayList<>()));
@@ -80,7 +78,6 @@ public class LlmModelConfig {
                             .platformType(platformType)
                             .llmInstanceProperty(llmInstanceProperty)
                             .webClient(webClient)
-                            .sessionCount(llmInstanceProperty.getSessionCount())
                             .build());
 
                     llmInstanceMap.put(llmType, llmInstance);

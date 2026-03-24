@@ -3,6 +3,7 @@ package com.genai.core.service.business.impl;
 import com.genai.common.utils.ExtractUtil;
 import com.genai.common.utils.FileUtil;
 import com.genai.common.utils.HtmlUtil;
+import com.genai.common.utils.StringUtil;
 import com.genai.common.vo.UploadFileVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
@@ -80,12 +81,12 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
      *
      * @param lengthRatio 요약 길이 비율
      * @param content     사용자 입력 텍스트
-     * @param sessionId   세션 ID
+     * @param userId   세션 ID
      * @param chatId      대화 정보 ID
      * @return 요약 결과 문자열
      */
     @Override
-    public SummaryVO summary(float lengthRatio, String content, String sessionId, long chatId) {
+    public SummaryVO summary(float lengthRatio, String content, String userId, long chatId) {
 
         int step = SummaryCoreConst.CHUNK_PART_TOKEN_SIZE - SummaryCoreConst.CHUNK_PART_OVERLAP_SIZE;
 
@@ -96,7 +97,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
 
         contents = contents.subList(0, Math.min(contents.size(), SummaryCoreConst.CHUNK_PART_MAX_COUNT));
 
-        return this.summary(lengthRatio, contents, sessionId, chatId);
+        return this.summary(lengthRatio, contents, userId, chatId);
     }
 
     /**
@@ -104,12 +105,12 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
      *
      * @param lengthRatio 요약 길이 비율
      * @param contents    사용자 입력 텍스트
-     * @param sessionId   세션 ID
+     * @param userId   세션 ID
      * @param chatId      대화 정보 ID
      * @return 요약 결과 문자열
      */
     @Override
-    public SummaryVO summary(float lengthRatio, List<String> contents, String sessionId, long chatId) {
+    public SummaryVO summary(float lengthRatio, List<String> contents, String userId, long chatId) {
 
         String query = String.format("길이 비율 값이 **%.2f** 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.", lengthRatio);
         String fullQuery = "길이 비율 값에 대한 설정은 무시하고, 컨텍스트의 문서를 요약 해줘.";
@@ -140,24 +141,24 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
             float interval = 1f / (contents.size() + 1);
 
             Mono<String> wholeSummaryMono = Flux.fromIterable(contents)
-                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                             .progress(Math.min(progressAtomic.get(), 1f))
                             .message("부분 요약 시작")
                             .build())))
                     .buffer(SummaryCoreConst.CHUNK_PART_BATCH_SIZE)
                     .concatMap(batch -> Flux.fromIterable(batch)
-                            .flatMapSequential(content -> summaryModuleService.partSummary(content)
-                                    .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .flatMapSequential(content -> summaryModuleService.partExport(content)
+                                    .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                             .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                             .message("부분 요약 진행중")
                                             .build()))), SummaryCoreConst.CHUNK_PART_BATCH_SIZE))
                     .collectList()
-                    .flatMap(partSummaries -> summaryModuleService.wholeSummaries(partSummaries)
-                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                    .flatMap(partSummaries -> summaryModuleService.partExportSummary(partSummaries)
+                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                     .progress(Math.min(progressAtomic.get(), 1f))
                                     .message("전체 요약 시작")
                                     .build())))
-                            .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
                                     .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
                                     .message("전체 요약 완료")
                                     .build()))))
@@ -165,7 +166,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
 
             // 간단 요약
             Flux<StreamEvent> summaryFlux = wholeSummaryMono
-                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
+                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), promptEntity))
                     .filter(answerEntity -> !answerEntity.getIsInference())
                     .doOnNext(answerEntity -> answerAccumulator.append(answerEntity.getContent()))
                     .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.ratio(answerEntity.getContent())))
@@ -173,7 +174,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
 
             // 상세 요약
             Flux<StreamEvent> fullSummaryFlux = wholeSummaryMono
-                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(fullQuery, wholeSummary, "", Collections.emptyList(), sessionId, promptEntity))
+                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(fullQuery, wholeSummary, "", Collections.emptyList(), promptEntity))
                     .filter(answerEntity -> !answerEntity.getIsInference())
                     .doOnNext(answerEntity -> fullAnswerAccumulator.append(answerEntity.getContent()))
                     .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.full(answerEntity.getContent())))

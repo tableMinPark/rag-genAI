@@ -15,11 +15,10 @@ public interface SearchRepository {
      * @param collectionType 컬렉션 타입
      * @param query          질의문
      * @param topK           top K
-     * @param sessionId      세션 식별자
      * @param aliases        필터 코드 목록
      * @return 키워드 검색 결과 목록
      */
-    <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, String sessionId, List<String> aliases);
+    <T extends DocumentEntity> List<Search<T>> keywordSearch(CollectionType collectionType, String query, int topK, List<String> aliases);
 
     /**
      * 벡터 검색 요청

@@ -63,17 +63,25 @@ public class PromptCoreServiceImpl implements PromptCoreService {
     public String generatePrompt(long promptId, String content) {
 
         String userInput = """
-                "## 답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성 해줘.
-                """;
+        "## 답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성 해줘.
+        """;
 
         String context = String.format("""
-                ## 답변 규칙
-                %s
-                """, content);
+        ## 답변 규칙
+        %s
+        """, content);
 
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
-        return modelRepository.generateAnswerSyncStr(userInput, context, StringUtil.generateRandomId(), promptEntity);
+        StringBuilder answerBuilder = new StringBuilder();
+
+        modelRepository.generateAnswerSync(userInput, context, null, null, promptEntity).forEach(answerEntity -> {
+            if (!answerEntity.getIsInference()) {
+                answerBuilder.append(answerEntity.getContent());
+            }
+        });
+
+        return answerBuilder.toString().trim();
     }
 }
