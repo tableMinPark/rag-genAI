@@ -221,7 +221,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .onErrorResume(ReactiveLogUtil.errorResume(ReactiveLogUtil.LLM_REQUEST_ERROR_MESSAGE, new Object[]{
                                 instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request)
                         }, Collections.emptyList())))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
                         instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                 }));
     }
@@ -288,7 +288,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                                     new AnswerEntity(id, answerBuilder.toString(), finishReason, false)
                             );
                         })
-                        .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
+                        .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
                                 instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                         })))
                 .then();

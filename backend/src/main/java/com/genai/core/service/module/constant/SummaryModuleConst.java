@@ -3,6 +3,7 @@ package com.genai.core.service.module.constant;
 public class SummaryModuleConst {
 
     // 부분 요약
+    public  static final int    PART_EXPORT_BATCH_SIZE      = 10;
     public  static final double PART_SUMMARY_TEMPERATURE    = 0.15;
     public  static final double PART_SUMMARY_TOP_P          = 0.85;
     private static final int    PART_SUMMARY_MAXIMUM_TOKENS = 1500;

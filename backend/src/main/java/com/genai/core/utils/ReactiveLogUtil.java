@@ -54,6 +54,20 @@ public class ReactiveLogUtil {
         };
     }
 
+    public static <T> Consumer<Signal<T>> debug(String message, Function<T, Object[]> mapper) {
+        return signal -> {
+            if (!signal.isOnNext()) return;
+
+            ContextView ctx = signal.getContextView();
+            String traceId = traceId(ctx);
+
+            T value = safeGet(signal);
+            Object[] args = mapper.apply(value);
+
+            log.debug("[{}] " + message, withTraceId(traceId, args));
+        };
+    }
+
     /* =========================
      * 에러 로그
      * ========================= */
@@ -196,8 +210,21 @@ public class ReactiveLogUtil {
 
     public static final String PART_EXPORT_MESSAGE = generateMessage(
             "Part content export",
-            "Content",
+            "Contents",
             "Part Export"
+    );
+
+    public static final String PART_EXPORT_RECURSIVE_MESSAGE = generateMessage(
+            "Part content export recursive",
+            "Round",
+            "Content Length",
+            "Content Size"
+    );
+
+    public static final String WHOLE_PART_EXPORT_MESSAGE = generateMessage(
+            "Whole part contents export",
+            "Contents",
+            "Whole Part Export"
     );
 
     public static final String PART_EXPORTS_SUMMARY_MESSAGE = generateMessage(

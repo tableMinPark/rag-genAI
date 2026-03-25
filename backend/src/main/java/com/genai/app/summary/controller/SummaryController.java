@@ -44,7 +44,7 @@ public class SummaryController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_SUMMARY).getChatId();
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, context, sessionId, chatId);
 
-        summaryVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(summaryVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_TEXT_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)
@@ -71,7 +71,7 @@ public class SummaryController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_SUMMARY).getChatId();
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, multipartFile, sessionId, chatId);
 
-        summaryVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(summaryVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.SUMMARY_GENERATE_FILE_SUCCESS.toResponseDto(SummaryResponseDto.builder()
                 .sessionId(sessionId)

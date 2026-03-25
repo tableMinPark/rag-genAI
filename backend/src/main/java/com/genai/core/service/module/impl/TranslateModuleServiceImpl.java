@@ -47,7 +47,7 @@ public class TranslateModuleServiceImpl implements TranslateModuleService {
                     });
                     return answerBuilder.toString().trim();
                 })
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PART_TRANSLATE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.PART_TRANSLATE_MESSAGE, v -> new Object[]{
                         content.replace("\n", "\\n"), v.replace("\n", "\\n")
                 }));
     }
