@@ -19,7 +19,6 @@ import com.genai.core.service.business.constant.ReportCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
-import com.genai.core.service.business.vo.SummaryResultVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.core.service.module.vo.PartExportContextVO;
@@ -177,7 +176,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), promptEntity))
                 .filter(answerEntity -> !answerEntity.getIsInference())
                 .doOnNext(answerEntity -> answerAccumulator.append(answerEntity.getContent()))
-                .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.ratio(answerEntity.getContent())));
+                .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), answerEntity.getContent()));
 
         Flux<StreamEvent> partExportProgressFlux = Flux.concat(
                 Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
