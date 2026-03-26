@@ -1,5 +1,7 @@
 package com.genai.core.service.module.impl;
 
+import com.genai.common.utils.StringUtil;
+import com.genai.common.vo.IndexedContentVO;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.SummaryModuleService;
@@ -9,10 +11,10 @@ import com.genai.core.service.module.vo.PartExportState;
 import com.genai.core.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,9 +51,10 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                     });
                     return answerBuilder.toString().trim();
                 })
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.PART_EXPORT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORT_MESSAGE, v -> new Object[]{
                         content.replace("\n", "\\n"), v.replace("\n", "\\n")
-                }));
+                }))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
@@ -65,7 +68,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
 
         Mono<List<String>> contentsMono = Mono.just(state.getContents())
                 .map(contents -> contents.stream().filter(content -> content != null && !content.trim().isBlank()).toList())
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PART_EXPORT_RECURSIVE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PART_EXPORT_RECURSIVE_MESSAGE, v -> new Object[]{
                         state.getRound(), state.getContentLength(), v.size()
                 }));
 
@@ -82,48 +85,39 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                                         state.getStateId(),
                                         state.finishProgress()
                                 ));
-                    });
+
+                    }).subscribeOn(Schedulers.boundedElastic());
         } else {
             return contentsMono
                     .flatMapMany(contents -> {
-                        AtomicInteger index = new AtomicInteger(0);
-
-                        List<Pair<Integer, String>> indexedContents = contents.stream()
-                                .map(content -> Pair.of(index.getAndIncrement(), content))
-                                .toList();
-
-                        Flux<Pair<Integer, String>> processFlux = Flux.fromIterable(indexedContents)
-                                .flatMap(pair -> partExport(pair.getSecond())
-                                        .map(partExport -> Pair.of(pair.getFirst(), partExport)), SummaryModuleConst.PART_EXPORT_BATCH_SIZE)
+                        Flux<IndexedContentVO> processFlux = Flux.fromIterable(StringUtil.indexingContent(contents))
+                                .flatMap(indexedContent -> partExport(indexedContent.getContent())
+                                        .map(partExport ->
+                                                new IndexedContentVO(indexedContent.getIndex(), indexedContent.getContent())), SummaryModuleConst.BATCH_SIZE)
                                 .cache();
 
-//                        Flux<Pair<Integer, String>> processFlux = Flux.fromIterable(contents)
-//                                .buffer(SummaryModuleConst.PART_EXPORT_BATCH_SIZE)
-//                                .concatMap(batch -> Flux.fromIterable(batch)
-//                                        .flatMapSequential(this::partExport, SummaryModuleConst.PART_EXPORT_BATCH_SIZE))
-//                                .map(content -> Pair.of(index.getAndIncrement(), content))
-//                                .cache();
-
                         Flux<PartExportContextVO> progressFlux = processFlux
-                                .map(pair -> PartExportContextVO.of(
-                                        pair.getFirst(),
+                                .map(indexedContent -> PartExportContextVO.of(
+                                        indexedContent.getIndex(),
                                         false,
-                                        pair.getSecond(),
+                                        indexedContent.getContent(),
                                         state.getStateId(),
                                         state.increaseProgress()
                                 ));
 
                         Flux<PartExportContextVO> nextFlux = processFlux
                                 .collectList()
-                                .flatMapMany(pairs -> {
-                                    PartExportState nextState = state.nextRound(pairs.stream().map(Pair::getSecond).toList());
+                                .flatMapMany(indexedContents -> {
+                                    PartExportState nextState = state.nextRound(indexedContents.stream()
+                                            .map(IndexedContentVO::getContent)
+                                            .toList());
 
                                     if (state.isFinished(nextState.getContentLength())) {
-                                        return Flux.fromIterable(pairs)
-                                                .map(pair -> PartExportContextVO.of(
-                                                        pair.getFirst(),
+                                        return Flux.fromIterable(indexedContents)
+                                                .map(indexedContent -> PartExportContextVO.of(
+                                                        indexedContent.getIndex(),
                                                         true,
-                                                        pair.getSecond(),
+                                                        indexedContent.getContent(),
                                                         state.getStateId(),
                                                         state.finishProgress()
                                                 ));
@@ -133,7 +127,8 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                                 });
 
                         return progressFlux.concatWith(nextFlux);
-                    });
+
+                    }).subscribeOn(Schedulers.boundedElastic());
         }
     }
 
@@ -165,16 +160,21 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
         return Mono.just(contentMergeBuilder.toString().trim())
                 .flatMap(contentMerge -> modelRepository.generateAnswerAsync(null, contentMerge, null, null, promptEntity))
                 .map(answerEntities -> {
+
                     StringBuilder answerBuilder = new StringBuilder();
+
                     answerEntities.forEach(answerEntity -> {
                         if (!answerEntity.getIsInference()) {
                             answerBuilder.append(answerEntity.getContent());
                         }
                     });
+
                     return answerBuilder.toString().trim();
+
                 })
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
                         contentMergeBuilder.toString().trim().replace("\n", "\\n"), v.replace("\n", "\\n")
-                }));
+                }))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 }

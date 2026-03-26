@@ -9,9 +9,9 @@ import java.util.List;
 
 public class StreamCoreConst {
 
-    public static final String CONNECT         = "connect";
-    public static final String DISCONNECT      = "disconnect";
-    public static final String EXCEPTION       = "exception";
+    public static final String CONNECT     = "connect";
+    public static final String DISCONNECT  = "disconnect";
+    public static final String EXCEPTION   = "exception";
 
     public static final List<Event> EVENT_STEP = Arrays.stream(Event.values())
             .sorted(Comparator.comparingInt(Event::getSort))

@@ -20,7 +20,9 @@ public class RerankRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Document {
+
         private String id;
+
         private String content;
     }
 }

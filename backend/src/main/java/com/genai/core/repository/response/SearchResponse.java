@@ -25,9 +25,12 @@ public class SearchResponse<T extends DocumentEntity> {
     private Result<T> result;
 
     public record Result<T extends DocumentEntity>(
+
         Total total,
+
         @JsonProperty("max_score")
         float maxScore,
+
         List<Search<T>> hits
     ) {
         public record Total(int value, String relation) {}

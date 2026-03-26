@@ -81,15 +81,20 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
         return Mono.just(conversations)
                 .flatMap(targetConversions -> modelRepository.generateAnswerAsync(query, null, null, targetConversions, promptEntity))
                 .map(answerEntities -> {
+
                     StringBuilder answerBuilder = new StringBuilder();
+
                     answerEntities.forEach(answerEntity -> {
                         if (!answerEntity.getIsInference()) {
                             answerBuilder.append(answerEntity.getContent());
                         }
                     });
+
                     return answerBuilder.toString().trim();
+
                 })
-                .map(rewriteQuery -> rewriteQuery.trim().isBlank() ? query : rewriteQuery);
+                .map(rewriteQuery -> rewriteQuery.trim().isBlank() ? query : rewriteQuery)
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
@@ -110,14 +115,18 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
 
         return modelRepository.generateAnswerAsync(query, null, null, conversations, promptEntity)
                 .map(answerEntities -> {
+
                     StringBuilder answerBuilder = new StringBuilder();
+
                     answerEntities.forEach(answerEntity -> {
                         if (!answerEntity.getIsInference()) {
                             answerBuilder.append(answerEntity.getContent());
                         }
                     });
+
                     return answerBuilder.toString().trim().replace("\n", "");
-                });
+
+                }).subscribeOn(Schedulers.boundedElastic());
     }
 
     /**
@@ -149,13 +158,17 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
         return Mono.just(conversations)
                 .flatMap(targetConversions -> modelRepository.generateAnswerAsync(null, context, chatState, targetConversions, promptEntity))
                 .map(answerEntities -> {
+
                     StringBuilder answerBuilder = new StringBuilder();
+
                     answerEntities.forEach(answerEntity -> {
                         if (!answerEntity.getIsInference()) {
                             answerBuilder.append(answerEntity.getContent());
                         }
                     });
+
                     return answerBuilder.toString().trim();
+
                 })
                 .map(answer -> {
                     try {
@@ -183,6 +196,6 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                                 .conversations(Collections.emptyList())
                                 .build();
                     }
-                });
+                }).subscribeOn(Schedulers.boundedElastic());
     }
 }

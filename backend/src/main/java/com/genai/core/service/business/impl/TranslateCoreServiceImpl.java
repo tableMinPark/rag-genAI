@@ -1,39 +1,30 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.common.utils.AhoCorasick;
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
+import com.genai.common.utils.*;
 import com.genai.common.vo.UploadFileVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
-import com.genai.core.repository.ChatDetailRepository;
-import com.genai.core.repository.ChatRepository;
-import com.genai.core.repository.DictionaryRepository;
-import com.genai.core.repository.PromptRepository;
+import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.TranslateCoreService;
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.constant.TranslateCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.TranslateModuleService;
+import com.genai.core.service.module.vo.PartTranslateContextVO;
+import com.genai.core.service.module.vo.PartTranslateState;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -46,6 +37,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     private final PromptRepository promptRepository;
     private final TranslateModuleService translateModuleService;
     private final ChatHistoryModuleService chatHistoryModuleService;
+    private final CommonCodeRepository commonCodeRepository;
 
     /**
      * 파일 번역
@@ -125,11 +117,14 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
     @Override
     public TranslateVO translate(String afterLang, List<String> contents, String sessionId, long chatId, boolean containDic) {
 
+        CommonCodeEntity afterLangCode = commonCodeRepository.findByCode(afterLang)
+                .orElseThrow(() -> new NotFoundException("번역 언어"));
+
         String translateInfo = String.format("""
         # 번역 처리 정보
         - 번역 대상 언어: %s
         - 사전 사용 여부: %b
-        """, afterLang, containDic);
+        """, afterLangCode.getCodeName(), containDic);
 
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
@@ -152,95 +147,86 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
             ahoCorasick.build();
         }
 
-        Flux<StreamEvent> answerStream = Flux.create(sink -> {
-            // 답변
-            StringBuilder answerAccumulator = new StringBuilder();
-            AtomicReference<Float> progressAtomic = new AtomicReference<>(0f);
-            float interval = 1f / contents.size();
+        // 답변
+        StringBuilder answerAccumulator = new StringBuilder();
+        PartTranslateState partTranslateState = PartTranslateState.init(StringUtil.indexingContent(contents));
 
-            Disposable disposable = Flux.fromIterable(contents)
-                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                            .progress(Math.min(progressAtomic.get(), 1f))
-                            .message("부분 번역 시작")
-                            .build())))
-                    .buffer(TranslateCoreConst.CHUNK_PART_BATCH_SIZE)
-                    .concatMap(batch -> Flux.fromIterable(batch)
-                            .flatMapSequential(content -> {
-                                String dictionaryContent = "";
+        Flux<PartTranslateContextVO> partTranslateFlux = Mono.just(partTranslateState)
+                        .flatMapMany(state -> Flux.fromIterable(state.getIndexedContents())
+                                .flatMap(indexedContent -> {
+                                    int index = indexedContent.getIndex();
+                                    String content = indexedContent.getContent();
+                                    String dictionaryContent = "";
 
-                                // 사전 목록 조회
-                                if (containDic) {
-                                    StringBuilder dictionaryContentBuilder = new StringBuilder();
-                                    Set<String> matchedWords = ahoCorasick.search(content.toLowerCase());
-                                    dictionaryEntities.stream()
-                                            .filter(dictionaryEntity -> matchedWords.contains(dictionaryEntity.getDictionary().toLowerCase()))
-                                            .filter(dictionaryEntity -> afterLang.equals(dictionaryEntity.getLanguage().getCode()))
-                                            .forEach(dictionaryEntity -> {
-                                                dictionaryContentBuilder
-                                                        .append("|")
-                                                        .append(dictionaryEntity.getDictionary())
-                                                        .append("|")
-                                                        .append(dictionaryEntity.getDictionaryDesc())
-                                                        .append("|\n");
-                                            });
+                                    // 사전 목록 조회
+                                    if (containDic) {
+                                        StringBuilder dictionaryContentBuilder = new StringBuilder();
+                                        Set<String> matchedWords = ahoCorasick.search(content.toLowerCase());
+                                        dictionaryEntities.stream()
+                                                .filter(dictionaryEntity -> matchedWords.contains(dictionaryEntity.getDictionary().toLowerCase()))
+                                                .filter(dictionaryEntity -> afterLang.equals(dictionaryEntity.getLanguage().getCode()))
+                                                .forEach(dictionaryEntity -> {
+                                                    dictionaryContentBuilder
+                                                            .append("|")
+                                                            .append(dictionaryEntity.getDictionary())
+                                                            .append("|")
+                                                            .append(dictionaryEntity.getDictionaryDesc())
+                                                            .append("|\n");
+                                                });
 
-                                    if (!dictionaryContentBuilder.isEmpty()) {
-                                        dictionaryContent = """
+                                        if (!dictionaryContentBuilder.isEmpty()) {
+                                            dictionaryContent = """
                                                 ## Reference Dictionary
                                                 |word|replace_word|
                                                 |---|---|
                                                 """ + dictionaryContentBuilder.toString().trim();
+                                        }
                                     }
-                                }
 
-                                return translateModuleService.partTranslate(translateInfo, content, dictionaryContent, promptEntity)
-                                        .doOnNext(s -> sink.next(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                                                .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
-                                                .message("부분 번역 진행중")
-                                                .build())));
+                                    return translateModuleService
+                                            .partTranslate(translateInfo, content, dictionaryContent, promptEntity)
+                                            .map(partTranslate -> PartTranslateContextVO.of(
+                                                    index,
+                                                    partTranslate,
+                                                    state.getStateId(),
+                                                    state.increaseProgress()
+                                            ));
 
-                            }, TranslateCoreConst.CHUNK_PART_BATCH_SIZE))
-                    .collectList()
-                    .flatMapMany(partTranslates -> Flux.fromIterable(partTranslates)
-                            .flatMapSequential(partTranslate ->
-                                    Flux.fromStream(partTranslate.codePoints().mapToObj(cp -> new String(Character.toChars(cp))))
-                                            .delayElements(Duration.ofMillis(1))
-                                            .map(content -> AnswerEntity.builder()
-                                                    .id(sessionId)
-                                                    .content(content)
-                                                    .finishReason(null)
-                                                    .isInference(false)
-                                                    .build())))
-                    .doOnNext(answerEntity -> {
-                        if (!answerEntity.getIsInference()) {
-                            answerAccumulator.append(answerEntity.getContent());
-                        }
-                    })
-                    .map(answerEntity -> StreamEvent.builder()
-                            .id(answerEntity.getId())
-                            .content(answerEntity.getContent())
-                            .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                            .build())
-                    .doOnNext(sink::next)
-                    .doOnComplete(() -> {
-                        // 대화 이력 업데이트
-                        chatHistoryModuleService.updateChatDetail(
-                                chatId,
-                                chatDetailEntity.getMsgId(),
-                                "",
-                                answerAccumulator.toString().trim(),
-                                Collections.emptyList()
-                        );
-                        sink.complete();
-                    })
-                    .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
-                    .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
-                    .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe();
+                                }, TranslateCoreConst.BATCH_SIZE))
+                .subscribeOn(Schedulers.boundedElastic())
+                .cache();
 
-            sink.onCancel(disposable);
-        });
+        Flux<StreamEvent> translateFlux = partTranslateFlux
+                .sort(Comparator.comparingInt(PartTranslateContextVO::getIndex))
+                .doOnNext(partTranslateContext -> answerAccumulator.append(partTranslateContext.getPartTranslate()))
+                .flatMapSequential(partTranslateContext ->
+                        Flux.fromStream(partTranslateContext.getPartTranslate().codePoints().mapToObj(cp -> new String(Character.toChars(cp))))
+                                .delayElements(Duration.ofMillis(1))
+                                .map(content -> StreamEvent.answer(partTranslateState.getStateId(), content))
+                );
+
+        Flux<StreamEvent> partTranslateProgressFlux = Flux.concat(
+                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
+                        .progress(0)
+                        .message("문서 전처리중")
+                        .build())),
+                partTranslateFlux.map(PartTranslateContextVO::getStreamEvent)
+        );
+
+        Flux<StreamEvent> answerStream = Flux.concat(partTranslateProgressFlux, translateFlux)
+                .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable))
+                .doOnComplete(() -> {
+                    // 대화 이력 업데이트
+                    chatHistoryModuleService.updateChatDetail(
+                            chatId,
+                            chatDetailEntity.getMsgId(),
+                            "",
+                            answerAccumulator.toString().trim(),
+                            Collections.emptyList()
+                    );
+                });
 
         return TranslateVO.builder()
                 .answerStream(answerStream)

@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Getter
@@ -39,7 +38,6 @@ public class LlmModelConfig {
 
     @Bean
     public Map<LlmType, List<LlmInstance>> llmInstanceMap() {
-        AtomicInteger indexAtomic = new AtomicInteger(0);
 
         Map<LlmType, List<LlmInstance>> llmInstanceMap = new ConcurrentHashMap<>();
 
@@ -82,14 +80,15 @@ public class LlmModelConfig {
 
                     llmInstanceMap.put(llmType, llmInstance);
 
-                    log.info("[{}] {} | {} | {} | {}:{}{}", indexAtomic.getAndIncrement(), instanceId, llmInstanceProperty.getSessionCount(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
+                    log.info("[model] {} | {} | {} | {}:{}{}", instanceId, llmInstanceProperty.getSessionCount(), platformType.name(), llmInstanceProperty.getHost(), llmInstanceProperty.getPort(), llmInstanceProperty.getPath());
                 });
 
         if (llmInstanceMap.isEmpty()) {
-            throw new IllegalStateException("LLM Instance is empty");
+            throw new IllegalStateException("[model] LLM Instance is empty");
         }
+
         if (llmInstanceMap.get(LlmType.DEFAULT) == null || llmInstanceMap.get(LlmType.DEFAULT).isEmpty()) {
-            throw new IllegalStateException("LLM Instance default is required");
+            throw new IllegalStateException("[model] LLM Instance default is required");
         }
 
         return llmInstanceMap;

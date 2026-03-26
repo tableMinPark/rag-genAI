@@ -156,7 +156,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                     return partAccumulator.toString().trim();
                 })
                 .map(wholePartExport -> wholePartExport.substring(0, Math.min(wholePartExport.length(), SummaryCoreConst.CHUNK_MAX_TOKEN_SIZE)))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
                         StringUtil.writeJson(contents), v.replace("\n", "\\n")
                 }))
                 .cache();

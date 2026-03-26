@@ -23,7 +23,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -108,7 +107,6 @@ public class CollectionRepositoryImpl implements CollectionRepository {
      * @param documentEntities 변환 대상 문서 목록
      * @return 변환 완료 문서 목록
      */
-    @Transactional
     @Override
     public List<DocumentEntity> convertVector(String collectionId, List<DocumentEntity> documentEntities) {
 
@@ -130,7 +128,7 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                 .onStatus(HttpStatus::isError, response ->
                         response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                 })
-                                .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
+                                .flatMap(errorBody -> Mono.error(new CollectionErrorException("벡터 변환 실패 (" + collectionId + ")")))
                 )
                 .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {
                 })
@@ -194,14 +192,14 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                     .onStatus(HttpStatus::isError, response ->
                             response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                     })
-                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
+                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException("데이터 색인 실패 (" + collectionId + ")")))
                     )
                     .bodyToMono(CreateIndexBulkResponse.class)
                     .blockOptional()
-                    .orElseThrow(() -> new CollectionErrorException(collectionId));
+                    .orElseThrow(() -> new CollectionErrorException("데이터 색인 실패 (" + collectionId + ")"));
 
             if (responseBody.getErrors()) {
-                throw new CollectionErrorException(collectionId);
+                throw new CollectionErrorException("데이터 색인 실패 (" + collectionId + ")");
             }
         }
     }
@@ -246,14 +244,14 @@ public class CollectionRepositoryImpl implements CollectionRepository {
                     .onStatus(HttpStatus::isError, response ->
                             response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                     })
-                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException(collectionId)))
+                                    .flatMap(errorBody -> Mono.error(new CollectionErrorException("데이터 색인 삭제 실패 (" + collectionId + ")")))
                     )
                     .bodyToMono(DeleteIndexBulkResponse.class)
                     .blockOptional()
-                    .orElseThrow(() -> new CollectionErrorException(collectionId));
+                    .orElseThrow(() -> new CollectionErrorException("데이터 색인 삭제 실패 (" + collectionId + ")"));
 
             if (responseBody.getErrors()) {
-                throw new CollectionErrorException(collectionId);
+                throw new CollectionErrorException("데이터 색인 삭제 실패 (" + collectionId + ")");
             }
         }
     }

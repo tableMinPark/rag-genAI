@@ -47,7 +47,7 @@ public class ReportController {
         long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, content, sessionId, chatId);
 
-        reportVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)
@@ -74,7 +74,7 @@ public class ReportController {
         long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFiles, sessionId, chatId);
 
-        reportVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()
                 .sessionId(sessionId)

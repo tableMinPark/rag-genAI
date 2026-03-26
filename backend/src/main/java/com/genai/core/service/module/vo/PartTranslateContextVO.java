@@ -11,24 +11,21 @@ import lombok.ToString;
 @Builder
 @Getter
 @AllArgsConstructor
-public class PartExportContextVO {
+public class PartTranslateContextVO {
 
     private final int index;
 
-    private final boolean isLast;
-
-    private final String partExport;
+    private final String partTranslate;
 
     private final StreamEvent streamEvent;
 
-    public static PartExportContextVO of(int index, boolean isLast, String partExport, String stateId, float progress) {
-        return PartExportContextVO.builder()
+    public static PartTranslateContextVO of(int index, String partTranslate, String stateId, float progress) {
+        return PartTranslateContextVO.builder()
                 .index(index)
-                .isLast(isLast)
-                .partExport(partExport)
+                .partTranslate(partTranslate)
                 .streamEvent(StreamEvent.prepare(stateId, PrepareVO.builder()
-                                .progress(progress)
-                                .message("문서 전처리중")
+                        .progress(progress)
+                        .message("문서 전처리중")
                         .build()))
                 .build();
     }

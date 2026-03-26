@@ -17,6 +17,7 @@ public class DeleteIndexBulkRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Delete {
+
         @JsonProperty("_id")
         private String id;
     }

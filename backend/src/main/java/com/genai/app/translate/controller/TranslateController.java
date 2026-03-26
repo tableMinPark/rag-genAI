@@ -51,7 +51,7 @@ public class TranslateController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, context, sessionId, chatId, containDic);
 
-        translateVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)
@@ -78,7 +78,7 @@ public class TranslateController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, multipartFile, sessionId, chatId, containDic);
 
-        translateVO.getAnswerStream().subscribe(streamCoreService.getStream(sessionId));
+        streamCoreService.getStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
 
         return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
                 .sessionId(sessionId)

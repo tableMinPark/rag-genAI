@@ -1,7 +1,12 @@
 package com.genai.core.exception;
 
 public class CollectionErrorException extends RuntimeException {
-    public CollectionErrorException(String modelType) {
-        super(modelType + " 컬렉션 작업에 실패했습니다.");
+
+    public CollectionErrorException(String message) {
+        super("컬렉션 작업중 오류가 발생했습니다. | " + message);
+    }
+
+    public CollectionErrorException(String message, Throwable throwable) {
+        super("컬렉션 작업중 오류가 발생했습니다. | " + message, throwable);
     }
 }

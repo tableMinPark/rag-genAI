@@ -1,7 +1,6 @@
 package com.genai.global.enums;
 
 public enum Menu {
-
     MENU_AI,
     MENU_LLM,
     MENU_MYAI,

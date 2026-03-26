@@ -21,10 +21,13 @@ public class DeleteIndexBulkResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Item {
+
         @JsonProperty("_id")
         private String id;
+
         @JsonProperty("status")
         private Integer status;
+
         @JsonProperty("error")
         private Map<String, Object> error;
     }

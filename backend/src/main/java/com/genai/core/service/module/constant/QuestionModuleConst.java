@@ -3,10 +3,9 @@ package com.genai.core.service.module.constant;
 public class QuestionModuleConst {
 
     // 질의 재정의 설정
-    public  static final double REWRITE_QUERY_TEMPERATURE    = 0.1;
-    public  static final double REWRITE_QUERY_TOP_P          = 0.9;
-    private static final int    REWRITE_QUERY_MAXIMUM_TOKENS = 512;
-    public  static final String REWRITE_QUERY_PROMPT         = String.format("""
+    public static final double REWRITE_QUERY_TEMPERATURE = 0.1;
+    public static final double REWRITE_QUERY_TOP_P       = 0.9;
+    public static final String REWRITE_QUERY_PROMPT      = """
     너는 멀티턴 RAG 시스템의 "질문 재작성기" 역할이다.
     
     목표:
@@ -21,13 +20,13 @@ public class QuestionModuleConst {
     5. 출력은 검색용 질문 문장만 포함할 것.
     6. 불필요한 수식어는 제거하고 명확하게 작성할 것.
     7. 출력에 설명, 이유, 판단, 번호, 불릿, 따옴표를 포함하지 말 것.
-    8. 출력 분량은 %d 토큰 이내로 작성하세요.
-    """, REWRITE_QUERY_MAXIMUM_TOKENS);
+    8. 출력 분량은 2,000자 이내로 작성하세요.
+    """;
 
     // 답변 상태 설정
-    public  static final double CHAT_STATE_UPDATE_TEMPERATURE    = 0.2;
-    public  static final double CHAT_STATE_UPDATE_TOP_P          = 0.9;
-    public  static final String CHAT_STATE_UPDATE_PROMPT = """
+    public static final double CHAT_STATE_UPDATE_TEMPERATURE = 0.2;
+    public static final double CHAT_STATE_UPDATE_TOP_P       = 0.9;
+    public static final String CHAT_STATE_UPDATE_PROMPT      = """
     당신의 역할은 하나의 대화 주제(topic)가 종료될 때
     해당 주제를 요약하여 장기 기억으로 저장할 수 있는 정보를 생성하는 것이다.
     
@@ -82,9 +81,9 @@ public class QuestionModuleConst {
     """;
 
     // 멀티턴 여부 판별 설정
-    public static final double VALID_MULTITURN_TEMPERATURE    = 0.1;
-    public static final double VALID_MULTITURN_TOP_P          = 0.9;
-    public static final String VALID_MULTITURN_PROMPT         = """
+    public static final double VALID_MULTITURN_TEMPERATURE = 0.1;
+    public static final double VALID_MULTITURN_TOP_P       = 0.9;
+    public static final String VALID_MULTITURN_PROMPT      = """
     당신의 역할은 현재 사용자 질의와 이전 대화 이력을 분석하여,
     현재 질문을 이해하는 데 필요한 이전 대화 이력을 선택하고
     현재 질문이 기존 대화 주제를 이어가는지 또는 새로운 주제인지 판단하는 것이다.

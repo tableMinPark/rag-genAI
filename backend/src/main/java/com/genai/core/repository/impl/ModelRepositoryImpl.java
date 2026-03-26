@@ -47,7 +47,10 @@ public class ModelRepositoryImpl implements ModelRepository {
                             ? LlmType.DEFAULT
                             : llmType;
 
+                    // LLM Instance 목록
                     List<LlmInstance> instances = new ArrayList<>(llmInstanceMap.get(finalLlmType));
+
+                    // 랜덤 섞기
                     Collections.shuffle(instances);
 
                     for (LlmInstance instance : instances) {
@@ -63,8 +66,9 @@ public class ModelRepositoryImpl implements ModelRepository {
                 })
                 .flatMap(Mono::justOrEmpty)
                 .repeatWhenEmpty(repeat -> repeat.delayElements(Duration.ofMillis(llmRetryProperty.getDelayMs())))
-                .timeout(Duration.ofMillis(llmRetryProperty.getTimeoutMs()), Mono.error(new ModelErrorException("LLM(" + llmRetryProperty.getTimeoutMs() + "ms) get llm instance max count reached.")))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.LLM_INSTANCE_TRY_ACQUIRE_MESSAGE, v -> new Object[]{
+                .timeout(Duration.ofMillis(llmRetryProperty.getTimeoutMs()),
+                        Mono.error(new ModelErrorException("LLM Instance 획득 실패 (" + llmRetryProperty.getTimeoutMs() + "ms)")))
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_INSTANCE_TRY_ACQUIRE_MESSAGE, v -> new Object[]{
                         v.instance().getInstanceId(), v.sessionCount()
                 }))
                 .map(LlmInstance.AcquireResult::instance);
@@ -77,7 +81,7 @@ public class ModelRepositoryImpl implements ModelRepository {
      */
     private Mono<Void> releaseInstance(String requestId, LlmInstance instance) {
         return Mono.fromCallable(() -> instance.release(requestId))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.LLM_INSTANCE_RELEASE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_INSTANCE_RELEASE_MESSAGE, v -> new Object[]{
                         instance.getInstanceId(), v
                 }))
                 .then();
@@ -215,13 +219,11 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .bodyValue(requestBody)
                         .retrieve() // exchangeToMono 대신 간결한 retrieve 사용
                         .onStatus(status -> !status.is2xxSuccessful(), response ->
-                                Mono.error(new ModelErrorException("LLM(" + llmInstanceProperty.getModelName() + ") API Error")))
+                                Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ")")))
                         .bodyToMono(String.class)
                         .map(json -> parseAnswerResponse(json, platformType, false))
-                        .onErrorResume(ReactiveLogUtil.errorResume(ReactiveLogUtil.LLM_REQUEST_ERROR_MESSAGE, new Object[]{
-                                instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request)
-                        }, Collections.emptyList())))
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
+                )
+                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
                         instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                 }));
     }
@@ -253,14 +255,13 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .header("Authorization", "Bearer " + llmInstanceProperty.getApiKey())
                         .bodyValue(requestBody)
                         .retrieve()
+                        .onStatus(status -> !status.is2xxSuccessful(), response ->
+                                Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ")")))
                         .bodyToFlux(String.class)
                         .mapNotNull(json -> json.replaceFirst("^data:", "").trim())
                         .filter(json -> !json.equals("[DONE]") && !json.isEmpty())
                         .flatMapIterable(json -> parseAnswerResponse(json, platformType, true))
-                        .onErrorResume(ReactiveLogUtil.fluxErrorResume(ReactiveLogUtil.LLM_REQUEST_ERROR_MESSAGE, new Object[]{
-                                        instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request)
-                                }, null)
-                        ))
+                )
                 .cache();
 
         // 스트림 로그 처리 Mono
@@ -288,7 +289,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                                     new AnswerEntity(id, answerBuilder.toString(), finishReason, false)
                             );
                         })
-                        .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
+                        .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
                                 instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                         })))
                 .then();

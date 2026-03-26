@@ -94,7 +94,7 @@ public class SearchRepositoryImpl implements SearchRepository {
 
         // 응답 체크
         if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-            throw new SearchErrorException("keyword/" + collectionType.getCollectionId());
+            throw new SearchErrorException("키워드 검색 실패 (" + collectionType.getCollectionId() + ")");
         }
 
         try {
@@ -103,13 +103,13 @@ public class SearchRepositoryImpl implements SearchRepository {
 
             // 응답 바디 체크
             if (responseBody == null) {
-                throw new SearchErrorException("keyword/" + collectionType.getCollectionId());
+                throw new SearchErrorException("키워드 검색 응답 바디 조회 실패 (" + collectionType.getCollectionId() + ")");
             }
 
             return responseBody.getResult().hits();
 
         } catch (JsonProcessingException e) {
-            throw new SearchErrorException("keyword/" + collectionType.getCollectionId());
+            throw new SearchErrorException("키워드 검색 응답 바디 변환 실패 (" + collectionType.getCollectionId() + ")");
         }
     }
 
@@ -139,12 +139,12 @@ public class SearchRepositoryImpl implements SearchRepository {
                 .onStatus(HttpStatus::isError, response ->
                         response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                                 })
-                                .flatMap(errorBody -> Mono.error(new SearchErrorException("vector/" + collectionType.getCollectionId())))
+                                .flatMap(errorBody -> Mono.error(new SearchErrorException("벡터 검색 실패 (" + collectionType.getCollectionId() + ")")))
                 )
                 .bodyToMono(new ParameterizedTypeReference<List<ConvertVectorVO>>() {
                 })
                 .blockOptional()
-                .orElseThrow(() -> new SearchErrorException("vector/" + collectionType.getCollectionId()))
+                .orElseThrow(() -> new SearchErrorException("벡터 검색 실패 (" + collectionType.getCollectionId() + ")"))
                 .getFirst();
 
         VectorSearchRequest vectorSearchRequest = VectorSearchRequest.builder()
@@ -167,7 +167,7 @@ public class SearchRepositoryImpl implements SearchRepository {
 
         // 응답 체크
         if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful() || responseEntity.getBody() == null) {
-            throw new SearchErrorException("vector/" + collectionType.getCollectionId());
+            throw new SearchErrorException("벡터 검색 실패 (" + collectionType.getCollectionId() + ")");
         }
 
         try {
@@ -176,13 +176,13 @@ public class SearchRepositoryImpl implements SearchRepository {
 
             // 응답 바디 체크
             if (responseBody == null) {
-                throw new SearchErrorException("vector/" + collectionType.getCollectionId());
+                throw new SearchErrorException("벡터 검색 응답 바디 조회 실패 (" + collectionType.getCollectionId() + ")");
             }
 
             return responseBody.getResult().hits();
 
         } catch (JsonProcessingException e) {
-            throw new SearchErrorException("vector/" + collectionType.getCollectionId());
+            throw new SearchErrorException("벡터 검색 응답 바디 변환 실패 (" + collectionType.getCollectionId() + ")");
         }
     }
 
@@ -220,14 +220,14 @@ public class SearchRepositoryImpl implements SearchRepository {
 
         // 응답 체크
         if (responseEntity == null || !responseEntity.getStatusCode().is2xxSuccessful()) {
-            throw new SearchErrorException("reranker");
+            throw new SearchErrorException("리랭킹 실패");
         }
 
         RerankResponse responseBody = responseEntity.getBody();
 
         // 응답 바디 체크
         if (responseBody == null) {
-            throw new SearchErrorException("reranker");
+            throw new SearchErrorException("리랭킹 응답 바디 조회 실패");
         }
 
         Map<Long, Rerank> documentMap = documents.stream()

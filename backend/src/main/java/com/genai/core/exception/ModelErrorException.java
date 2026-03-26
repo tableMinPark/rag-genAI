@@ -1,7 +1,8 @@
 package com.genai.core.exception;
 
 public class ModelErrorException extends RuntimeException {
-    public ModelErrorException(String modelType) {
-        super(modelType + " 모델 호출에 실패했습니다.");
+
+    public ModelErrorException(String message) {
+        super("모델 요청 처리중 오류가 발생했습니다 | " + message);
     }
 }

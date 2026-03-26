@@ -35,16 +35,18 @@ public class PromptEntity {
     @Comment("일관성")
     private Double topP;
 
-    public PromptEntity concatPromptContent(String promptContent) {
-        this.promptContent = this.promptContent + "\n\n" + promptContent;
-        return this;
-    }
+    public PromptEntity copyAndConcatPromptContent(String... promptContent) {
 
-    public PromptEntity copy() {
+        StringBuilder promptContentBuilder = new StringBuilder();
+
+        for (String content : promptContent) {
+            promptContentBuilder.append("\n\n").append(content);
+        }
+
         return PromptEntity.builder()
                 .promptId(this.promptId)
                 .promptName(this.promptName)
-                .promptContent(this.promptContent)
+                .promptContent(this.promptContent + "\n\n" + promptContentBuilder.toString().trim())
                 .temperature(this.temperature)
                 .topP(this.topP)
                 .build();

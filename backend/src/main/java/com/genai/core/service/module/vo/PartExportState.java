@@ -12,11 +12,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @Getter
 public class PartExportState {
 
-    private static final int[]  PART_MAX_TOKEN_SIZES = { 7000, 14000, Integer.MAX_VALUE };
-    public static final int    PART_INIT_TOKEN_SIZE = 7000;
-
-    private final int round;
-
     private final List<String> contents;
 
     private final int contentLength;
@@ -27,13 +22,18 @@ public class PartExportState {
 
     private final float interval;
 
+    private final int round;
+
+    public  static final int    PART_INIT_TOKEN_SIZE = 7000;
+    private static final int[]  PART_MAX_TOKEN_SIZES = { 7000, 14000, Integer.MAX_VALUE };
+
     @Builder
-    private PartExportState(int round, List<String> contents, String stateId, AtomicReference<Float> progressAtomic, float interval) {
-        this.round = round;
+    private PartExportState(List<String> contents, String stateId, AtomicReference<Float> progressAtomic, float interval, int round) {
         this.contents = contents;
         this.stateId = stateId;
         this.progressAtomic = progressAtomic;
         this.interval = interval;
+        this.round = round;
 
         int contentLength = 0;
         for (String content : contents) {

@@ -28,8 +28,8 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
      *
      * @param msgId 대화 상세 ID
      */
-    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Override
     public void deleteChatDetail(Long msgId) {
 
         ChatDetailEntity chatDetailEntity = chatDetailRepository.findById(msgId)
@@ -46,8 +46,8 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
      * @param answer              답변
      * @param chatPassageEntities 참고 문서 목록
      */
-    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Override
     public void updateChatDetail(Long chatId, Long chatDetailId, String rewriteQuery, String answer, List<ChatPassageEntity> chatPassageEntities) {
         // 답변 내용 업데이트
         ChatDetailEntity chatDetailEntity = chatDetailRepository.findById(chatDetailId)
@@ -69,8 +69,8 @@ public class ChatHistoryModuleServiceImpl implements ChatHistoryModuleService {
      * @param chatId    대화 ID
      * @param chatState 대화 상태
      */
-    @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Override
     public void updateChatState(Long chatId, String chatState) {
 
         // 상태 업데이트 (필요 시)

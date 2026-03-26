@@ -3,8 +3,10 @@ package com.genai.common.utils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.genai.common.vo.IndexedContentVO;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class StringUtil {
 
@@ -145,5 +147,13 @@ public class StringUtil {
         if (normA == 0 || normB == 0) return 0.0;
 
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    public static List<IndexedContentVO> indexingContent(List<String> contents) {
+        AtomicInteger index = new AtomicInteger(0);
+
+        return contents.stream()
+                .map(content -> new IndexedContentVO(index.getAndIncrement(), content))
+                .toList();
     }
 }

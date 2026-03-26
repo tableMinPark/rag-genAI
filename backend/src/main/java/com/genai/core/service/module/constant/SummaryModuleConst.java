@@ -3,11 +3,10 @@ package com.genai.core.service.module.constant;
 public class SummaryModuleConst {
 
     // 부분 요약
-    public  static final int    PART_EXPORT_BATCH_SIZE      = 10;
-    public  static final double PART_SUMMARY_TEMPERATURE    = 0.15;
-    public  static final double PART_SUMMARY_TOP_P          = 0.85;
-    private static final int    PART_SUMMARY_MAXIMUM_TOKENS = 1500;
-    public  static final String PART_SUMMARY_PROMPT = String.format("""
+    public  static final int    BATCH_SIZE               = 10;
+    public  static final double PART_SUMMARY_TEMPERATURE = 0.15;
+    public  static final double PART_SUMMARY_TOP_P       = 0.85;
+    public  static final String PART_SUMMARY_PROMPT      = """
     당신은 긴 문서를 부분적으로 요약하는 분석가입니다.
     
     아래 문서는 하나의 문서에서 분리된 일부입니다.
@@ -20,18 +19,17 @@ public class SummaryModuleConst {
     3. 이 부분만 보고 결론을 확정하지 마세요.
     4. 중복 가능성이 있는 표현도 제거하지 말고 유지하세요.
     5. 해석이나 평가를 추가하지 마세요.
-    6. 출력 분량은 %d 토큰 이내로 작성하세요.
+    6. 출력 분량은 1,500자 이내로 작성하세요.
     7. 중요도가 낮은 세부 설명은 제거하세요.
     
     ### 출력 형식
     - 이 부분의 핵심 내용 요약 (문단 또는 bullet)
-    """, PART_SUMMARY_MAXIMUM_TOKENS);
+    """;
 
     // 전체 요약
-    public  static final double WHOLE_SUMMARY_TEMPERATURE    = 0.15;
-    public  static final double WHOLE_SUMMARY_TOP_P          = 0.85;
-    private static final int    WHOLE_SUMMARY_MAXIMUM_TOKENS = 8192;
-    public  static final String WHOLE_SUMMARY_PROMPT = String.format("""
+    public  static final double WHOLE_SUMMARY_TEMPERATURE = 0.15;
+    public  static final double WHOLE_SUMMARY_TOP_P       = 0.85;
+    public  static final String WHOLE_SUMMARY_PROMPT      = """
     당신은 보고서 작성을 돕는 전문 분석가입니다.
     아래에 제공되는 여러 문서는 동일한 주제 또는 연관된 주제를 다루고 있습니다.
     
@@ -45,7 +43,7 @@ public class SummaryModuleConst {
     3. 중요하지 않은 예시, 반복 설명, 광고성 문구는 제거하세요.
     4. 추측이나 새로운 해석을 추가하지 말고 **문서에 근거한 내용만 사용**하세요.
     5. 정보가 부족한 부분은 임의로 보완하지 말고 그대로 생략하세요.
-    6. 출력 분량은 %d 토큰 이내로 작성하세요.
+    6. 출력 분량은 8,000자 이내로 작성하세요.
     7. 중요도가 낮은 세부 설명은 제거하세요.
     
     ### 출력 형식
@@ -71,5 +69,5 @@ public class SummaryModuleConst {
     ### 입력 문서
     아래 문서들을 종합하여 요약을 수행하세요.
     각 문서는 독립적인 정보 단위입니다.
-    """, WHOLE_SUMMARY_MAXIMUM_TOKENS);
+    """;
 }

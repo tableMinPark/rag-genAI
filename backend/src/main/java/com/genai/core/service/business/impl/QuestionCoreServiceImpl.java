@@ -105,19 +105,19 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
                 .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
                 .flatMap(conversations -> questionModuleService.generateRewriteQuery(query, conversations))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
                 .cache();
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
                 .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
                 }))
                 .cache();
@@ -148,7 +148,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                             return rerankEntities.subList(0, Math.min(QuestionCoreConst.RERANK_TOP_K, rerankEntities.size()));
 
                         }).subscribeOn(Schedulers.boundedElastic()))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.RERANK_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.RERANK_MESSAGE, v -> new Object[]{
                         StringUtil.writeJson(v)
                 }))
                 .cache();
@@ -163,7 +163,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .reranks(tuple.getT4())
                         .query(query)
                         .build())
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations()), StringUtil.writeJson(v.getMultiturnConversations()), v.getQuery(), v.getRewriteQuery(), StringUtil.writeJson(v.getReranks())
                 }))
                 .cache();
@@ -233,7 +233,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                     .build())
                             .toList();
                 })
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REFERENCE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.REFERENCE_MESSAGE, v -> new Object[]{
                         StringUtil.writeJson(v)
                 }))
                 .map(reranks -> StreamEvent.reference(StringUtil.generateRandomId(), StringUtil.writeJson(reranks)));
@@ -276,7 +276,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         );
                     })
                     .then()
-                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
                             chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
                     }));
         });
@@ -291,7 +291,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             // 대화 상태 요약 (대화 이력이 존재하고 멀티턴 대화 이력이 없는 경우)
             return multiturnConversations.isEmpty() || isChangeTopic
                     ? questionModuleService.generateChatState(rewriteQuery, conversations)
-                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_STATE_MESSAGE, v -> new Object[]{
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.CHAT_STATE_MESSAGE, v -> new Object[]{
                             chatId, v
                     }))
                     .flatMap(newChatState -> Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)))
@@ -342,19 +342,19 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
                 .cache();
 
         // 질의 재정의
         Mono<String> rewriteQueryMono = conversationMono
                 .flatMap(conversations -> questionModuleService.generateRewriteQuery(query, conversations))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.REWRITE_QUERY_MESSAGE, v -> new Object[]{v}))
                 .cache();
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
                 .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
                 }))
                 .cache();
@@ -369,7 +369,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                         .reranks(Collections.emptyList())
                         .query(query)
                         .build())
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.QUESTION_CONTEXT_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations()), StringUtil.writeJson(v.getMultiturnConversations()), v.getQuery(), v.getRewriteQuery(), StringUtil.writeJson(v.getReranks())
                 }))
                 .cache();
@@ -409,7 +409,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                             Collections.emptyList()
                     ))
                     .then()
-                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
                             chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
                     }));
         });
@@ -425,7 +425,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
             return !multiturnConversations.isEmpty() && !isChangeTopic
                     ? Mono.empty()
                     : questionModuleService.generateChatState(rewriteQuery, conversations)
-                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_STATE_MESSAGE, v -> new Object[]{
+                    .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.CHAT_STATE_MESSAGE, v -> new Object[]{
                             chatId, v
                     }))
                     .flatMap(newChatState -> Mono.fromRunnable(() -> chatHistoryModuleService.updateChatState(chatId, newChatState)));
@@ -509,7 +509,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                                             Collections.emptyList()
                                     ))
                             .then()
-                            .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
+                            .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.CHAT_HISTORY_SAVE_MESSAGE, v -> new Object[]{
                                     chatId, chatDetailEntity.getMsgId(), query, rewriteQuery, answer
                             }));
                 });

@@ -16,25 +16,27 @@ import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.ReportCoreService;
 import com.genai.core.service.business.constant.ReportCoreConst;
-import com.genai.core.service.business.constant.StreamCoreConst;
 import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
+import com.genai.core.service.business.vo.SummaryResultVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
+import com.genai.core.service.module.vo.PartExportContextVO;
+import com.genai.core.service.module.vo.PartExportState;
+import com.genai.core.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 
 @Slf4j
@@ -80,8 +82,6 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                     .toList());
         }
 
-        contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
-
         return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
     }
 
@@ -105,8 +105,6 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .limit((content.length() + step - 1) / step)
                 .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
                 .toList());
-
-        contents = contents.subList(0, Math.min(contents.size(), ReportCoreConst.CHUNK_PART_MAX_COUNT));
 
         return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
     }
@@ -145,66 +143,64 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .query(query)
                 .build());
 
-        Flux<StreamEvent> answerStream = Flux.create(sink -> {
+        // 답변
+        StringBuilder answerAccumulator = new StringBuilder();
 
-            // 답변
-            StringBuilder answerAccumulator = new StringBuilder();
-            AtomicReference<Float> progressAtomic = new AtomicReference<>(0f);
-            float interval = 1f / (contents.size() + 1);
+        Flux<PartExportContextVO> partExportFlux = summaryModuleService.partExport(PartExportState.init(contents)).cache();
 
-            Disposable disposable = Flux.fromIterable(contents)
-                    .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                            .progress(Math.min(progressAtomic.get(), 1f))
-                            .message("부분 요약 시작")
-                            .build())))
-                    .buffer(ReportCoreConst.CHUNK_PART_BATCH_SIZE)
-                    .concatMap(batch -> Flux.fromIterable(batch)
-                            .flatMapSequential(content -> summaryModuleService.partExport(content)
-                                    .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                                            .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
-                                            .message("부분 요약 진행중")
-                                            .build()))), ReportCoreConst.CHUNK_PART_BATCH_SIZE))
-                    .collectList()
-                    .flatMap(partSummaries -> summaryModuleService.partExportSummary(partSummaries)
-                            .doOnSubscribe(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                                    .progress(Math.min(progressAtomic.get(), 1f))
-                                    .message("전체 요약 시작")
-                                    .build())))
-                            .doOnNext(s -> sink.next(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                                    .progress(Math.min(progressAtomic.updateAndGet(progress -> progress + interval), 1f))
-                                    .message("전체 요약 완료")
-                                    .build()))))
-                    .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), promptEntity))
-                    .doOnNext(answerEntity -> {
-                        if (answerEntity.getIsInference()) {
-                            answerAccumulator.append(answerEntity.getContent());
+        Mono<String> wholePartExportMono = partExportFlux
+                .filter(PartExportContextVO::isLast)
+                .sort(Comparator.comparingInt(PartExportContextVO::getIndex))
+                .collectList()
+                .map(partExportContexts -> {
+                    StringBuilder partAccumulator = new StringBuilder();
+
+                    for (PartExportContextVO partExportContext : partExportContexts) {
+                        partAccumulator
+                                .append("# 핵심 부분 추출(").append(partExportContext.getIndex()).append(")\n")
+                                .append(partExportContext.getPartExport());
+
+                        if (partExportContext.getIndex() < partExportContexts.size() - 1) {
+                            partAccumulator.append("\n\n---\n\n");
                         }
-                    })
-                    .map(answerEntity -> StreamEvent.builder()
-                            .id(answerEntity.getId())
-                            .content(answerEntity.getContent())
-                            .event(answerEntity.getIsInference() ? StreamCoreConst.Event.INFERENCE : StreamCoreConst.Event.ANSWER)
-                            .build())
-                    .doOnNext(sink::next)
-                    .doOnComplete(() -> {
-                        // 대화 이력 업데이트
-                        chatHistoryModuleService.updateChatDetail(
-                                chatId,
-                                chatDetailEntity.getMsgId(),
-                                "",
-                                answerAccumulator.toString().trim(),
-                                Collections.emptyList()
-                        );
-                        sink.complete();
-                    })
-                    .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
-                    .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
-                    .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe();
+                    }
 
-            sink.onCancel(disposable);
-        });
+                    return partAccumulator.toString().trim();
+                })
+                .map(wholePartExport -> wholePartExport.substring(0, Math.min(wholePartExport.length(), ReportCoreConst.CHUNK_MAX_TOKEN_SIZE)))
+                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
+                        StringUtil.writeJson(contents), v.replace("\n", "\\n")
+                }))
+                .cache();
+
+        Flux<StreamEvent> reportFlux = wholePartExportMono
+                .flatMapMany(wholeSummary -> modelRepository.generateStreamAnswerAsync(query, wholeSummary, "", Collections.emptyList(), promptEntity))
+                .filter(answerEntity -> !answerEntity.getIsInference())
+                .doOnNext(answerEntity -> answerAccumulator.append(answerEntity.getContent()))
+                .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), SummaryResultVO.ratio(answerEntity.getContent())));
+
+        Flux<StreamEvent> partExportProgressFlux = Flux.concat(
+                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
+                        .progress(0)
+                        .message("문서 전처리중")
+                        .build())),
+                partExportFlux.map(PartExportContextVO::getStreamEvent)
+        );
+
+        Flux<StreamEvent> answerStream = Flux.concat(partExportProgressFlux, reportFlux)
+                .doOnCancel(() -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .doOnError(throwable -> chatHistoryModuleService.deleteChatDetail(chatDetailEntity.getMsgId()))
+                .onErrorMap(throwable -> new RuntimeException("스트림 처리 중 예외 발생", throwable))
+                .doOnComplete(() -> {
+                    // 대화 이력 업데이트
+                    chatHistoryModuleService.updateChatDetail(
+                            chatId,
+                            chatDetailEntity.getMsgId(),
+                            "",
+                            answerAccumulator.toString().trim(),
+                            Collections.emptyList()
+                    );
+                });
 
         return ReportVO.builder()
                 .chatId(chatEntity.getChatId())

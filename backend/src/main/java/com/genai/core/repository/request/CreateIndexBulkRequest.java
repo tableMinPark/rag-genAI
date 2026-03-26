@@ -17,8 +17,10 @@ public class CreateIndexBulkRequest {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Index {
+
         @JsonProperty("_index")
         private String collectionId;
+
         @JsonProperty("_id")
         private String id;
     }
