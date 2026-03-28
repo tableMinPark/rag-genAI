@@ -56,4 +56,8 @@ public class ChatEntity {
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "chat_id")
     private List<ChatDetailEntity> chatDetails;
+
+    public String getState() {
+        return state == null ? "" : state;
+    }
 }

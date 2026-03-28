@@ -10,6 +10,13 @@ public class AhoCorasick {
         List<String> outputs = new ArrayList<>();
     }
 
+    public static AhoCorasick init(List<String> words) {
+        AhoCorasick ahoCorasick = new AhoCorasick();
+        words.forEach(word -> ahoCorasick.insert(word.toLowerCase()));
+        ahoCorasick.build();
+        return ahoCorasick;
+    }
+
     private final AhoNode root = new AhoNode();
 
     public void insert(String word) {
@@ -19,6 +26,7 @@ public class AhoCorasick {
         }
         node.outputs.add(word);
     }
+
     public void build() {
         Queue<AhoNode> queue = new LinkedList<>();
 

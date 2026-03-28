@@ -1,6 +1,7 @@
 package com.genai.core.type;
 
 import com.genai.core.config.properties.LlmInstanceProperty;
+import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.request.OpenAIAnswerRequest;
 import com.genai.core.repository.request.VllmAnswerRequest;
 import com.genai.core.repository.response.AnswerResponse;
@@ -26,7 +27,7 @@ public enum LlmPlatformType {
 
     public Object request(
             LlmInstanceProperty llmInstanceProperty, Double temperature, Double topP, boolean stream,
-            String prompt, String query, String context, String chatState, List<ConversationVO> conversations
+            String prompt, String developer, String query, String context, String chatState, List<ConversationVO> conversations
     ) {
         return switch (this) {
             case VLLM -> VllmAnswerRequest.builder()
@@ -36,6 +37,7 @@ public enum LlmPlatformType {
                     .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmInstanceProperty, prompt, query, chatState, conversations, context))
                     .stream(stream)
                     .prompt(prompt)
+                    .developer(developer)
                     .chatState(chatState)
                     .conversations(conversations)
                     .context(context)
@@ -49,6 +51,7 @@ public enum LlmPlatformType {
                     .maxTokens(TokenCalculateUtil.calculateMaxTokens(llmInstanceProperty, prompt, query, chatState, conversations, context))
                     .stream(stream)
                     .prompt(prompt)
+                    .developer(developer)
                     .chatState(chatState)
                     .conversations(conversations)
                     .context(context)

@@ -5,7 +5,6 @@ import com.genai.common.utils.FileUtil;
 import com.genai.common.utils.HtmlUtil;
 import com.genai.common.utils.StringUtil;
 import com.genai.common.vo.UploadFileVO;
-import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
@@ -36,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.IntStream;
 
 @Slf4j
 @Service
@@ -56,7 +54,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param files         문서 파일
-     * @param userId     사용자 ID
+     * @param userId        사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
@@ -67,18 +65,12 @@ public class ReportCoreServiceImpl implements ReportCoreService {
         List<String> contents = new ArrayList<>();
 
         for (MultipartFile file : files) {
-
             UploadFileVO uploadFile = FileUtil.uploadFileTemp(file);
 
             String extractContent = ExtractUtil.extractText(uploadFile.getUrl(), uploadFile.getExt());
             String content = HtmlUtil.convertTableHtmlToMarkdown(extractContent);
 
-            int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
-
-            contents.addAll(IntStream.iterate(0, i -> i + step)
-                    .limit((content.length() + step - 1) / step)
-                    .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
-                    .toList());
+            contents.addAll(StringUtil.tokenize(content, ReportCoreConst.CHUNK_PART_TOKEN_SIZE));
         }
 
         return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
@@ -90,7 +82,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param content       참고 문서
-     * @param userId     사용자 ID
+     * @param userId        사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
@@ -98,12 +90,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     @Override
     public ReportVO generateReport(String reportTitle, String promptContext, String content, String userId, long chatId) {
 
-        int step = ReportCoreConst.CHUNK_PART_TOKEN_SIZE - ReportCoreConst.CHUNK_PART_OVERLAP_SIZE;
-
-        List<String> contents = new ArrayList<>(IntStream.iterate(0, i -> i + step)
-                .limit((content.length() + step - 1) / step)
-                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + ReportCoreConst.CHUNK_PART_TOKEN_SIZE)))
-                .toList());
+        List<String> contents = StringUtil.tokenize(content, ReportCoreConst.CHUNK_PART_TOKEN_SIZE);
 
         return this.generateReport(reportTitle, promptContext, contents, userId, chatId);
     }
@@ -114,7 +101,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
      * @param reportTitle   보고서 제목
      * @param promptContext 내용 (작성 시 요구 사항)
      * @param contents      참고 문서
-     * @param userId     사용자 ID
+     * @param userId        사용자 ID
      * @param chatId        대화 정보 ID
      * @return 보고서 문자열
      */
@@ -123,15 +110,16 @@ public class ReportCoreServiceImpl implements ReportCoreService {
     public ReportVO generateReport(String reportTitle, String promptContext, List<String> contents, String userId, long chatId) {
 
         String query = String.format("""
-        > 보고서 생성 참고 사항 및 보고서 제목, 컨텍스트를 기반으로 보고서 생성해줘
-        # 보고서 제목
-        %s
-        # 보고서 생성 참고 사항
-        %s
-        """, reportTitle, promptContext);
+                # 보고서 생성 참고 정보
+                - 보고서 제목: %s
+                """, reportTitle);
 
-        PromptEntity promptEntity = promptRepository.findById(PromptConst.REPORT_PROMPT_ID)
-                .orElseThrow(() -> new NotFoundException("프롬프트"));
+        PromptEntity promptEntity = PromptEntity.builder()
+                .promptContent(promptContext)
+                .temperature(ReportCoreConst.REPORT_TEMPERATURE)
+                .topP(ReportCoreConst.REPORT_TOP_P)
+                .build()
+                .copyAndConcatPromptContent(ReportCoreConst.REPORT_GENERATE_INFO_PROMPT(reportTitle));
 
         ChatEntity chatEntity = chatRepository.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("대화 이력"));
@@ -168,7 +156,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 })
                 .map(wholePartExport -> wholePartExport.substring(0, Math.min(wholePartExport.length(), ReportCoreConst.CHUNK_MAX_TOKEN_SIZE)))
                 .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
-                        StringUtil.writeJson(contents), v.replace("\n", "\\n")
+                        StringUtil.writeJson(contents), v
                 }))
                 .cache();
 

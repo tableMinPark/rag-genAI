@@ -208,7 +208,7 @@ public class ModelRepositoryImpl implements ModelRepository {
 
         Object request = platformType.request(
                 llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), false,
-                promptEntity.getPromptContent(), query, context, chatState, conversations);
+                promptEntity.getPromptContent(), promptEntity.getDeveloperPromptContent(), query, context, chatState, conversations);
 
         return Mono.just(request)
                 .flatMap(requestBody -> instance.getWebClient().post()
@@ -218,8 +218,9 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .header("Authorization", "Bearer " + llmInstanceProperty.getApiKey())
                         .bodyValue(requestBody)
                         .retrieve() // exchangeToMono 대신 간결한 retrieve 사용
-                        .onStatus(status -> !status.is2xxSuccessful(), response ->
-                                Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ")")))
+                        .onStatus(status -> !status.is2xxSuccessful(), response -> response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ") | " + body)))
+                        )
                         .bodyToMono(String.class)
                         .map(json -> parseAnswerResponse(json, platformType, false))
                 )
@@ -245,7 +246,7 @@ public class ModelRepositoryImpl implements ModelRepository {
 
         Object request = platformType.request(
                 llmInstanceProperty, promptEntity.getTemperature(), promptEntity.getTopP(), true,
-                promptEntity.getPromptContent(), query, context, chatState, conversations);
+                promptEntity.getPromptContent(), promptEntity.getDeveloperPromptContent(), query, context, chatState, conversations);
 
         Flux<AnswerEntity> answerEntityFlux = Mono.just(request)
                 .flatMapMany(requestBody -> instance.getWebClient().post()
@@ -255,8 +256,9 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .header("Authorization", "Bearer " + llmInstanceProperty.getApiKey())
                         .bodyValue(requestBody)
                         .retrieve()
-                        .onStatus(status -> !status.is2xxSuccessful(), response ->
-                                Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ")")))
+                        .onStatus(status -> !status.is2xxSuccessful(), response -> response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new ModelErrorException("모델 API 요청 실패 (" + response.statusCode() + ") | " + body)))
+                        )
                         .bodyToFlux(String.class)
                         .mapNotNull(json -> json.replaceFirst("^data:", "").trim())
                         .filter(json -> !json.equals("[DONE]") && !json.isEmpty())

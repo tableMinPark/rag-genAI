@@ -6,7 +6,6 @@ import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.PromptCoreService;
-import com.genai.common.utils.StringUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,21 +61,18 @@ public class PromptCoreServiceImpl implements PromptCoreService {
     @Override
     public String generatePrompt(long promptId, String content) {
 
-        String userInput = """
-        "## 답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성 해줘.
-        """;
-
-        String context = String.format("""
-        ## 답변 규칙
-        %s
-        """, content);
+        String query = String.format("""
+                "답변 규칙" 을 기반으로 사용자에게 적용될 시스템 프롬프트를 작성하라.
+                ## 답변 규칙
+                %s
+                """, content);
 
         PromptEntity promptEntity = promptRepository.findById(promptId)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
 
         StringBuilder answerBuilder = new StringBuilder();
 
-        modelRepository.generateAnswerSync(userInput, context, null, null, promptEntity).forEach(answerEntity -> {
+        modelRepository.generateAnswerSync(query, null, null, null, promptEntity).forEach(answerEntity -> {
             if (!answerEntity.getIsInference()) {
                 answerBuilder.append(answerEntity.getContent());
             }

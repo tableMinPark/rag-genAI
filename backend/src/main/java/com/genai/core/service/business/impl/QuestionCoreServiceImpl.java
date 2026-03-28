@@ -88,7 +88,8 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 시스템 프롬 프트 조회
         PromptEntity promptEntity = promptRepository.findById(promptId)
-                .orElseThrow(() -> new NotFoundException("프롬프트"));
+                .orElseThrow(() -> new NotFoundException("프롬프트"))
+                .setDeveloperPromptContent(QuestionCoreConst.INVALID_ANSWER_PROMPT);
 
         // 현재 대화 조회
         ChatEntity chatEntity = chatRepository.findById(chatId)
@@ -99,9 +100,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .chatId(chatEntity.getChatId())
                 .query(query)
                 .build());
-
-        // 이전 대화 요약 문자열
-        String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
 
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
@@ -116,7 +114,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
-                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
+                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatEntity.getState(), tuple.getT1()))
                 .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
                 }))
@@ -187,7 +185,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     }
 
                     // 답변 요청
-                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatState, multiturnConversations, promptEntity);
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, contextBuilder.toString().trim(), chatEntity.getState(), multiturnConversations, promptEntity);
                 })
                 .doOnNext(answerEntity -> {
                     if (!answerEntity.getIsInference()) {
@@ -337,9 +335,6 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                 .query(query)
                 .build());
 
-        // 이전 대화 요약 문자열
-        String chatState = chatEntity.getState() == null ? "" : chatEntity.getState();
-
         // 이전 대화 상세 내역
         Mono<List<ConversationVO>> conversationMono = questionModuleService.getConversations(chatId, QuestionCoreConst.MULTITURN_TURN_CONVERSATION_COUNT)
                 .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PREVIOUS_CONVERSATIONS_MESSAGE, v -> new Object[]{StringUtil.writeJson(v)}))
@@ -353,7 +348,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
 
         // 이전 대화 필터링 (멀티턴 대화 상세 목록)
         Mono<MultiturnConversationVO> multiturnConversationMono = Mono.zip(conversationMono, rewriteQueryMono)
-                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatState, tuple.getT1()))
+                .flatMap(tuple -> questionModuleService.validMultiturn(tuple.getT2(), chatEntity.getState(), tuple.getT1()))
                 .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.MULTITURN_CONVERSATIONS_MESSAGE, v -> new Object[]{
                         v.isChangeTopic(), StringUtil.writeJson(v.getConversations())
                 }))
@@ -383,7 +378,7 @@ public class QuestionCoreServiceImpl implements QuestionCoreService {
                     List<ConversationVO> multiturnConversations = ctx.getMultiturnConversations();
                     String rewriteQuery = ctx.getRewriteQuery();
 
-                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, null, chatState, multiturnConversations, promptEntity);
+                    return modelRepository.generateStreamAnswerAsync(rewriteQuery, null, chatEntity.getState(), multiturnConversations, promptEntity);
                 })
                 .doOnNext(answerEntity -> {
                     if (!answerEntity.getIsInference()) {

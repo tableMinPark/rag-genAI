@@ -149,11 +149,37 @@ public class StringUtil {
         return dot / (Math.sqrt(normA) * Math.sqrt(normB));
     }
 
+    /**
+     * 인덱싱 본문 생성
+     *
+     * @param contents 본문 목록
+     * @return 인덱싱 본문 목록
+     */
     public static List<IndexedContentVO> indexingContent(List<String> contents) {
         AtomicInteger index = new AtomicInteger(0);
 
         return contents.stream()
                 .map(content -> new IndexedContentVO(index.getAndIncrement(), content))
                 .toList();
+    }
+
+    public static List<String> tokenize(String content, int tokenSize) {
+
+        List<String> contents = new ArrayList<>();
+
+        StringBuilder contentBuilder = new StringBuilder();
+        for (String line : content.lines().toList()) {
+            if (contentBuilder.length() + line.length() > tokenSize) {
+                contents.add(contentBuilder.toString().trim());
+                contentBuilder = new StringBuilder();
+            }
+            contentBuilder.append(line).append("\n");
+        }
+
+        if (!contentBuilder.toString().trim().isEmpty()) {
+            contents.add(contentBuilder.toString().trim());
+        }
+
+        return contents;
     }
 }

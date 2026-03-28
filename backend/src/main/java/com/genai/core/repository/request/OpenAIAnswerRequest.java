@@ -40,7 +40,7 @@ public class OpenAIAnswerRequest {
 
     @Builder
     public OpenAIAnswerRequest(String modelName, double temperature, double topP, int maxTokens, boolean stream,
-                               String prompt, String chatState, List<ConversationVO> conversations, String context, String query) {
+                               String prompt, String developer, String chatState, List<ConversationVO> conversations, String context, String query) {
         this.stream = stream;
         this.maxTokens = maxTokens;
         this.topP = topP;
@@ -50,9 +50,13 @@ public class OpenAIAnswerRequest {
 
         // 시스템 프롬프트
         this.messages.add(Message.builder().role("system").content(prompt).build());
+        // 개발자 프롬프트
+        if (developer != null && !developer.isBlank()) {
+            this.messages.add(Message.builder().role("developer").content(developer).build());
+        }
         // 장기 기억 (이전 대화 요약)
         if (chatState != null && !chatState.isBlank()) {
-            this.messages.add(Message.builder().role("system").content("Conversation State:\n" + chatState).build());
+            this.messages.add(Message.builder().role("system").content("Conversation State:\n```\n" + chatState + "\n```").build());
         }
         // 이전 대화 목록
         if (conversations != null && !conversations.isEmpty()) {
@@ -61,13 +65,13 @@ public class OpenAIAnswerRequest {
                 ConversationVO conversation = conversations.get(index);
                 conversionsBuilder.append("# Previous Conversation (").append(index).append(")\n");
                 conversionsBuilder.append("## ID").append("\n").append(conversation.getId()).append("\n");
-                conversionsBuilder.append("## Question").append("\n").append("```plainText\n").append(conversation.getQuery()).append("\n```\n");
-                conversionsBuilder.append("## Answer").append("\n").append("```plainText\n").append(conversation.getAnswer()).append("\n```\n");
+                conversionsBuilder.append("## Question").append("\n").append("```\n").append(conversation.getQuery()).append("\n```\n");
+                conversionsBuilder.append("## Answer").append("\n").append("```\n").append(conversation.getAnswer()).append("\n```\n");
             }
-            this.messages.add(Message.builder().role("system").content("Previous Conversations:\n" + conversionsBuilder.toString().trim()).build());
+            this.messages.add(Message.builder().role("system").content("Previous Conversations:\n```\n" + conversionsBuilder.toString().trim() + "\n```").build());
         }
         if (context != null && !context.isBlank()) {
-            this.messages.add(Message.builder().role("user").content("Context:\n\n```" + context + "```").build());
+            this.messages.add(Message.builder().role("user").content("Context:\n```\n" + context + "\n```").build());
         }
         if (query != null && !query.isBlank()) {
             this.messages.add(Message.builder().role("user").content(query).build());

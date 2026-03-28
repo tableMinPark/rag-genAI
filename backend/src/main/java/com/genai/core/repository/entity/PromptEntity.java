@@ -35,6 +35,13 @@ public class PromptEntity {
     @Comment("일관성")
     private Double topP;
 
+    private String developerPromptContent;
+
+    public PromptEntity setDeveloperPromptContent(String developerPromptContent) {
+        this.developerPromptContent = developerPromptContent;
+        return this;
+    }
+
     public PromptEntity copyAndConcatPromptContent(String... promptContent) {
 
         StringBuilder promptContentBuilder = new StringBuilder();
@@ -47,6 +54,7 @@ public class PromptEntity {
                 .promptId(this.promptId)
                 .promptName(this.promptName)
                 .promptContent(this.promptContent + "\n\n" + promptContentBuilder.toString().trim())
+                .developerPromptContent(this.developerPromptContent)
                 .temperature(this.temperature)
                 .topP(this.topP)
                 .build();

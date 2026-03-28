@@ -35,13 +35,15 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
     @Override
     public Mono<String> partExport(String content) {
 
+        String query = "**Context**의 핵심 내용을 추출하라.";
+
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(SummaryModuleConst.PART_SUMMARY_PROMPT)
                 .temperature(SummaryModuleConst.PART_SUMMARY_TEMPERATURE)
                 .topP(SummaryModuleConst.PART_SUMMARY_TOP_P)
                 .build();
 
-        return modelRepository.generateAnswerAsync(null, content, null, null, promptEntity)
+        return modelRepository.generateAnswerAsync(query, content, null, null, promptEntity)
                 .map(answerEntities -> {
                     StringBuilder answerBuilder = new StringBuilder();
                     answerEntities.forEach(answerEntity -> {
@@ -52,7 +54,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                     return answerBuilder.toString().trim();
                 })
                 .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORT_MESSAGE, v -> new Object[]{
-                        content.replace("\n", "\\n"), v.replace("\n", "\\n")
+                        content, v
                 }))
                 .subscribeOn(Schedulers.boundedElastic());
     }
@@ -141,6 +143,8 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
     @Override
     public Mono<String> partExportSummary(List<String> contents) {
 
+        String query = "**Context**의 내용을 종합적으로 요약하라.";
+
         // 전체 요약
         PromptEntity promptEntity = PromptEntity.builder()
                 .promptContent(SummaryModuleConst.WHOLE_SUMMARY_PROMPT)
@@ -158,7 +162,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
         }
 
         return Mono.just(contentMergeBuilder.toString().trim())
-                .flatMap(contentMerge -> modelRepository.generateAnswerAsync(null, contentMerge, null, null, promptEntity))
+                .flatMap(contentMerge -> modelRepository.generateAnswerAsync(query, contentMerge, null, null, promptEntity))
                 .map(answerEntities -> {
 
                     StringBuilder answerBuilder = new StringBuilder();
@@ -173,7 +177,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
 
                 })
                 .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
-                        contentMergeBuilder.toString().trim().replace("\n", "\\n"), v.replace("\n", "\\n")
+                        contentMergeBuilder.toString().trim(), v
                 }))
                 .subscribeOn(Schedulers.boundedElastic());
     }

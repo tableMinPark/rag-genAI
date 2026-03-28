@@ -45,16 +45,16 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
 
         Pageable pageable = PageRequest.of(0, size);
 
-        return Mono.fromCallable(() ->  chatDetailRepository
-                    .findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, pageable)
-                    .stream()
-                    .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
-                    .map(chatDetailEntity -> ConversationVO.builder()
-                            .id(chatDetailEntity.getMsgId())
-                            .query(chatDetailEntity.getRewriteQuery())
-                            .answer(chatDetailEntity.getAnswer())
-                            .build())
-                    .toList())
+        return Mono.fromCallable(() -> chatDetailRepository
+                        .findByChatIdAndAnswerIsNotNullOrderBySysCreateDtDesc(chatId, pageable)
+                        .stream()
+                        .sorted(Comparator.comparing(ChatDetailEntity::getSysCreateDt))
+                        .map(chatDetailEntity -> ConversationVO.builder()
+                                .id(chatDetailEntity.getMsgId())
+                                .query(chatDetailEntity.getRewriteQuery())
+                                .answer(chatDetailEntity.getAnswer())
+                                .build())
+                        .toList())
                 .subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -153,7 +153,7 @@ public class QuestionModuleServiceImpl implements QuestionModuleService {
                 .topP(QuestionModuleConst.VALID_MULTITURN_TOP_P)
                 .build();
 
-        String context = "Current Query:\n" + query;
+        String context = "Current Query:\n```\n" + query + "\n```";
 
         return Mono.just(conversations)
                 .flatMap(targetConversions -> modelRepository.generateAnswerAsync(null, context, chatState, targetConversions, promptEntity))

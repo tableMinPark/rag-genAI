@@ -65,12 +65,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
         String extractContent = ExtractUtil.extractText(uploadFile.getUrl(), uploadFile.getExt());
         String content = HtmlUtil.convertTableHtmlToMarkdown(extractContent);
 
-        int step = SummaryCoreConst.CHUNK_PART_TOKEN_SIZE - SummaryCoreConst.CHUNK_PART_OVERLAP_SIZE;
-
-        List<String> contents = IntStream.iterate(0, i -> i + step)
-                .limit((content.length() + step - 1) / step)
-                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + SummaryCoreConst.CHUNK_PART_TOKEN_SIZE)))
-                .toList();
+        List<String> contents = StringUtil.tokenize(content, SummaryCoreConst.CHUNK_PART_TOKEN_SIZE);
 
         return this.summary(lengthRatio, contents, sessionId, chatId);
     }
@@ -87,12 +82,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     @Override
     public SummaryVO summary(float lengthRatio, String content, String userId, long chatId) {
 
-        int step = SummaryCoreConst.CHUNK_PART_TOKEN_SIZE - SummaryCoreConst.CHUNK_PART_OVERLAP_SIZE;
-
-        List<String> contents = new ArrayList<>(IntStream.iterate(0, i -> i + step)
-                .limit((content.length() + step - 1) / step)
-                .mapToObj(i -> content.substring(i, Math.min(content.length(), i + SummaryCoreConst.CHUNK_PART_TOKEN_SIZE)))
-                .toList());
+        List<String> contents = StringUtil.tokenize(content, SummaryCoreConst.CHUNK_PART_TOKEN_SIZE);
 
         return this.summary(lengthRatio, contents, userId, chatId);
     }
@@ -109,8 +99,8 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
     @Override
     public SummaryVO summary(float lengthRatio, List<String> contents, String userId, long chatId) {
 
-        String query = String.format("길이 비율 값이 **%.2f** 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약 해줘.", lengthRatio);
-        String fullQuery = "길이 비율 값에 대한 설정은 무시하고, 컨텍스트의 문서를 요약 해줘.";
+        String query = String.format("길이 비율 값이 **%.2f** 이고, 컨텍스트의 문서를 길이 비율에 맞게 요약하라.", lengthRatio);
+        String fullQuery = "길이 비율 값에 대한 설정은 무시하고, 컨텍스트의 문서를 요약하라.";
 
         PromptEntity promptEntity = promptRepository.findById(PromptConst.SUMMARY_PROMPT_ID)
                 .orElseThrow(() -> new NotFoundException("프롬프트"));
@@ -157,7 +147,7 @@ public class SummaryCoreServiceImpl implements SummaryCoreService {
                 })
                 .map(wholePartExport -> wholePartExport.substring(0, Math.min(wholePartExport.length(), SummaryCoreConst.CHUNK_MAX_TOKEN_SIZE)))
                 .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
-                        StringUtil.writeJson(contents), v.replace("\n", "\\n")
+                        StringUtil.writeJson(contents), v
                 }))
                 .cache();
 
