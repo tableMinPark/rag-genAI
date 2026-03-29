@@ -21,7 +21,6 @@ export interface TranslateResponse {
  */
 export const translateTextApi = async (
   sessionId: string,
-  beforeLang: string,
   afterLang: string,
   containDic: boolean,
   context: string,
@@ -30,7 +29,6 @@ export const translateTextApi = async (
     `/translate/text`,
     {
       sessionId,
-      beforeLang,
       afterLang,
       containDic,
       context,
@@ -51,7 +49,6 @@ export const translateTextApi = async (
  */
 export const translateFileApi = async (
   sessionId: string,
-  beforeLang: string,
   afterLang: string,
   containDic: boolean,
   uploadFile: File,
@@ -64,7 +61,6 @@ export const translateFileApi = async (
       [
         JSON.stringify({
           sessionId,
-          beforeLang,
           afterLang,
           containDic,
         }),

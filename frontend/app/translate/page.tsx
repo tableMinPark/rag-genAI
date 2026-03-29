@@ -14,6 +14,7 @@ import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'
 import { streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
+import styles from '@/public/css/markdown.module.css'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
 
@@ -34,8 +35,7 @@ export default function TranslatePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   // 언어 선택 상태
   const [languages, setLanguages] = useState<TranslateLanguage[]>([])
-  const [sourceLang, setSourceLang] = useState('EN') // 기본값: 영어
-  const [targetLang, setTargetLang] = useState('KR') // 기본값: 한국어
+  const [targetLang, setTargetLang] = useState('EN') // 기본값: 영어
   const [containDictionary, setContainDictionary] = useState(false)
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
@@ -72,12 +72,7 @@ export default function TranslatePage() {
         if (response.result.length == 0) {
           uiStore.setError('번역 가능 언어가 없습니다.', handleGetLanguages)
         } else {
-          setSourceLang(response.result[0].code)
-          setTargetLang(
-            response.result.length > 1
-              ? response.result[1].code
-              : response.result[0].code,
-          )
+          setTargetLang(response.result[0].code)
         }
       })
       .catch((reason) => {
@@ -124,7 +119,6 @@ export default function TranslatePage() {
           if (!selectedFile) {
             await translateTextApi(
               sessionId,
-              sourceLang,
               targetLang,
               containDictionary,
               context,
@@ -145,7 +139,6 @@ export default function TranslatePage() {
           } else {
             await translateFileApi(
               sessionId,
-              sourceLang,
               targetLang,
               containDictionary,
               selectedFile,
@@ -251,17 +244,6 @@ export default function TranslatePage() {
             <div className="flex h-13 items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-gray-500">FROM</span>
-                <select
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
-                  className="hover:text-primary cursor-pointer bg-transparent text-sm font-bold text-gray-800 transition-colors focus:outline-none"
-                >
-                  {languages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="relative flex-1">
@@ -432,13 +414,11 @@ export default function TranslatePage() {
                   onChange={(e) => setTargetLang(e.target.value)}
                   className="text-primary hover:text-primary-hover cursor-pointer bg-transparent text-sm font-bold transition-colors focus:outline-none"
                 >
-                  {languages
-                    .filter((lang) => lang.code !== sourceLang)
-                    .map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.name}
-                      </option>
-                    ))}
+                  {languages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               {output && (
@@ -467,9 +447,10 @@ export default function TranslatePage() {
             {/* 결과 뷰어 */}
             <div className="flex-1 overflow-y-auto bg-gray-50/30 p-6">
               {output ? (
-                <div className="wrap-break-words whitespace-pre-wrap text-gray-800">
-                  {output}
-                </div>
+                <div
+                  className={`${styles.markdown} wrap-break-words whitespace-pre-wrap text-gray-800`}
+                  dangerouslySetInnerHTML={{ __html: output }}
+                />
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-400">
                   {!isStreaming ? (
