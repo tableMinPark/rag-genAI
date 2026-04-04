@@ -24,39 +24,6 @@ public class StreamController {
     private final StreamCoreService streamCoreService;
 
     /**
-     * 스트림 발행
-     *
-     * @param sessionId 세션 ID
-     * @return SSE Emitter
-     */
-    @GetMapping("/{sessionId}")
-    public SseEmitter stream(@NotBlank @PathVariable("sessionId") String sessionId) throws InterruptedException {
-
-        // 스트림 등록
-        StreamSubscriber streamSubscriber = streamCoreService.createStream(sessionId);
-
-        // 연결 끊김 처리
-        streamSubscriber.getEmitter().onCompletion(() -> {
-            streamCoreService.deleteStream(sessionId);
-            log.info("[{}] " + String.format("%-20s", "Stream SSE complete") + " |", sessionId);
-        });
-
-        // 세션 만료 처리
-        streamSubscriber.getEmitter().onTimeout(() -> {
-            streamCoreService.deleteStream(sessionId);
-            log.warn("[{}] " + String.format("%-20s", "Stream SSE timeout") + " |", sessionId);
-        });
-
-        // 에러 처리
-        streamSubscriber.getEmitter().onError(throwable -> {
-            streamCoreService.deleteStream(sessionId);
-            log.error("[{}] " + String.format("%-20s", "Stream SSE error") + " |", sessionId, throwable);
-        });
-
-        return streamSubscriber.getEmitter();
-    }
-
-    /**
      * 스트림 중지 요청
      *
      * @param sessionId 세션 ID

@@ -34,6 +34,24 @@ public class StreamCoreServiceImpl implements StreamCoreService {
                 .streamId(streamId)
                 .build());
 
+        // 연결 끊김 처리
+        streamSubscriber.getEmitter().onCompletion(() -> {
+            deleteStream(streamId);
+            log.info("[{}] " + String.format("%-20s", "Stream SSE complete") + " |", streamId);
+        });
+
+        // 세션 만료 처리
+        streamSubscriber.getEmitter().onTimeout(() -> {
+            deleteStream(streamId);
+            log.warn("[{}] " + String.format("%-20s", "Stream SSE timeout") + " |", streamId);
+        });
+
+        // 에러 처리
+        streamSubscriber.getEmitter().onError(throwable -> {
+            deleteStream(streamId);
+            log.error("[{}] " + String.format("%-20s", "Stream SSE error") + " |", streamId, throwable);
+        });
+
         // 연결 이벤트 전송
         try {
             streamSubscriber.getEmitter().send(SseEmitter.event()
