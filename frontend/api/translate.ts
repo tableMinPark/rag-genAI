@@ -1,6 +1,8 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
 import { TranslateLanguage } from '@/types/domain'
+import { FetchEventSource, streamApi } from './stream'
+import { StreamEvent } from '@/types/streamEvent'
 
 export interface GetTranslateLanguageResponse extends TranslateLanguage {}
 
@@ -24,18 +26,21 @@ export const translateTextApi = async (
   afterLang: string,
   containDic: boolean,
   context: string,
-): Promise<ApiResponse<TranslateResponse>> => {
-  const response = await client.post<ApiResponse<TranslateResponse>>(
-    `/translate/text`,
-    {
-      sessionId,
-      afterLang,
-      containDic,
-      context,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/translate/text`,
+      {
+        sessionId,
+        afterLang,
+        containDic,
+        context,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -52,7 +57,8 @@ export const translateFileApi = async (
   afterLang: string,
   containDic: boolean,
   uploadFile: File,
-): Promise<ApiResponse<TranslateResponse>> => {
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
   const formData = new FormData()
   formData.append('uploadFile', uploadFile)
   formData.append(
@@ -71,12 +77,14 @@ export const translateFileApi = async (
     ),
   )
 
-  const response = await client.post<ApiResponse<TranslateResponse>>(
-    `/translate/file`,
-    formData,
-  )
-
-  return response.data
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/translate/file`,
+      formData,
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**

@@ -4,7 +4,7 @@ import com.genai.app.chat.controller.dto.request.ChatAiRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatLlmRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatMyAiRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatSimulationRequestDto;
-import com.genai.app.chat.controller.dto.response.*;
+import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
 import com.genai.app.chat.service.ChatService;
 import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.service.MyAiService;
@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -45,7 +46,7 @@ public class ChatController {
      * @param chatAiRequestDto 질의 정보
      */
     @PostMapping("/ai")
-    public ResponseEntity<ResponseDto<ChatAiResponseDto>> chatAi(@Valid @RequestBody ChatAiRequestDto chatAiRequestDto) {
+    public SseEmitter chatAi(@Valid @RequestBody ChatAiRequestDto chatAiRequestDto) {
 
         String sessionId = chatAiRequestDto.getSessionId();
         String query = chatAiRequestDto.getQuery();
@@ -54,12 +55,7 @@ public class ChatController {
         long promptId = PromptConst.QUESTION_AI_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatId, promptId, chatAiRequestDto.getCategoryCodes());
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
-
-        return ResponseEntity.ok().body(Response.CHAT_AI_SUCCESS.toResponseDto(ChatAiResponseDto.builder()
-                .query(query)
-                .sessionId(sessionId)
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
@@ -68,7 +64,7 @@ public class ChatController {
      * @param chatLlmRequestDto 질의 정보
      */
     @PostMapping("/llm")
-    public ResponseEntity<ResponseDto<ChatLlmResponseDto>> chatLlm(@Valid @RequestBody ChatLlmRequestDto chatLlmRequestDto) {
+    public SseEmitter chatLlm(@Valid @RequestBody ChatLlmRequestDto chatLlmRequestDto) {
 
         String sessionId = chatLlmRequestDto.getSessionId();
         String query = chatLlmRequestDto.getQuery();
@@ -77,12 +73,7 @@ public class ChatController {
         long promptId = PromptConst.QUESTION_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId, promptId);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
-
-        return ResponseEntity.ok().body(Response.CHAT_LLM_SUCCESS.toResponseDto(ChatLlmResponseDto.builder()
-                .query(query)
-                .sessionId(sessionId)
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
@@ -91,7 +82,7 @@ public class ChatController {
      * @param chatMyAiRequestDto 질의 정보
      */
     @PostMapping("/myai")
-    public ResponseEntity<ResponseDto<ChatMyAiResponseDto>> chatMyAi(@Valid @RequestBody ChatMyAiRequestDto chatMyAiRequestDto) {
+    public SseEmitter chatMyAi(@Valid @RequestBody ChatMyAiRequestDto chatMyAiRequestDto) {
 
         String sessionId = chatMyAiRequestDto.getSessionId();
         String query = chatMyAiRequestDto.getQuery();
@@ -104,12 +95,7 @@ public class ChatController {
         String categoryCode = MyAiConst.categoryCode(projectId);
         QuestionVO questionVO = questionCoreService.questionMyAi(query, sessionId, chatId, promptId, categoryCode);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
-
-        return ResponseEntity.ok().body(Response.CHAT_MYAI_SUCCESS.toResponseDto(ChatMyAiResponseDto.builder()
-                .query(query)
-                .sessionId(sessionId)
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
@@ -118,7 +104,7 @@ public class ChatController {
      * @param chatSimulationRequestDto 질의 정보
      */
     @PostMapping("/simulation")
-    public ResponseEntity<ResponseDto<ChatSimulationResponseDto>> chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
+    public SseEmitter chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
 
         String sessionId = chatSimulationRequestDto.getSessionId();
         String query = chatSimulationRequestDto.getQuery();
@@ -132,12 +118,7 @@ public class ChatController {
         QuestionVO questionVO = questionCoreService.questionSimulation(
                 query, sessionId, chatId, context, promptContent, temperature, topP, maxTokens);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(questionVO.streamFlux());
-
-        return ResponseEntity.ok().body(Response.CHAT_SIMULATION_SUCCESS.toResponseDto(ChatSimulationResponseDto.builder()
-                .query(query)
-                .sessionId(sessionId)
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux());
     }
 
     /**

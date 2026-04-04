@@ -9,7 +9,7 @@ import { summaryFileApi, summaryTextApi } from '@/api/summary'
 import { menuInfos } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
-import { streamApi } from '@/api/stream'
+import { FetchEventSource, streamApi } from '@/api/stream'
 import { SummaryResult } from '@/types/domain'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
@@ -44,7 +44,7 @@ export default function SummaryPage() {
   const [summaryOption, setSummaryOption] = useState('MEDIUM')
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
-  const streamRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<FetchEventSource | null>(null)
   // 스트림 상태
   const [prepare, setPrepare] = useState<Prepare | null>(null)
   // 출력 텍스트
@@ -94,63 +94,69 @@ export default function SummaryPage() {
     // 결과 값 초기화
     setOutput('')
     setOutputFull('')
-    // 세션 기반 SSE 연결
-    streamRef.current = streamApi(
-      sessionId,
-      new StreamEvent({
-        onConnect: async (_) => {
-          console.log(`📡 요약 요청`)
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 요약 요청`)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onError: (_) => {
+        modalStore.setError(
+          '서버 통신 에러',
+          '요약문 생성 실패',
+          '요약문 생성에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      // onInference: (event) => {
+      //   setOutput((prev) => replaceEventDataToText(prev + event.data))
+      // },
+      onAnswerStart: (_) => {
+        setOutput('')
+        setOutputFull('')
+      },
+      onAnswer: (event) => {
+        const streamEvent = JSON.parse(event.data) as SummaryResult
 
-          const lengthRatio = SUMMARY_OPTIONS.find(
-            (v) => v.code == summaryOption,
-          )?.ratio as number
-
-          if (!selectedFile) {
-            await summaryTextApi(sessionId, lengthRatio, context)
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '요약문 생성 실패',
-                  '요약문 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          } else {
-            await summaryFileApi(sessionId, lengthRatio, selectedFile)
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '요약문 생성 실패',
-                  '요약문 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          }
-        },
-        onDisconnect: (_) => {
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onException: (event) => {
-          modalStore.setError(
-            '에러 발생',
-            '답변 생성 실패',
-            event.data || '답변 생성 중 에러가 발생했습니다.',
+        if (streamEvent.type === 'ratio') {
+          setOutput((prev) =>
+            replaceEventDataToText(prev + streamEvent.content),
           )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onError: (_) => {
+        } else if (streamEvent.type === 'full') {
+          setOutputFull((prev) =>
+            replaceEventDataToText(prev + streamEvent.content),
+          )
+        }
+      },
+      onPrepare: (event) => {
+        setPrepare(JSON.parse(event.data))
+      },
+    })
+    // 세션 기반 SSE 연결
+    const lengthRatio = SUMMARY_OPTIONS.find((v) => v.code == summaryOption)
+      ?.ratio as number
+
+    if (!selectedFile) {
+      await summaryTextApi(sessionId, lengthRatio, context, streamEvent)
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
           modalStore.setError(
             '서버 통신 에러',
             '요약문 생성 실패',
@@ -158,32 +164,24 @@ export default function SummaryPage() {
           )
           setIsStreaming(false)
           streamRef.current = null
-        },
-        // onInference: (event) => {
-        //   setOutput((prev) => replaceEventDataToText(prev + event.data))
-        // },
-        onAnswerStart: (_) => {
-          setOutput('')
-          setOutputFull('')
-        },
-        onAnswer: (event) => {
-          const streamEvent = JSON.parse(event.data) as SummaryResult
-
-          if (streamEvent.type === 'ratio') {
-            setOutput((prev) =>
-              replaceEventDataToText(prev + streamEvent.content),
-            )
-          } else if (streamEvent.type === 'full') {
-            setOutputFull((prev) =>
-              replaceEventDataToText(prev + streamEvent.content),
-            )
-          }
-        },
-        onPrepare: (event) => {
-          setPrepare(JSON.parse(event.data))
-        },
-      }),
-    )
+        })
+    } else {
+      await summaryFileApi(sessionId, lengthRatio, selectedFile, streamEvent)
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
+          modalStore.setError(
+            '서버 통신 에러',
+            '요약문 생성 실패',
+            '요약문 생성에 실패했습니다.',
+          )
+          setIsStreaming(false)
+          streamRef.current = null
+        })
+    }
   }
 
   // ###################################################

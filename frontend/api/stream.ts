@@ -3,18 +3,94 @@ import { ApiResponse } from '@/types/api'
 import { config } from '@/public/ts/config'
 import { StreamEvent } from '@/types/streamEvent'
 
+export class FetchEventSource {
+  private listeners: Record<string, Function[]> = {}
+  private controller = new AbortController()
+
+  constructor(
+    private url: string,
+    private options: RequestInit,
+  ) {}
+
+  addEventListener(event: string, callback: (e: MessageEvent) => void) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = []
+    }
+    this.listeners[event].push(callback)
+  }
+
+  private emit(event: string, data: string) {
+    const e = { data } as MessageEvent
+    ;(this.listeners[event] || []).forEach((cb) => cb(e))
+  }
+  async connect() {
+    try {
+      const res = await fetch(this.url, {
+        ...this.options,
+        signal: this.controller.signal,
+      })
+
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const chunks = buffer.split('\n\n')
+        buffer = chunks.pop() || ''
+
+        for (const chunk of chunks) {
+          let event = 'message'
+          let data = ''
+
+          chunk.split('\n').forEach((line) => {
+            if (line.startsWith('event:')) {
+              event = line.replace('event:', '').trim()
+            }
+            if (line.startsWith('data:')) {
+              data += line.replace('data:', '').trim()
+            }
+          })
+
+          this.emit(event, data)
+        }
+      }
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.log('🔌 스트림 정상 종료')
+      } else {
+        console.error('❌ 스트림 에러', e)
+        this.emit('error', e)
+      }
+    }
+  }
+
+  close() {
+    this.controller.abort()
+  }
+}
+
 /**
  * 스트림 요청 API
  *
  * @param sessionId 세션 ID
  */
 export const streamApi = (
-  sessionId: string,
+  url: string,
+  body: object,
   streamEvent: StreamEvent,
-): EventSource => {
-  const eventSource = new EventSource(
-    `http://${config.apiHost}:${config.apiPort}${config.apiBasePath}/stream/${sessionId}`,
-  )
+): FetchEventSource => {
+  const eventSource = new FetchEventSource(url, {
+    method: 'POST',
+    headers:
+      body instanceof FormData ? {} : { 'Content-Type': 'application/json' },
+    body: body instanceof FormData ? body : JSON.stringify(body),
+  })
   // SSE 연결 이벤트
   eventSource.addEventListener('connect', (event: MessageEvent) => {
     console.log(`📡 스트림 연결`)
@@ -93,6 +169,9 @@ export const streamApi = (
     eventSource.close()
     streamEvent.onError(event)
   })
+
+  eventSource.connect()
+
   return eventSource
 }
 

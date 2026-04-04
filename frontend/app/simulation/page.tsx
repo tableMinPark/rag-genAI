@@ -5,7 +5,7 @@ import MarkdownIt from 'markdown-it'
 import { Play, Square, RotateCcw } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
-import { cancelStreamApi, streamApi } from '@/api/stream'
+import { cancelStreamApi, FetchEventSource, streamApi } from '@/api/stream'
 import { chatSimulateionApi } from '@/api/chat'
 import { StreamEvent } from '@/types/streamEvent'
 import { useModalStore } from '@/stores/modalStore'
@@ -46,7 +46,7 @@ export default function SimulationPage() {
   const [maxTokens, setMaxTokens] = useState(DEFAULT_MAX_TOKENS)
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
-  const streamRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<FetchEventSource | null>(null)
   // 실행 및 결과 상태
   const [output, setOutput] = useState('')
 
@@ -94,75 +94,75 @@ export default function SimulationPage() {
     setOutput(
       `**설정된 파라미터:**\n- Temperature: \`${temperature}\`\n- Top P: \`${topP}\`\n- Max Tokens: \`${maxTokens}\`\n\n**System Prompt:**\n\`\`\`text\n${prompt.trim()}\n\`\`\`\n\n**Reference Context:**\n${context ? `\`\`\`text\n${context.trim()}\n\`\`\`` : '(참고 문서 없음)'}`,
     )
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 질의 요청 : ${query}`)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onError: (_) => {
+        modalStore.setError(
+          '서버 통신 에러',
+          '시뮬레이션 실패',
+          '시뮬레이션 실행에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onInferenceStart: (_) => {
+        setOutput((prev) =>
+          replaceEventDataToText(prev + `\n\n---\n\n**추론:**\n`),
+        )
+      },
+      onInference: (event) => {
+        setOutput((prev) => replaceEventDataToText(prev + event.data))
+      },
+      onAnswerStart: (_) => {
+        setOutput((prev) =>
+          replaceEventDataToText(prev + `\n\n---\n\n**답변:**\n`),
+        )
+      },
+      onAnswer: (event) => {
+        setOutput((prev) => replaceEventDataToText(prev + event.data))
+      },
+    })
     // 세션 기반 SSE 연결
-    streamRef.current = streamApi(
+    await chatSimulateionApi(
+      query,
       sessionId,
-      new StreamEvent({
-        onConnect: async (_) => {
-          console.log(`📡 질의 요청 : ${query}`)
-          await chatSimulateionApi(
-            query,
-            sessionId,
-            context,
-            prompt,
-            maxTokens,
-            temperature,
-            topP,
-          )
-            .then((response) => {
-              console.log(`📡 ${response.message}`)
-            })
-            .catch((reason) => {
-              console.error(reason)
-              modalStore.setError(
-                '서버 통신 에러',
-                '시뮬레이션 실패',
-                '시뮬레이션 실행에 실패했습니다.',
-              )
-              setIsStreaming(false)
-              streamRef.current = null
-            })
-        },
-        onDisconnect: (_) => {
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onException: (event) => {
-          modalStore.setError(
-            '에러 발생',
-            '답변 생성 실패',
-            event.data || '답변 생성 중 에러가 발생했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onError: (_) => {
-          modalStore.setError(
-            '서버 통신 에러',
-            '시뮬레이션 실패',
-            '시뮬레이션 실행에 실패했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onInferenceStart: (_) => {
-          setOutput((prev) =>
-            replaceEventDataToText(prev + `\n\n---\n\n**추론:**\n`),
-          )
-        },
-        onInference: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
-        onAnswerStart: (_) => {
-          setOutput((prev) =>
-            replaceEventDataToText(prev + `\n\n---\n\n**답변:**\n`),
-          )
-        },
-        onAnswer: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
-      }),
+      context,
+      prompt,
+      maxTokens,
+      temperature,
+      topP,
+      streamEvent,
     )
+      .then((stream) => {
+        console.log(`📡 답변 요청 성공`)
+        streamRef.current = stream
+      })
+      .catch((reason) => {
+        console.error(reason)
+        modalStore.setError(
+          '서버 통신 에러',
+          '시뮬레이션 실패',
+          '시뮬레이션 실행에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   /**

@@ -8,7 +8,7 @@ import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { generateReportFileApi, generateReportTextApi } from '@/api/report'
 import { menuInfos } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
-import { streamApi } from '@/api/stream'
+import { FetchEventSource, streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
@@ -38,7 +38,7 @@ export default function ReportPage() {
   const [selectedFile, setSelectedFile] = useState<File[]>([])
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
-  const streamRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<FetchEventSource | null>(null)
   // 스트림 상태
   const [prepare, setPrepare] = useState<Prepare | null>(null)
   // 출력 텍스트
@@ -90,68 +90,61 @@ export default function ReportPage() {
     setIsStreaming(true)
     // 결과 값 초기화
     setOutput('')
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 보고서 생성 요청 : ${title}`)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onError: (_) => {
+        modalStore.setError(
+          '서버 통신 에러',
+          '보고서 생성 실패',
+          '보고서 생성에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onInference: (event) => {
+        setOutput((prev) => replaceEventDataToText(prev + event.data))
+      },
+      onAnswerStart: (_) => {
+        setOutput('')
+      },
+      onAnswer: (event) => {
+        setOutput((prev) => replaceEventDataToText(prev + event.data))
+      },
+      onPrepare: (event) => {
+        setPrepare(JSON.parse(event.data))
+      },
+    })
     // 세션 기반 SSE 연결
-    streamRef.current = streamApi(
-      sessionId,
-      new StreamEvent({
-        onConnect: async (_) => {
-          console.log(`📡 보고서 생성 요청 : ${title}`)
-          if (selectedFile.length == 0) {
-            await generateReportTextApi(
-              sessionId,
-              requestContent,
-              title,
-              context,
-            )
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '보고서 생성 실패',
-                  '보고서 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          } else {
-            await generateReportFileApi(
-              sessionId,
-              requestContent,
-              title,
-              selectedFile,
-            )
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '보고서 생성 실패',
-                  '보고서 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          }
-        },
-        onDisconnect: (_) => {
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onException: (event) => {
-          modalStore.setError(
-            '에러 발생',
-            '답변 생성 실패',
-            event.data || '답변 생성 중 에러가 발생했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onError: (_) => {
+    if (selectedFile.length == 0) {
+      await generateReportTextApi(
+        sessionId,
+        requestContent,
+        title,
+        context,
+        streamEvent,
+      )
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
           modalStore.setError(
             '서버 통신 에러',
             '보고서 생성 실패',
@@ -159,21 +152,30 @@ export default function ReportPage() {
           )
           setIsStreaming(false)
           streamRef.current = null
-        },
-        onInference: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
-        onAnswerStart: (_) => {
-          setOutput('')
-        },
-        onAnswer: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
-        onPrepare: (event) => {
-          setPrepare(JSON.parse(event.data))
-        },
-      }),
-    )
+        })
+    } else {
+      await generateReportFileApi(
+        sessionId,
+        requestContent,
+        title,
+        selectedFile,
+        streamEvent,
+      )
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
+          modalStore.setError(
+            '서버 통신 에러',
+            '보고서 생성 실패',
+            '보고서 생성에 실패했습니다.',
+          )
+          setIsStreaming(false)
+          streamRef.current = null
+        })
+    }
   }
 
   // ###################################################

@@ -1,5 +1,7 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
+import { FetchEventSource, streamApi } from './stream'
+import { StreamEvent } from '@/types/streamEvent'
 
 export interface GenerateReportResponse {
   sessionId: string
@@ -19,18 +21,21 @@ export const generateReportTextApi = async (
   requestContent: string,
   title: string,
   context: string,
-): Promise<ApiResponse<GenerateReportResponse>> => {
-  const response = await client.post<ApiResponse<GenerateReportResponse>>(
-    `/report/text`,
-    {
-      sessionId,
-      requestContent,
-      title,
-      context,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/report/text`,
+      {
+        sessionId,
+        requestContent,
+        title,
+        context,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -46,7 +51,8 @@ export const generateReportFileApi = async (
   requestContent: string,
   title: string,
   uploadFile: File[],
-): Promise<ApiResponse<GenerateReportResponse>> => {
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
   const formData = new FormData()
   uploadFile.forEach((file) => formData.append('uploadFile', file))
   formData.append(
@@ -56,10 +62,12 @@ export const generateReportFileApi = async (
     }),
   )
 
-  const response = await client.post<ApiResponse<GenerateReportResponse>>(
-    `/report/file`,
-    formData,
-  )
-
-  return response.data
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/report/file`,
+      formData,
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }

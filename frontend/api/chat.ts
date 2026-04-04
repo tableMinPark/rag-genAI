@@ -1,6 +1,8 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
 import { Category, Document } from '@/types/domain'
+import { FetchEventSource, streamApi } from './stream'
+import { StreamEvent } from '@/types/streamEvent'
 
 export interface ChatAiResponse {
   query: string
@@ -35,14 +37,20 @@ export const chatAiApi = async (
   query: string,
   sessionId: string,
   categoryCodes: string[],
-): Promise<ApiResponse<ChatAiResponse>> => {
-  const response = await client.post<ApiResponse<ChatAiResponse>>(`/chat/ai`, {
-    query,
-    sessionId,
-    categoryCodes,
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/chat/ai`,
+      {
+        query,
+        sessionId,
+        categoryCodes,
+      },
+      streamEvent,
+    )
+    resolve(stream)
   })
-
-  return response.data
 }
 
 /**
@@ -54,16 +62,19 @@ export const chatAiApi = async (
 export const chatLlmApi = async (
   query: string,
   sessionId: string,
-): Promise<ApiResponse<ChatLlmResponse>> => {
-  const response = await client.post<ApiResponse<ChatLlmResponse>>(
-    `/chat/llm`,
-    {
-      query,
-      sessionId,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/chat/llm`,
+      {
+        query,
+        sessionId,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -85,21 +96,24 @@ export const chatSimulateionApi = async (
   maxTokens: number,
   temperature: number,
   topP: number,
-): Promise<ApiResponse<ChatSimulationResponse>> => {
-  const response = await client.post<ApiResponse<ChatSimulationResponse>>(
-    `/chat/simulation`,
-    {
-      query,
-      sessionId,
-      context,
-      promptContent,
-      maxTokens,
-      temperature,
-      topP,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/chat/simulation`,
+      {
+        query,
+        sessionId,
+        context,
+        promptContent,
+        maxTokens,
+        temperature,
+        topP,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -113,17 +127,20 @@ export const chatMyAiApi = async (
   query: string,
   sessionId: string,
   projectId: number,
-): Promise<ApiResponse<ChatMyAiResponse>> => {
-  const response = await client.post<ApiResponse<ChatMyAiResponse>>(
-    `/chat/myai`,
-    {
-      query,
-      sessionId,
-      projectId,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/chat/myai`,
+      {
+        query,
+        sessionId,
+        projectId,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**

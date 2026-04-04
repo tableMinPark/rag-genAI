@@ -3,20 +3,17 @@ package com.genai.app.report.controller;
 import com.genai.app.chat.service.ChatService;
 import com.genai.app.report.controller.dto.request.ReportFileRequestDto;
 import com.genai.app.report.controller.dto.request.ReportTextRequestDto;
-import com.genai.app.report.controller.dto.response.ReportResponseDto;
 import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.ReportCoreService;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.vo.ReportVO;
-import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Menu;
-import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.validation.Valid;
 
@@ -37,7 +34,7 @@ public class ReportController {
      * @param reportTextRequestDto 보고서 생성 정보
      */
     @PostMapping(value = "/text")
-    public ResponseEntity<ResponseDto<ReportResponseDto>> generateReportText(@Valid @RequestBody ReportTextRequestDto reportTextRequestDto) {
+    public SseEmitter generateReportText(@Valid @RequestBody ReportTextRequestDto reportTextRequestDto) {
 
         String sessionId = reportTextRequestDto.getSessionId();
         String promptContext = promptCoreService.generateReportPrompt(reportTextRequestDto.getRequestContent());
@@ -47,12 +44,7 @@ public class ReportController {
         long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, content, sessionId, chatId);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
-
-        return ResponseEntity.ok().body(Response.REPORT_GENERATE_TEXT_SUCCESS.toResponseDto(ReportResponseDto.builder()
-                .sessionId(sessionId)
-                .msgId(reportVO.getMsgId())
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
     }
 
     /**
@@ -62,7 +54,7 @@ public class ReportController {
      * @param multipartFiles       참조 문서 파일
      */
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<ReportResponseDto>> generateReportFile(
+    public SseEmitter generateReportFile(
             @Valid @RequestPart("requestDto") ReportFileRequestDto reportFileRequestDto,
             @RequestPart("uploadFile") MultipartFile[] multipartFiles
     ) {
@@ -74,11 +66,6 @@ public class ReportController {
         long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFiles, sessionId, chatId);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
-
-        return ResponseEntity.ok().body(Response.REPORT_GENERATE_FILE_SUCCESS.toResponseDto(ReportResponseDto.builder()
-                .sessionId(sessionId)
-                .msgId(reportVO.getMsgId())
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
     }
 }

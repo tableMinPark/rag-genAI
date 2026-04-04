@@ -31,14 +31,14 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
         stream.setCancelled(true);
     }
 
-    public void subscribeWithTrace(Flux<StreamEvent> streamFlux) {
-        subscribeWithTrace(streamFlux, null);
+    public SseEmitter subscribeWithTrace(Flux<StreamEvent> streamFlux) {
+        return subscribeWithTrace(streamFlux, null);
     }
 
     /**
      * 로그 기반 구독 시작
      */
-    public void subscribeWithTrace(Flux<StreamEvent> streamFlux, Mono<Void> streamEndMono) {
+    public SseEmitter subscribeWithTrace(Flux<StreamEvent> streamFlux, Mono<Void> streamEndMono) {
         if (streamEndMono == null) {
             streamFlux
                     .contextWrite(ctx -> ctx.put(ReactiveLogUtil.TRACE_ID_KEY, stream.getStreamId()))
@@ -52,6 +52,8 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
                     .contextWrite(ctx -> ctx.put(ReactiveLogUtil.TRACE_ID_KEY, stream.getStreamId()))
                     .subscribe(this);
         }
+
+        return stream.getEmitter();
     }
 
     @Override

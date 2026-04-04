@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
-import { cancelStreamApi, streamApi } from '@/api/stream'
+import { cancelStreamApi, FetchEventSource, streamApi } from '@/api/stream'
 import { chatLlmApi } from '@/api/chat'
 import { useModalStore } from '@/stores/modalStore'
 import { GreetingMessage } from '@/public/const/greeting'
@@ -25,7 +25,7 @@ function LlmContent() {
   const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
   const [isStreaming, setIsStreaming] = useState(false)
-  const streamRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<FetchEventSource | null>(null)
 
   // ###################################################
   // 랜더링 이펙트
@@ -73,83 +73,81 @@ function LlmContent() {
     if (isStreaming) return
     // 스트림 시작 상태 변경
     setIsStreaming(true)
-    // 세션 기반 SSE 연결
-    streamRef.current = streamApi(
-      sessionId,
-      new StreamEvent({
-        onConnect: async (_) => {
-          console.log(`📡 질의 요청 : ${query}`)
-          // 질의 등록
-          setMessages((prev) => [...prev, createQueryMessage(query)])
-          await chatLlmApi(query, sessionId)
-            .then((response) => {
-              console.log(`📡 ${response.message}`)
-              // 답변 등록
-              setMessages((prev) => [...prev, createAnswerMessage('', '', [])])
-            })
-            .catch((reason) => {
-              console.error(reason)
-              modalStore.setError(
-                '서버 통신 불가',
-                '답변 생성 실패',
-                '답변 생성에 실패했습니다.',
-              )
-              setIsStreaming(false)
-              streamRef.current = null
-            })
-        },
-        onDisconnect: (_) => {
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onException: (event) => {
-          modalStore.setError(
-            '에러 발생',
-            '답변 생성 실패',
-            event.data || '답변 생성 중 에러가 발생했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onError: (_) => {
-          modalStore.setError(
-            '서버 통신 불가',
-            '답변 생성 실패',
-            '답변 생성에 실패했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onInference: (event) => {
-          setMessages((prev) => {
-            const messages = [...prev]
-            const currentMessageIndex = messages.length - 1
-            const currentMessage = messages[currentMessageIndex]
-            messages[currentMessageIndex] = {
-              ...currentMessage,
-              inference: replaceEventDataToText(
-                currentMessage.inference + event.data,
-              ),
-            }
-            return messages
-          })
-        },
-        onAnswer: (event) => {
-          setMessages((prev) => {
-            const messages = [...prev]
-            const currentMessageIndex = messages.length - 1
-            const currentMessage = messages[currentMessageIndex]
-            messages[currentMessageIndex] = {
-              ...currentMessage,
-              content: replaceEventDataToText(
-                currentMessage.content + event.data,
-              ),
-            }
-            return messages
-          })
-        },
-      }),
-    )
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 질의 요청 : ${query}`)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onError: (_) => {
+        modalStore.setError(
+          '서버 통신 불가',
+          '답변 생성 실패',
+          '답변 생성에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onInference: (event) => {
+        setMessages((prev) => {
+          const messages = [...prev]
+          const currentMessageIndex = messages.length - 1
+          const currentMessage = messages[currentMessageIndex]
+          messages[currentMessageIndex] = {
+            ...currentMessage,
+            inference: replaceEventDataToText(
+              currentMessage.inference + event.data,
+            ),
+          }
+          return messages
+        })
+      },
+      onAnswer: (event) => {
+        setMessages((prev) => {
+          const messages = [...prev]
+          const currentMessageIndex = messages.length - 1
+          const currentMessage = messages[currentMessageIndex]
+          messages[currentMessageIndex] = {
+            ...currentMessage,
+            content: replaceEventDataToText(
+              currentMessage.content + event.data,
+            ),
+          }
+          return messages
+        })
+      },
+    })
+    // 스트림 이벤트 연결
+    await chatLlmApi(query, sessionId, streamEvent)
+      .then((stream) => {
+        console.log(`📡 답변 요청 성공`)
+        streamRef.current = stream
+        // 답변 등록
+        setMessages((prev) => [...prev, createQueryMessage(query)])
+        setMessages((prev) => [...prev, createAnswerMessage('', '', [])])
+      })
+      .catch((reason) => {
+        console.error(reason)
+        modalStore.setError(
+          '서버 통신 불가',
+          '답변 생성 실패',
+          '답변 생성에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      })
   }
 
   /**

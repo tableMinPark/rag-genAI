@@ -1,5 +1,7 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
+import { FetchEventSource, streamApi } from './stream'
+import { StreamEvent } from '@/types/streamEvent'
 
 export interface SummaryResponse {
   sessionId: string
@@ -18,17 +20,20 @@ export const summaryTextApi = async (
   sessionId: string,
   lengthRatio: number,
   context: string,
-): Promise<ApiResponse<SummaryResponse>> => {
-  const response = await client.post<ApiResponse<SummaryResponse>>(
-    `/summary/text`,
-    {
-      sessionId,
-      lengthRatio,
-      context,
-    },
-  )
-
-  return response.data
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/summary/text`,
+      {
+        sessionId,
+        lengthRatio,
+        context,
+      },
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -42,7 +47,8 @@ export const summaryFileApi = async (
   sessionId: string,
   lengthRatio: number,
   uploadFile: File,
-): Promise<ApiResponse<SummaryResponse>> => {
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
   const formData = new FormData()
   formData.append('uploadFile', uploadFile)
   formData.append(
@@ -60,10 +66,12 @@ export const summaryFileApi = async (
     ),
   )
 
-  const response = await client.post<ApiResponse<SummaryResponse>>(
-    `/summary/file`,
-    formData,
-  )
-
-  return response.data
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/summary/file`,
+      formData,
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }

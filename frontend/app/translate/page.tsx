@@ -12,7 +12,7 @@ import { TranslateLanguage } from '@/types/domain'
 import { menuInfos } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'
-import { streamApi } from '@/api/stream'
+import { FetchEventSource, streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
 import styles from '@/public/css/markdown.module.css'
 
@@ -39,7 +39,7 @@ export default function TranslatePage() {
   const [containDictionary, setContainDictionary] = useState(false)
   // 스트리밍 상태
   const [isStreaming, setIsStreaming] = useState(false)
-  const streamRef = useRef<EventSource | null>(null)
+  const streamRef = useRef<FetchEventSource | null>(null)
   // 스트림 상태
   const [prepare, setPrepare] = useState<Prepare | null>(null)
   // 출력 텍스트
@@ -109,69 +109,64 @@ export default function TranslatePage() {
     setIsStreaming(true)
     // 결과 값 초기화
     setOutput('')
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 번역 요청`)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onError: (_) => {
+        modalStore.setError(
+          '서버 통신 에러',
+          '번역문 생성 실패',
+          '번역문 생성에 실패했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+      },
+      onInference: (event) => {
+        setOutput((prev) => replaceEventDataToText(prev + event.data))
+      },
+      onAnswerStart: (_) => {
+        setOutput('')
+      },
+      onAnswer: (event) => {
+        setOutput((prev) => {
+          return replaceEventDataToText(prev + event.data)
+          // return prev + event.data
+        })
+      },
+      onPrepare: (event) => {
+        setPrepare(JSON.parse(event.data))
+      },
+    })
     // 세션 기반 SSE 연결
-    streamRef.current = streamApi(
-      sessionId,
-      new StreamEvent({
-        onConnect: async (_) => {
-          console.log(`📡 번역 요청`)
-
-          if (!selectedFile) {
-            await translateTextApi(
-              sessionId,
-              targetLang,
-              containDictionary,
-              context,
-            )
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '번역문 생성 실패',
-                  '번역문 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          } else {
-            await translateFileApi(
-              sessionId,
-              targetLang,
-              containDictionary,
-              selectedFile,
-            )
-              .then((response) => {
-                console.log(`📡 ${response.message}`)
-              })
-              .catch((reason) => {
-                console.error(reason)
-                modalStore.setError(
-                  '서버 통신 에러',
-                  '번역문 생성 실패',
-                  '번역문 생성에 실패했습니다.',
-                )
-                setIsStreaming(false)
-                streamRef.current = null
-              })
-          }
-        },
-        onDisconnect: (_) => {
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onException: (event) => {
-          modalStore.setError(
-            '에러 발생',
-            '답변 생성 실패',
-            event.data || '답변 생성 중 에러가 발생했습니다.',
-          )
-          setIsStreaming(false)
-          streamRef.current = null
-        },
-        onError: (_) => {
+    if (!selectedFile) {
+      await translateTextApi(
+        sessionId,
+        targetLang,
+        containDictionary,
+        context,
+        streamEvent,
+      )
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
           modalStore.setError(
             '서버 통신 에러',
             '번역문 생성 실패',
@@ -179,24 +174,30 @@ export default function TranslatePage() {
           )
           setIsStreaming(false)
           streamRef.current = null
-        },
-        onInference: (event) => {
-          setOutput((prev) => replaceEventDataToText(prev + event.data))
-        },
-        onAnswerStart: (_) => {
-          setOutput('')
-        },
-        onAnswer: (event) => {
-          setOutput((prev) => {
-            return replaceEventDataToText(prev + event.data)
-            // return prev + event.data
-          })
-        },
-        onPrepare: (event) => {
-          setPrepare(JSON.parse(event.data))
-        },
-      }),
-    )
+        })
+    } else {
+      await translateFileApi(
+        sessionId,
+        targetLang,
+        containDictionary,
+        selectedFile,
+        streamEvent,
+      )
+        .then((stream) => {
+          console.log(`📡 답변 요청 성공`)
+          streamRef.current = stream
+        })
+        .catch((reason) => {
+          console.error(reason)
+          modalStore.setError(
+            '서버 통신 에러',
+            '번역문 생성 실패',
+            '번역문 생성에 실패했습니다.',
+          )
+          setIsStreaming(false)
+          streamRef.current = null
+        })
+    }
   }
 
   // ###################################################

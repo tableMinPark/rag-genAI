@@ -4,7 +4,6 @@ import com.genai.app.chat.service.ChatService;
 import com.genai.app.translate.controller.dto.request.TranslateFileRequestDto;
 import com.genai.app.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.app.translate.controller.dto.response.GetTranslateLanguageResponseDto;
-import com.genai.app.translate.controller.dto.response.TranslateResponseDto;
 import com.genai.core.constant.CommonConst;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.TranslateCoreService;
@@ -20,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.validation.Valid;
 import java.util.List;
@@ -41,7 +41,7 @@ public class TranslateController {
      * @param translateTextRequestDto 번역 요청 정보
      */
     @PostMapping(value = "/text")
-    public ResponseEntity<ResponseDto<TranslateResponseDto>> translateText(@Valid @RequestBody TranslateTextRequestDto translateTextRequestDto) {
+    public SseEmitter translateText(@Valid @RequestBody TranslateTextRequestDto translateTextRequestDto) {
 
         String sessionId = translateTextRequestDto.getSessionId();
         String afterLang = translateTextRequestDto.getAfterLang();
@@ -51,12 +51,7 @@ public class TranslateController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, context, sessionId, chatId, containDic);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
-
-        return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_TEXT_SUCCESS.toResponseDto(TranslateResponseDto.builder()
-                .sessionId(sessionId)
-                .msgId(translateVO.getMsgId())
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
     }
 
     /**
@@ -66,7 +61,7 @@ public class TranslateController {
      * @param multipartFile           번역 문서 파일
      */
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<TranslateResponseDto>> translateFile(
+    public SseEmitter translateFile(
             @Valid @RequestPart("requestDto") TranslateFileRequestDto translateFileRequestDto,
             @RequestPart("uploadFile") MultipartFile multipartFile
     ) {
@@ -78,12 +73,7 @@ public class TranslateController {
         long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, multipartFile, sessionId, chatId, containDic);
 
-        streamCoreService.getStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
-
-        return ResponseEntity.ok().body(Response.TRANSLATE_GENERATE_FILE_SUCCESS.toResponseDto(TranslateResponseDto.builder()
-                .sessionId(sessionId)
-                .msgId(translateVO.getMsgId())
-                .build()));
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
     }
 
     /**
