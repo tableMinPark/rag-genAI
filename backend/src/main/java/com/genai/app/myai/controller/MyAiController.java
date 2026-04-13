@@ -140,19 +140,23 @@ public class MyAiController {
                 .cache();
 
         // 문서 임베딩 Flux
-        Mono<StreamEvent> embedFlux = syncSourceMono.flatMap(pair -> Mono.fromCallable(() -> {
+        Mono<StreamEvent> embedFlux = syncSourceMono.flatMap(pair -> {
                     EmbedVO embed = pair.getSecond();
-
-                    embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds());
-
-                    return StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                            .progress(1)
-                            .message("문서 힉습중")
-                            .build());
-                }))
+                    return embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds())
+                            .then(Mono.just(
+                                    StreamEvent.prepare(
+                                            StringUtil.generateRandomId(),
+                                            PrepareVO.builder()
+                                                    .progress(1)
+                                                    .message("문서 학습중")
+                                                    .build()
+                                    )
+                            ));
+                })
                 .subscribeOn(Schedulers.boundedElastic());
 
-        Flux<StreamEvent> finalFlux = Flux.concat(createProjectMono.map(Pair::getFirst), syncSourceMono.map(Pair::getFirst), embedFlux);
+        Flux<StreamEvent> finalFlux = Flux.concat(createProjectMono.map(Pair::getFirst), syncSourceMono.map(Pair::getFirst), embedFlux)
+                .onErrorMap(throwable -> new RuntimeException("프로젝트 등록 중 에러가 발생했습니다. 기존 문서를 삭제하고, 문서를 재등록해주세요.", throwable));
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(finalFlux);
     }
@@ -219,7 +223,7 @@ public class MyAiController {
                 .cache();
 
         // 대상 문서 동기화 Flux
-        Flux<Pair<StreamEvent, EmbedVO>> syncSourceFlux = updateProjectMono.flatMapMany(pair -> Mono.fromCallable(() -> {
+        Mono<Pair<StreamEvent, EmbedVO>> syncSourceMono = updateProjectMono.flatMap(pair -> Mono.fromCallable(() -> {
                     UpdateProjectVO updateProject = pair.getSecond();
                     EmbedVO embed = embedCoreService.syncEmbedSources(
                             collectionType,
@@ -235,19 +239,23 @@ public class MyAiController {
                 .cache();
 
         // 문서 임베딩 Flux
-        Flux<StreamEvent> embedFlux = syncSourceFlux.flatMap(pair -> Mono.fromCallable(() -> {
+        Mono<StreamEvent> embedFlux = syncSourceMono.flatMap(pair -> {
                     EmbedVO embed = pair.getSecond();
-
-                    embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds());
-
-                    return StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                            .progress(1)
-                            .message("문서 힉습중")
-                            .build());
-                }))
+                    return embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds())
+                            .then(Mono.just(
+                                    StreamEvent.prepare(
+                                            StringUtil.generateRandomId(),
+                                            PrepareVO.builder()
+                                                    .progress(1)
+                                                    .message("문서 학습중")
+                                                    .build()
+                                    )
+                            ));
+                })
                 .subscribeOn(Schedulers.boundedElastic());
 
-        Flux<StreamEvent> finalFlux = Flux.concat(updateProjectMono.map(Pair::getFirst), syncSourceFlux.map(Pair::getFirst), embedFlux);
+        Flux<StreamEvent> finalFlux = Flux.concat(updateProjectMono.map(Pair::getFirst), syncSourceMono.map(Pair::getFirst), embedFlux)
+                .onErrorMap(throwable -> new RuntimeException("프로젝트 수정 중 에러가 발생했습니다. 기존 문서를 삭제하고, 문서를 재등록해주세요.", throwable));
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(finalFlux);
     }

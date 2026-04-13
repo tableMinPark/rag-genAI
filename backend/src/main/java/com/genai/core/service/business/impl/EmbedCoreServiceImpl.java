@@ -1,5 +1,7 @@
 package com.genai.core.service.business.impl;
 
+import com.genai.common.utils.ExtractUtil;
+import com.genai.common.utils.HtmlUtil;
 import com.genai.core.config.properties.ChunkProperty;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;
@@ -10,14 +12,16 @@ import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.service.business.constant.EmbedCoreConst;
 import com.genai.core.service.business.vo.EmbedVO;
 import com.genai.core.type.CollectionType;
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.HtmlUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -191,22 +195,33 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
      * @param collectionType 컬렉션 타입
      */
     @Override
-    public void syncEmbedSources(CollectionType collectionType, List<DocumentEntity> documentEntities, List<String> deleteDocumentIds) {
+    public Mono<Void> syncEmbedSources(CollectionType collectionType, List<DocumentEntity> documentEntities, List<String> deleteDocumentIds) {
+        return Mono.fromRunnable(() -> {
+                    // 컬렉션 존재 여부 확인
+                    collectionRepository.findCollectionByCollectionId(collectionType.getCollectionId())
+                            .orElseThrow(() -> new NotFoundException(collectionType.getCollectionId()));
 
-        // 컬렉션 존재 여부 확인
-        collectionRepository.findCollectionByCollectionId(collectionType.getCollectionId())
-                .orElseThrow(() -> new NotFoundException(collectionType.getCollectionId()));
+                    // 벡터 변환
+                    List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
+                    documentEntities.forEach(documentEntity ->
+                            indexDocumentEntities.addAll(collectionRepository.convertVector(collectionType.getCollectionId(), documentEntities)));
 
-        // 벡터 변환
-        List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
-        documentEntities.forEach(documentEntity ->
-                indexDocumentEntities.addAll(collectionRepository.convertVector(collectionType.getCollectionId(), documentEntities)));
+                    // 멀티플 색인
+                    collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities);
 
-        // 멀티플 색인
-        collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities);
-
-        // 색인 문서 삭제
-        collectionRepository.deleteIndex(collectionType.getCollectionId(), deleteDocumentIds);
+                    // 색인 문서 삭제
+                    collectionRepository.deleteIndex(collectionType.getCollectionId(), deleteDocumentIds);
+                })
+                .subscribeOn(Schedulers.boundedElastic())
+                .retryWhen(
+                        Retry.fixedDelay(EmbedCoreConst.RETRY_COUNT, Duration.ofMillis(EmbedCoreConst.RETRY_DELAY))
+                                .doBeforeRetry(retrySignal -> {
+                                    log.warn("임베딩 실패 재시도 진행 {}/{} | {}",
+                                            retrySignal.totalRetries() + 1,
+                                            EmbedCoreConst.RETRY_COUNT,
+                                            retrySignal.failure().getMessage());
+                                })
+                ).then();
     }
 
     /**

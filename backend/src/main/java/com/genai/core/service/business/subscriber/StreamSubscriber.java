@@ -140,7 +140,7 @@ public class StreamSubscriber extends BaseSubscriber<StreamEvent> {
         }
 
         log.error("[{}] " + String.format("%-20s", "Stream complete with error") + " |", stream.getStreamId(), throwable);
-        stream.getEmitter().completeWithError(throwable);
+        stream.getEmitter().complete();
     }
 
     @Override

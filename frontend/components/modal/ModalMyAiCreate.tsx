@@ -166,8 +166,9 @@ export default function ModalMyAiCreate({
       onException: (event) => {
         modalStore.setError(
           '에러 발생',
-          '답변 생성 실패',
-          event.data || '답변 생성 중 에러가 발생했습니다.',
+          '프로젝트 등록 실패',
+          event.data ||
+            '프로젝트 등록 중 에러가 발생했습니다. 문서를 재등록해주세요.',
         )
         setIsStreaming(false)
         streamRef.current = null

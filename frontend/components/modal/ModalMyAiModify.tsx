@@ -136,8 +136,9 @@ export default function ModalMyAiModify({
       onException: (event) => {
         modalStore.setError(
           '에러 발생',
-          '답변 생성 실패',
-          event.data || '답변 생성 중 에러가 발생했습니다.',
+          '문서 목록 수정 실패',
+          event.data ||
+            '문서 목록 수정 중 에러가 발생했습니다. 문서를 재등록해주세요.',
         )
         setIsStreaming(false)
         streamRef.current = null

@@ -3,6 +3,7 @@ package com.genai.core.service.business;
 import com.genai.core.repository.entity.DocumentEntity;
 import com.genai.core.service.business.vo.EmbedVO;
 import com.genai.core.type.CollectionType;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 
@@ -15,7 +16,7 @@ public interface EmbedCoreService {
      *
      * @param collectionType 컬렉션 타입
      */
-    void syncEmbedSources(CollectionType collectionType, List<DocumentEntity> documentEntities, List<String> deleteDocumentIds);
+    Mono<Void> syncEmbedSources(CollectionType collectionType, List<DocumentEntity> documentEntities, List<String> deleteDocumentIds);
 
     /**
      * 임베딩 문서 삭제
