@@ -1,20 +1,20 @@
 package com.genai.app.myai.service.impl;
 
-import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.repository.ProjectRepository;
 import com.genai.app.myai.repository.entity.ProjectEntity;
 import com.genai.app.myai.service.MyAiService;
+import com.genai.app.myai.service.vo.CreateProjectVO;
+import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.app.myai.service.vo.UpdateProjectVO;
+import com.genai.common.utils.FileUtil;
+import com.genai.common.vo.UploadFileVO;
 import com.genai.core.config.properties.FileProperty;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;
-import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.core.type.CollectionType;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.vo.UploadFileVO;
 import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -33,7 +33,6 @@ import java.util.List;
 public class MyAiServiceImpl implements MyAiService {
 
     private final ProjectRepository projectRepository;
-    private final EmbedCoreService embedCoreService;
     private final FileRepository fileRepository;
     private final FileProperty fileProperty;
     private final PromptRepository promptRepository;
@@ -152,7 +151,7 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public void createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
+    public CreateProjectVO createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
         // 프롬프트 등록
         CommonCodeEntity role = commonCodeRepository.findByCode(roleCode)
                 .orElseThrow(() -> new NotFoundException("역할 코드"));
@@ -215,11 +214,27 @@ public class MyAiServiceImpl implements MyAiService {
                 .prompt(promptEntity)
                 .build());
 
-        // 문서 임베딩
-        embedCoreService.syncEmbedSources(
-                CollectionType.myai(),
-                fileEntity.getFileId(),
-                MyAiConst.categoryCode(projectEntity.getProjectId()));
+        return CreateProjectVO.builder()
+                .project(ProjectVO.builder()
+                        .projectId(projectEntity.getProjectId())
+                        .projectName(projectEntity.getProjectName())
+                        .projectDesc(projectEntity.getProjectDesc())
+                        .sysCreateDt(projectEntity.getSysCreateDt())
+                        .sysModifyDt(projectEntity.getSysModifyDt())
+                        .fileId(projectEntity.getFile().getFileId())
+                        .promptId(projectEntity.getPrompt().getPromptId())
+                        .sourceCount(0)
+                        .chunkCount(0)
+                        .build())
+                .fileId(projectEntity.getFile().getFileId())
+                .addFileDetails(fileDetailEntities.stream().map(fileDetailEntity -> FileDetailVO.builder()
+                                .fileDetailId(fileDetailEntity.getFileDetailId())
+                                .fileOriginName(fileDetailEntity.getFileOriginName())
+                                .ext(fileDetailEntity.getExt())
+                                .fileSize(fileDetailEntity.getFileSize())
+                                .build())
+                        .toList())
+                .build();
     }
 
     /**
@@ -229,19 +244,28 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public void deleteProject(long projectId) {
+    public DeleteProjectVO deleteProject(long projectId) {
 
         ProjectEntity projectEntity = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
-        // 임베딩 문서 삭제
-        embedCoreService.deleteEmbedSources(
-                CollectionType.myai(),
-                projectEntity.getFile().getFileId(),
-                MyAiConst.categoryCode(projectEntity.getProjectId()));
-
         // 프로젝트 삭제
         projectRepository.deleteById(projectId);
+
+        return DeleteProjectVO.builder()
+                .project(ProjectVO.builder()
+                        .projectId(projectEntity.getProjectId())
+                        .projectName(projectEntity.getProjectName())
+                        .projectDesc(projectEntity.getProjectDesc())
+                        .sysCreateDt(projectEntity.getSysCreateDt())
+                        .sysModifyDt(projectEntity.getSysModifyDt())
+                        .fileId(projectEntity.getFile().getFileId())
+                        .promptId(projectEntity.getPrompt().getPromptId())
+                        .sourceCount(0)
+                        .chunkCount(0)
+                        .build())
+                .fileId(projectEntity.getFile().getFileId())
+                .build();
     }
 
     /**
@@ -276,12 +300,16 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public void updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds) {
+    public UpdateProjectVO updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds) {
 
         ProjectEntity projectEntity = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         FileEntity fileEntity = projectEntity.getFile();
+
+        List<FileDetailEntity> deleteFileDetailEntities = fileEntity.getFileDetails().stream()
+                .filter(fileDetailEntity -> deleteFileDetailIds.contains(fileDetailEntity.getFileDetailId()))
+                .toList();
 
         // 삭제 대상 파일 상세 삭제
         fileEntity.getFileDetails()
@@ -318,14 +346,37 @@ public class MyAiServiceImpl implements MyAiService {
         // 파일 목록 수정
         fileEntity = fileRepository.save(fileEntity);
 
-        // 새로운 문서 임베딩
-        embedCoreService.syncEmbedSources(
-                CollectionType.myai(),
-                fileEntity.getFileId(),
-                MyAiConst.categoryCode(projectEntity.getProjectId()));
-
         // 새로운 파일로 업데이트
         projectEntity.setFile(fileEntity);
         projectRepository.save(projectEntity);
+
+        return UpdateProjectVO.builder()
+                .project(ProjectVO.builder()
+                        .projectId(projectEntity.getProjectId())
+                        .projectName(projectEntity.getProjectName())
+                        .projectDesc(projectEntity.getProjectDesc())
+                        .sysCreateDt(projectEntity.getSysCreateDt())
+                        .sysModifyDt(projectEntity.getSysModifyDt())
+                        .fileId(projectEntity.getFile().getFileId())
+                        .promptId(projectEntity.getPrompt().getPromptId())
+                        .sourceCount(0)
+                        .chunkCount(0)
+                        .build())
+                .fileId(projectEntity.getFile().getFileId())
+                .addFileDetails(fileEntity.getFileDetails().stream().map(fileDetailEntity -> FileDetailVO.builder()
+                                .fileDetailId(fileDetailEntity.getFileDetailId())
+                                .fileOriginName(fileDetailEntity.getFileOriginName())
+                                .ext(fileDetailEntity.getExt())
+                                .fileSize(fileDetailEntity.getFileSize())
+                                .build())
+                        .toList())
+                .deleteFileDetails(deleteFileDetailEntities.stream().map(fileDetailEntity -> FileDetailVO.builder()
+                                .fileDetailId(fileDetailEntity.getFileDetailId())
+                                .fileOriginName(fileDetailEntity.getFileOriginName())
+                                .ext(fileDetailEntity.getExt())
+                                .fileSize(fileDetailEntity.getFileSize())
+                                .build())
+                        .toList())
+                .build();
     }
 }

@@ -1,6 +1,9 @@
 package com.genai.app.myai.service;
 
+import com.genai.app.myai.service.vo.CreateProjectVO;
+import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.app.myai.service.vo.UpdateProjectVO;
 import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.global.wrapper.PageWrapper;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,14 +40,14 @@ public interface MyAiService {
      * @param styleCode      답변 스타일 코드
      * @param multipartFiles 임베딩 문서 목록
      */
-    void createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles);
+    CreateProjectVO createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles);
 
     /**
      * 프로젝트 삭제
      *
      * @param projectId 프로젝트 ID
      */
-    void deleteProject(long projectId);
+    DeleteProjectVO deleteProject(long projectId);
 
     /**
      * 프로젝트 임베딩 문서 목록 조회
@@ -61,5 +64,5 @@ public interface MyAiService {
      * @param multipartFiles      임베딩 문서 목록
      * @param deleteFileDetailIds 삭제 파일 상세 ID 목록
      */
-    void updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds);
+    UpdateProjectVO updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds);
 }

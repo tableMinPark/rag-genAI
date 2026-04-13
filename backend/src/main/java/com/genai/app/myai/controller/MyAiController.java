@@ -1,30 +1,47 @@
 package com.genai.app.myai.controller;
 
+import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.controller.dto.request.CreateProjectRequestDto;
 import com.genai.app.myai.controller.dto.request.UpdateProjectSourcesRequestDto;
 import com.genai.app.myai.controller.dto.response.GetProjectResponseDto;
 import com.genai.app.myai.controller.dto.response.GetProjectSourceResponseDto;
 import com.genai.app.myai.service.MyAiService;
+import com.genai.app.myai.service.vo.CreateProjectVO;
+import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
+import com.genai.app.myai.service.vo.UpdateProjectVO;
+import com.genai.common.utils.StringUtil;
+import com.genai.core.service.business.EmbedCoreService;
+import com.genai.core.service.business.StreamCoreService;
+import com.genai.core.service.business.subscriber.StreamEvent;
+import com.genai.core.service.business.vo.EmbedVO;
 import com.genai.core.service.business.vo.FileDetailVO;
+import com.genai.core.service.business.vo.PrepareVO;
+import com.genai.core.type.CollectionType;
 import com.genai.global.dto.PageResponseDto;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Response;
 import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.util.Pair;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.util.List;
 
+@Slf4j
 @Validated
 @RestController
 @RequiredArgsConstructor
@@ -32,6 +49,8 @@ import java.util.List;
 public class MyAiController {
 
     private final MyAiService myAiService;
+    private final EmbedCoreService embedCoreService;
+    private final StreamCoreService streamCoreService;
 
     /**
      * 프로젝트 조회
@@ -80,19 +99,62 @@ public class MyAiController {
      * @param multipartFiles          임베딩 문서 목록
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<?>> createProject(
+    public SseEmitter createProject(
             @Valid @RequestPart("requestDto") CreateProjectRequestDto createProjectRequestDto,
             @RequestPart("uploadFiles") MultipartFile[] multipartFiles
     ) {
+        String sessionId = StringUtil.generateRandomId();
         String projectName = createProjectRequestDto.getProjectName();
         String projectDesc = createProjectRequestDto.getProjectDesc();
         String roleCode = createProjectRequestDto.getRoleCode();
         String toneCode = createProjectRequestDto.getToneCode();
         String styleCode = createProjectRequestDto.getStyleCode();
+        CollectionType collectionType = CollectionType.myai();
 
-        myAiService.createProject(projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
+        // 프로젝트 등록 Mono
+        Mono<Pair<StreamEvent, CreateProjectVO>> createProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
+                    CreateProjectVO createProject = myAiService.createProject(projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
 
-        return ResponseEntity.ok().body(Response.MYAI_CREATE_PROJECT_SUCCESS.toResponseDto());
+                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .progress(0.3f)
+                            .message("문서 힉습중")
+                            .build()), createProject);
+                }))
+                .subscribeOn(Schedulers.boundedElastic())
+                .cache();
+
+        // 대상 문서 동기화 Flux
+        Mono<Pair<StreamEvent, EmbedVO>> syncSourceMono = createProjectMono.flatMap(pair -> Mono.fromCallable(() -> {
+                    CreateProjectVO createProject = pair.getSecond();
+                    EmbedVO embed = embedCoreService.syncEmbedSources(
+                            CollectionType.myai(),
+                            createProject.getFileId(),
+                            MyAiConst.categoryCode(createProject.getProject().getProjectId()));
+
+                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .progress(0.6f)
+                            .message("문서 힉습중")
+                            .build()), embed);
+                }))
+                .subscribeOn(Schedulers.boundedElastic())
+                .cache();
+
+        // 문서 임베딩 Flux
+        Mono<StreamEvent> embedFlux = syncSourceMono.flatMap(pair -> Mono.fromCallable(() -> {
+                    EmbedVO embed = pair.getSecond();
+
+                    embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds());
+
+                    return StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
+                            .progress(1)
+                            .message("문서 힉습중")
+                            .build());
+                }))
+                .subscribeOn(Schedulers.boundedElastic());
+
+        Flux<StreamEvent> finalFlux = Flux.concat(createProjectMono.map(Pair::getFirst), syncSourceMono.map(Pair::getFirst), embedFlux);
+
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(finalFlux);
     }
 
     /**
@@ -103,7 +165,13 @@ public class MyAiController {
     @DeleteMapping("/{projectId}")
     public ResponseEntity<ResponseDto<?>> deleteProject(@NotNull @PathVariable("projectId") Long projectId) {
 
-        myAiService.deleteProject(projectId);
+        DeleteProjectVO deleteProjectVO = myAiService.deleteProject(projectId);
+
+        // 임베딩 문서 삭제
+        embedCoreService.deleteEmbedSources(
+                CollectionType.myai(),
+                deleteProjectVO.getFileId(),
+                MyAiConst.categoryCode(deleteProjectVO.getProject().getProjectId()));
 
         return ResponseEntity.ok().body(Response.MYAI_DELETE_PROJECT_SUCCESS.toResponseDto());
     }
@@ -129,15 +197,58 @@ public class MyAiController {
      * @param multipartFiles 임베딩 문서 목록
      */
     @PostMapping(value = "/{projectId}/source", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseDto<?>> updateProjectSources(
+    public SseEmitter updateProjectSources(
             @NotNull @PathVariable("projectId") Long projectId,
             @Valid @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
             @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles
     ) {
+        String sessionId = StringUtil.generateRandomId();
         List<Long> deleteFileDetailIds = updateProjectSourcesRequestDto.getDeleteFileDetailIds();
+        CollectionType collectionType = CollectionType.myai();
 
-        myAiService.updateProjectSources(projectId, multipartFiles, deleteFileDetailIds);
+        // 프로젝트 업데이트 Mono
+        Mono<Pair<StreamEvent, UpdateProjectVO>> updateProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
+                    UpdateProjectVO updateProject = myAiService.updateProjectSources(projectId, multipartFiles, deleteFileDetailIds);
 
-        return ResponseEntity.ok().body(Response.MYAI_UPDATE_PROJECT_SOURCES_SUCCESS.toResponseDto());
+                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .progress(0.3f)
+                            .message("문서 힉습중")
+                            .build()), updateProject);
+                }))
+                .subscribeOn(Schedulers.boundedElastic())
+                .cache();
+
+        // 대상 문서 동기화 Flux
+        Flux<Pair<StreamEvent, EmbedVO>> syncSourceFlux = updateProjectMono.flatMapMany(pair -> Mono.fromCallable(() -> {
+                    UpdateProjectVO updateProject = pair.getSecond();
+                    EmbedVO embed = embedCoreService.syncEmbedSources(
+                            collectionType,
+                            updateProject.getFileId(),
+                            MyAiConst.categoryCode(updateProject.getProject().getProjectId()));
+
+                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
+                            .progress(0.6f)
+                            .message("문서 힉습중")
+                            .build()), embed);
+                }))
+                .subscribeOn(Schedulers.boundedElastic())
+                .cache();
+
+        // 문서 임베딩 Flux
+        Flux<StreamEvent> embedFlux = syncSourceFlux.flatMap(pair -> Mono.fromCallable(() -> {
+                    EmbedVO embed = pair.getSecond();
+
+                    embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds());
+
+                    return StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
+                            .progress(1)
+                            .message("문서 힉습중")
+                            .build());
+                }))
+                .subscribeOn(Schedulers.boundedElastic());
+
+        Flux<StreamEvent> finalFlux = Flux.concat(updateProjectMono.map(Pair::getFirst), syncSourceFlux.map(Pair::getFirst), embedFlux);
+
+        return streamCoreService.createStream(sessionId).subscribeWithTrace(finalFlux);
     }
 }

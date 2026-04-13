@@ -21,10 +21,8 @@ public enum Response {
 
     // MYAI
     MYAI_GET_PROJECTS_SUCCESS(HttpStatus.OK, 2000, "나만의 AI 프로젝트 목록 조회에 성공했습니다.", ""),
-    MYAI_CREATE_PROJECT_SUCCESS(HttpStatus.OK, 2001, "나만의 AI 프로젝트 생성에 성공했습니다.", ""),
     MYAI_DELETE_PROJECT_SUCCESS(HttpStatus.OK, 2002, "나만의 AI 프로젝트 삭제에 성공했습니다.", ""),
     MYAI_GET_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2003, "나만의 AI 프로젝트 임베딩 문서 조회에 성공했습니다.", ""),
-    MYAI_UPDATE_PROJECT_SOURCES_SUCCESS(HttpStatus.OK, 2004, "나만의 AI 프로젝트 임베딩 문서 수정에 성공했습니다.", ""),
 
     // TRANSLATE
     TRANSLATE_TRANSLATE_LANGUAGES(HttpStatus.OK, 5002, "번역 언어 목록 조회에 성공했습니다.", ""),

@@ -4,11 +4,13 @@ import {
   getPromptStylesApi,
   getPromptTonesApi,
 } from '@/api/prompt'
+import { FetchEventSource } from '@/api/stream'
 import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'
 import { PromptParameter } from '@/types/domain'
+import { StreamEvent } from '@/types/streamEvent'
 import { FileSearch, FileText, Loader2, Save, Upload, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
 
@@ -47,6 +49,9 @@ export default function ModalMyAiCreate({
   const [projectFiles, setProjectFiles] = useState<File[]>([])
   // 프로젝트 생성 상태
   const [isLoading, setIsLoading] = useState(false)
+  // 스트리밍 여부 상태
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<FetchEventSource | null>(null)
 
   // ###################################################
   // 랜더링 이펙트
@@ -143,7 +148,36 @@ export default function ModalMyAiCreate({
         return
       }
     })
-    setIsLoading(true)
+    // 스트림 상태 체크
+    if (isStreaming) return
+    // 스트림 시작 상태 변경
+    setIsStreaming(true)
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 프로젝트 생성 요청`)
+        setIsLoading(true)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+        setIsLoading(false)
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+        setIsLoading(false)
+      },
+      onPrepareDone: () => {
+        onCreate()
+      },
+    })
+    // 세션 기반 SSE 연결
     await createProjectApi(
       projectName,
       projectDescription,
@@ -151,10 +185,11 @@ export default function ModalMyAiCreate({
       answerTone,
       answerStyle,
       projectFiles,
+      streamEvent,
     )
-      .then((response) => {
-        console.log(`📡 ${response.message}`)
-        onCreate()
+      .then((stream) => {
+        console.log(`📡 프로젝트 생성 요청 성공`)
+        streamRef.current = stream
       })
       .catch((reason) => {
         console.error(reason)
@@ -163,8 +198,9 @@ export default function ModalMyAiCreate({
           '프로젝트 생성 실패',
           '프로젝트 생성에 실패했습니다.',
         )
+        setIsStreaming(false)
+        streamRef.current = null
       })
-      .finally(() => setIsLoading(false))
   }
 
   /**

@@ -8,6 +8,7 @@ import com.genai.core.repository.SourceRepository;
 import com.genai.core.repository.entity.*;
 import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.service.business.constant.EmbedCoreConst;
+import com.genai.core.service.business.vo.EmbedVO;
 import com.genai.core.type.CollectionType;
 import com.genai.common.utils.ExtractUtil;
 import com.genai.common.utils.HtmlUtil;
@@ -31,20 +32,9 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
     private final CollectionRepository collectionRepository;
     private final ChunkProperty chunkProperty;
 
-    /**
-     * 임베딩 문서 동기화
-     *
-     * @param collectionType 컬렉션 타입
-     * @param fileId         파일 ID
-     * @param categoryCode   카테고리 코드
-     */
     @Transactional
     @Override
-    public void syncEmbedSources(CollectionType collectionType, long fileId, String categoryCode) {
-
-        // 컬렉션 존재 여부 확인
-        collectionRepository.findCollectionByCollectionId(collectionType.getCollectionId())
-                .orElseThrow(() -> new NotFoundException(collectionType.getCollectionId()));
+    public EmbedVO syncEmbedSources(CollectionType collectionType, long fileId, String categoryCode) {
 
         // 임베딩 대상 파일 목록 조회
         List<FileDetailEntity> fileDetailEntities = fileRepository.findById(fileId)
@@ -60,6 +50,20 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
         List<SourceEntity> deleteSourceEntities = fileDetailIds.isEmpty()
                 ? sourceRepository.findByCollectionIdAndCategoryCode(collectionType.getCollectionId(), categoryCode)
                 : sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIsNotIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
+
+        // 삭제 대상 ID 목록
+        List<String> deleteDocumentIds = new ArrayList<>();
+        deleteSourceEntities.forEach(previousSourceEntity -> {
+            previousSourceEntity.getPassages().forEach(passageEntity -> {
+                passageEntity.getChunks().forEach(chunkEntity -> {
+                    deleteDocumentIds.add(String.valueOf(chunkEntity.getChunkId()));
+                });
+            });
+        });
+
+        // 이전 대상 문서 삭제
+        sourceRepository.deleteAll(deleteSourceEntities);
+
         List<SourceEntity> existSourceEntities = sourceRepository.findByCollectionIdAndCategoryCodeAndFileDetailIdIn(collectionType.getCollectionId(), categoryCode, fileDetailIds);
 
         List<Long> existsFileDetailIds = existSourceEntities.stream()
@@ -72,7 +76,7 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                 .toList();
 
         // 색인 대상 목록
-        List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
+        List<DocumentEntity> documentEntities = new ArrayList<>();
         for (FileDetailEntity targetFileDetailEntity : targetFileDetailEntities) {
             String fullPath = targetFileDetailEntity.getUrl();
             String ext = targetFileDetailEntity.getExt();
@@ -141,7 +145,6 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                     .build());
 
             // 색인 문서 생성
-            List<DocumentEntity> documentEntities = new ArrayList<>();
             for (PassageEntity passageEntity : sourceEntity.getPassages()) {
                 for (ChunkEntity chunkEntity : passageEntity.getChunks()) {
                     String context = chunkEntity.getTitle() + "\n" +
@@ -174,29 +177,36 @@ public class EmbedCoreServiceImpl implements EmbedCoreService {
                             .build());
                 }
             }
-
-            // 벡터 변환
-            indexDocumentEntities.addAll(collectionRepository.convertVector(collectionType.getCollectionId(), documentEntities));
         }
+
+        return EmbedVO.builder()
+                .documentEntities(documentEntities)
+                .deleteDocumentIds(deleteDocumentIds)
+                .build();
+    }
+
+    /**
+     * 임베딩 문서 동기화
+     *
+     * @param collectionType 컬렉션 타입
+     */
+    @Override
+    public void syncEmbedSources(CollectionType collectionType, List<DocumentEntity> documentEntities, List<String> deleteDocumentIds) {
+
+        // 컬렉션 존재 여부 확인
+        collectionRepository.findCollectionByCollectionId(collectionType.getCollectionId())
+                .orElseThrow(() -> new NotFoundException(collectionType.getCollectionId()));
+
+        // 벡터 변환
+        List<DocumentEntity> indexDocumentEntities = new ArrayList<>();
+        documentEntities.forEach(documentEntity ->
+                indexDocumentEntities.addAll(collectionRepository.convertVector(collectionType.getCollectionId(), documentEntities)));
 
         // 멀티플 색인
         collectionRepository.createIndex(collectionType.getCollectionId(), indexDocumentEntities);
 
-        // 삭제 대상 ID 목록
-        List<String> deleteDocumentIds = new ArrayList<>();
-        deleteSourceEntities.forEach(previousSourceEntity -> {
-            previousSourceEntity.getPassages().forEach(passageEntity -> {
-                passageEntity.getChunks().forEach(chunkEntity -> {
-                    deleteDocumentIds.add(String.valueOf(chunkEntity.getChunkId()));
-                });
-            });
-        });
-
         // 색인 문서 삭제
         collectionRepository.deleteIndex(collectionType.getCollectionId(), deleteDocumentIds);
-
-        // 대상 문서 삭제
-        sourceRepository.deleteAll(deleteSourceEntities);
     }
 
     /**

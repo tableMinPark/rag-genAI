@@ -1,6 +1,8 @@
 import { Project } from '@/types/domain'
 import { client } from './client'
 import { ApiResponse, PageResponse } from '@/types/api'
+import { FetchEventSource, streamApi } from './stream'
+import { StreamEvent } from '@/types/streamEvent'
 
 export interface GetProjectResponseDto extends Project {}
 
@@ -66,7 +68,8 @@ export const createProjectApi = async (
   toneCode: string,
   styleCode: string,
   uploadFiles: File[],
-): Promise<ApiResponse<void>> => {
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
   const formData = new FormData()
   uploadFiles.forEach((uploadFile) =>
     formData.append('uploadFiles', uploadFile),
@@ -89,8 +92,14 @@ export const createProjectApi = async (
     ),
   )
 
-  const response = await client.post<ApiResponse<void>>(`/myai`, formData)
-  return response.data
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/myai`,
+      formData,
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }
 
 /**
@@ -132,7 +141,8 @@ export const updateProjectSourcesApi = async (
   projectId: number,
   deleteFileDetailIds: number[],
   uploadFiles: File[],
-): Promise<ApiResponse<void>> => {
+  streamEvent: StreamEvent,
+): Promise<FetchEventSource> => {
   const formData = new FormData()
   uploadFiles.forEach((uploadFile) => {
     formData.append('uploadFiles', uploadFile)
@@ -144,10 +154,12 @@ export const updateProjectSourcesApi = async (
     }),
   )
 
-  const response = await client.post<ApiResponse<void>>(
-    `/myai/${projectId}/source`,
-    formData,
-  )
-
-  return response.data
+  return new Promise((resolve) => {
+    const stream = streamApi(
+      client.defaults.baseURL + `/myai/${projectId}/source`,
+      formData,
+      streamEvent,
+    )
+    resolve(stream)
+  })
 }

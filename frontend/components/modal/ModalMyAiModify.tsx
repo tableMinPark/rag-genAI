@@ -1,7 +1,9 @@
 import { getProjectSourcesApi, updateProjectSourcesApi } from '@/api/myai'
+import { FetchEventSource } from '@/api/stream'
 import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'
 import { FileDetail, Project } from '@/types/domain'
+import { StreamEvent } from '@/types/streamEvent'
 import {
   CheckCircle2,
   FileSearch,
@@ -11,7 +13,7 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
 
@@ -38,6 +40,9 @@ export default function ModalMyAiModify({
   >([])
   const [projectFiles, setProjectFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  // 스트리밍 여부 상태
+  const [isStreaming, setIsStreaming] = useState(false)
+  const streamRef = useRef<FetchEventSource | null>(null)
 
   // ###################################################
   // 랜더링 이펙트
@@ -113,22 +118,53 @@ export default function ModalMyAiModify({
    * 프로젝트 수정 핸들러
    */
   const handleModifyProject = async () => {
-    setIsLoading(true)
+    // 스트림 상태 체크
+    if (isStreaming) return
+    // 스트림 시작 상태 변경
+    setIsStreaming(true)
+    // 스트림 옵션 설정
+    const streamEvent = new StreamEvent({
+      onConnect: async (_) => {
+        console.log(`📡 프로젝트 생성 요청`)
+        setIsLoading(true)
+      },
+      onDisconnect: (_) => {
+        setIsStreaming(false)
+        streamRef.current = null
+        setIsLoading(false)
+      },
+      onException: (event) => {
+        modalStore.setError(
+          '에러 발생',
+          '답변 생성 실패',
+          event.data || '답변 생성 중 에러가 발생했습니다.',
+        )
+        setIsStreaming(false)
+        streamRef.current = null
+        setIsLoading(false)
+      },
+      onPrepareDone: () => {
+        onModify()
+      },
+    })
+    // 세션 기반 SSE 연결
     await updateProjectSourcesApi(
       project.projectId,
       deleteProjectFileDetailIds,
       projectFiles,
+      streamEvent,
     )
-      .then((response) => {
-        console.log(`📡 ${response.message}`)
-        onModify()
-        setIsLoading(false)
+      .then((stream) => {
+        console.log(`📡 프로젝트 수정 요청 성공`)
+        streamRef.current = stream
       })
       .catch((reason) => {
         console.error(reason)
         uiStore.setError('프로젝트 문서를 수정할 수 없습니다.', () =>
           handleModifyProject(),
         )
+        setIsStreaming(false)
+        streamRef.current = null
       })
   }
 
