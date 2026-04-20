@@ -34,6 +34,10 @@ public class ProjectEntity {
     @Comment("프로젝트 설명")
     private String projectDesc;
 
+    @Column(name = "sys_create_user")
+    @Comment("생성자")
+    private String sysCreateUser;
+
     @CreatedDate
     @Column(name = "sys_create_dt")
     @Comment("생성 일자")

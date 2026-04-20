@@ -5,7 +5,9 @@ import com.genai.app.chat.controller.dto.request.ChatLlmRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatMyAiRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatSimulationRequestDto;
 import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
+import com.genai.app.chat.controller.dto.response.GetChatDetailResponseDto;
 import com.genai.app.chat.service.ChatService;
+import com.genai.app.chat.service.vo.ChatDetailVO;
 import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
@@ -48,10 +50,11 @@ public class ChatController {
     @PostMapping("/ai")
     public SseEmitter chatAi(@Valid @RequestBody ChatAiRequestDto chatAiRequestDto) {
 
+        String userId = "USER";
         String sessionId = chatAiRequestDto.getSessionId();
         String query = chatAiRequestDto.getQuery();
 
-        long chatId = chatService.getChat(sessionId, query, Menu.MENU_AI).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_AI).getChatId();
         long promptId = PromptConst.QUESTION_AI_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatId, promptId, chatAiRequestDto.getCategoryCodes());
 
@@ -66,10 +69,11 @@ public class ChatController {
     @PostMapping("/llm")
     public SseEmitter chatLlm(@Valid @RequestBody ChatLlmRequestDto chatLlmRequestDto) {
 
+        String userId = "USER";
         String sessionId = chatLlmRequestDto.getSessionId();
         String query = chatLlmRequestDto.getQuery();
 
-        long chatId = chatService.getChat(sessionId, query, Menu.MENU_LLM).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_LLM).getChatId();
         long promptId = PromptConst.QUESTION_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId, promptId);
 
@@ -84,13 +88,14 @@ public class ChatController {
     @PostMapping("/myai")
     public SseEmitter chatMyAi(@Valid @RequestBody ChatMyAiRequestDto chatMyAiRequestDto) {
 
+        String userId = "USER";
         String sessionId = chatMyAiRequestDto.getSessionId();
         String query = chatMyAiRequestDto.getQuery();
         Long projectId = chatMyAiRequestDto.getProjectId();
 
-        ProjectVO projectVO = myAiService.getProject(projectId);
+        ProjectVO projectVO = myAiService.getProject(userId, projectId);
 
-        long chatId = chatService.getChat(sessionId, query, Menu.MENU_MYAI).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_MYAI).getChatId();
         long promptId = projectVO.getPromptId();
         String categoryCode = MyAiConst.categoryCode(projectId);
         QuestionVO questionVO = questionCoreService.questionMyAi(query, sessionId, chatId, promptId, categoryCode);
@@ -106,6 +111,7 @@ public class ChatController {
     @PostMapping("/simulation")
     public SseEmitter chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
 
+        String userId = "USER";
         String sessionId = chatSimulationRequestDto.getSessionId();
         String query = chatSimulationRequestDto.getQuery();
         String context = chatSimulationRequestDto.getContext();
@@ -114,7 +120,7 @@ public class ChatController {
         double temperature = chatSimulationRequestDto.getTemperature();
         double topP = chatSimulationRequestDto.getTopP();
 
-        long chatId = chatService.getChat(sessionId, query, Menu.MENU_SIMULATION).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_SIMULATION).getChatId();
         QuestionVO questionVO = questionCoreService.questionSimulation(
                 query, sessionId, chatId, context, promptContent, temperature, topP, maxTokens);
 
@@ -130,5 +136,25 @@ public class ChatController {
         List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(CommonConst.CHUNK_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.CHAT_CATEGORIES_SUCCESS.toResponseDto(GetCategoriesResponseDto.toList(categoryCodes)));
+    }
+
+    /**
+     * 대화 이력 목록 조회
+     *
+     * @param chatId 대화 ID
+     * @param page   페이지
+     * @param size   사이즈
+     */
+    @GetMapping("/history")
+    public ResponseEntity<ResponseDto<List<GetChatDetailResponseDto>>> getChatDetails(
+            @RequestParam("chatId") long chatId,
+            @RequestParam("page") int page,
+            @RequestParam("size") int size
+    ) {
+        String userId = "USER";
+
+        List<ChatDetailVO> chatDetails = chatService.getChatDetails(userId, chatId, page, size);
+
+        return ResponseEntity.ok().body(Response.CHAT_DETAILS_SUCCESS.toResponseDto(GetChatDetailResponseDto.toList(chatDetails)));
     }
 }

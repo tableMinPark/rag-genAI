@@ -36,12 +36,13 @@ public class ReportController {
     @PostMapping(value = "/text")
     public SseEmitter generateReportText(@Valid @RequestBody ReportTextRequestDto reportTextRequestDto) {
 
+        String userId = "USER";
         String sessionId = reportTextRequestDto.getSessionId();
         String promptContext = promptCoreService.generateReportPrompt(reportTextRequestDto.getRequestContent());
         String title = reportTextRequestDto.getTitle();
         String content = reportTextRequestDto.getContext();
 
-        long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
+        long chatId = chatService.getChat(userId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, content, sessionId, chatId);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());
@@ -59,11 +60,12 @@ public class ReportController {
             @RequestPart("uploadFile") MultipartFile[] multipartFiles
     ) {
 
+        String userId = "USER";
         String sessionId = reportFileRequestDto.getSessionId();
         String promptContext = promptCoreService.generateReportPrompt(reportFileRequestDto.getRequestContent());
         String title = reportFileRequestDto.getTitle();
 
-        long chatId = chatService.getChat(sessionId, title, Menu.MENU_REPORT).getChatId();
+        long chatId = chatService.getChat(userId, title, Menu.MENU_REPORT).getChatId();
         ReportVO reportVO = reportCoreService.generateReport(title, promptContext, multipartFiles, sessionId, chatId);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(reportVO.getAnswerStream());

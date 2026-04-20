@@ -34,11 +34,12 @@ public class SummaryController {
     @PostMapping(value = "/text")
     public SseEmitter summaryText(@Valid @RequestBody SummaryTextRequestDto summaryTextRequestDto) {
 
+        String userId = "USER";
         String sessionId = summaryTextRequestDto.getSessionId();
         float lengthRatio = summaryTextRequestDto.getLengthRatio();
         String context = summaryTextRequestDto.getContext();
 
-        long chatId = chatService.getChat(sessionId, "", Menu.MENU_SUMMARY).getChatId();
+        long chatId = chatService.getChat(userId, "", Menu.MENU_SUMMARY).getChatId();
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, context, sessionId, chatId);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(summaryVO.getAnswerStream());
@@ -56,10 +57,11 @@ public class SummaryController {
             @RequestPart("uploadFile") MultipartFile multipartFile
     ) {
 
+        String userId = "USER";
         String sessionId = summaryFileRequestDto.getSessionId();
         float lengthRatio = summaryFileRequestDto.getLengthRatio();
 
-        long chatId = chatService.getChat(sessionId, "", Menu.MENU_SUMMARY).getChatId();
+        long chatId = chatService.getChat(userId, "", Menu.MENU_SUMMARY).getChatId();
         SummaryVO summaryVO = summaryCoreService.summary(lengthRatio, multipartFile, sessionId, chatId);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(summaryVO.getAnswerStream());

@@ -49,9 +49,9 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional(readOnly = true)
     @Override
-    public ProjectVO getProject(long projectId) {
+    public ProjectVO getProject(String userId, long projectId) {
 
-        ProjectEntity projectEntity = projectRepository.findById(projectId)
+        ProjectEntity projectEntity = projectRepository.findByProjectIdAndSysCreateUser(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         List<Long> fileDetailIds = projectEntity.getFile().getFileDetails().stream()
@@ -91,16 +91,16 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional(readOnly = true)
     @Override
-    public PageWrapper<ProjectVO> getProjects(int page, int size, String keyword) {
+    public PageWrapper<ProjectVO> getProjects(String userId, int page, int size, String keyword) {
 
         Pageable pageable = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "projectId"));
 
         Page<ProjectEntity> projectEntityPage;
 
         if (keyword == null) {
-            projectEntityPage = projectRepository.findAll(pageable);
+            projectEntityPage = projectRepository.findAllBySysCreateUser(userId, pageable);
         } else {
-            projectEntityPage = projectRepository.findAllByProjectNameLike("%" + keyword.replace(" ", "%") + "%", pageable);
+            projectEntityPage = projectRepository.findAllBySysCreateUserAndProjectNameLike(userId, "%" + keyword.replace(" ", "%") + "%", pageable);
         }
 
         return PageWrapper.<ProjectVO>builder()
@@ -151,7 +151,7 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public CreateProjectVO createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
+    public CreateProjectVO createProject(String userId, String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles) {
         // 프롬프트 등록
         CommonCodeEntity role = commonCodeRepository.findByCode(roleCode)
                 .orElseThrow(() -> new NotFoundException("역할 코드"));
@@ -212,6 +212,7 @@ public class MyAiServiceImpl implements MyAiService {
                 .projectDesc(projectDesc)
                 .file(fileEntity)
                 .prompt(promptEntity)
+                .sysCreateUser(userId)
                 .build());
 
         return CreateProjectVO.builder()
@@ -244,9 +245,9 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public DeleteProjectVO deleteProject(long projectId) {
+    public DeleteProjectVO deleteProject(String userId, long projectId) {
 
-        ProjectEntity projectEntity = projectRepository.findById(projectId)
+        ProjectEntity projectEntity = projectRepository.findByProjectIdAndSysCreateUser(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         // 프로젝트 삭제
@@ -276,9 +277,9 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional(readOnly = true)
     @Override
-    public List<FileDetailVO> getProjectSources(long projectId) {
+    public List<FileDetailVO> getProjectSources(String userId, long projectId) {
 
-        ProjectEntity projectEntity = projectRepository.findById(projectId)
+        ProjectEntity projectEntity = projectRepository.findByProjectIdAndSysCreateUser(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         return projectEntity.getFile().getFileDetails().stream()
@@ -300,9 +301,9 @@ public class MyAiServiceImpl implements MyAiService {
      */
     @Transactional
     @Override
-    public UpdateProjectVO updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds) {
+    public UpdateProjectVO updateProjectSources(String userId, long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds) {
 
-        ProjectEntity projectEntity = projectRepository.findById(projectId)
+        ProjectEntity projectEntity = projectRepository.findByProjectIdAndSysCreateUser(projectId, userId)
                 .orElseThrow(() -> new NotFoundException("프로젝트"));
 
         FileEntity fileEntity = projectEntity.getFile();

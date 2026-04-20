@@ -18,7 +18,7 @@ public interface MyAiService {
      * @param projectId 프로젝트 ID
      * @return 프로젝트
      */
-    ProjectVO getProject(long projectId);
+    ProjectVO getProject(String userId, long projectId);
 
     /**
      * 프로젝트 목록 조회
@@ -28,7 +28,7 @@ public interface MyAiService {
      * @param keyword 키워드
      * @return 프로젝트 목록
      */
-    PageWrapper<ProjectVO> getProjects(int page, int size, String keyword);
+    PageWrapper<ProjectVO> getProjects(String userId, int page, int size, String keyword);
 
     /**
      * 프로젝트 생성
@@ -40,14 +40,14 @@ public interface MyAiService {
      * @param styleCode      답변 스타일 코드
      * @param multipartFiles 임베딩 문서 목록
      */
-    CreateProjectVO createProject(String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles);
+    CreateProjectVO createProject(String userId, String projectName, String projectDesc, String roleCode, String toneCode, String styleCode, MultipartFile[] multipartFiles);
 
     /**
      * 프로젝트 삭제
      *
      * @param projectId 프로젝트 ID
      */
-    DeleteProjectVO deleteProject(long projectId);
+    DeleteProjectVO deleteProject(String userId, long projectId);
 
     /**
      * 프로젝트 임베딩 문서 목록 조회
@@ -55,7 +55,7 @@ public interface MyAiService {
      * @param projectId 프로젝트 ID
      * @return 임베딩 문서 목록
      */
-    List<FileDetailVO> getProjectSources(long projectId);
+    List<FileDetailVO> getProjectSources(String userId, long projectId);
 
     /**
      * 프로젝트 임베딩 문서 업데이트
@@ -64,5 +64,5 @@ public interface MyAiService {
      * @param multipartFiles      임베딩 문서 목록
      * @param deleteFileDetailIds 삭제 파일 상세 ID 목록
      */
-    UpdateProjectVO updateProjectSources(long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds);
+    UpdateProjectVO updateProjectSources(String userId, long projectId, MultipartFile[] multipartFiles, List<Long> deleteFileDetailIds);
 }

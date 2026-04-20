@@ -43,12 +43,13 @@ public class TranslateController {
     @PostMapping(value = "/text")
     public SseEmitter translateText(@Valid @RequestBody TranslateTextRequestDto translateTextRequestDto) {
 
+        String userId = "USER";
         String sessionId = translateTextRequestDto.getSessionId();
         String afterLang = translateTextRequestDto.getAfterLang();
         boolean containDic = translateTextRequestDto.isContainDic();
         String context = translateTextRequestDto.getContext();
 
-        long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
+        long chatId = chatService.getChat(userId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, context, sessionId, chatId, containDic);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());
@@ -66,11 +67,12 @@ public class TranslateController {
             @RequestPart("uploadFile") MultipartFile multipartFile
     ) {
 
+        String userId = "USER";
         String sessionId = translateFileRequestDto.getSessionId();
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();
 
-        long chatId = chatService.getChat(sessionId, "", Menu.MENU_TRANSLATE).getChatId();
+        long chatId = chatService.getChat(userId, "", Menu.MENU_TRANSLATE).getChatId();
         TranslateVO translateVO = translateCoreService.translate(afterLang, multipartFile, sessionId, chatId, containDic);
 
         return streamCoreService.createStream(sessionId).subscribeWithTrace(translateVO.getAnswerStream());

@@ -60,7 +60,8 @@ public class MyAiController {
     @GetMapping("/{projectId}")
     public ResponseEntity<ResponseDto<GetProjectResponseDto>> getProject(@NotNull @PathVariable("projectId") Long projectId) {
 
-        ProjectVO projectVo = myAiService.getProject(projectId);
+        String userId = "USER";
+        ProjectVO projectVo = myAiService.getProject(userId, projectId);
 
         return ResponseEntity.ok().body(Response.MYAI_GET_PROJECTS_SUCCESS.toResponseDto(GetProjectResponseDto.of(projectVo)));
     }
@@ -78,7 +79,8 @@ public class MyAiController {
             @NotNull @Min(1) @Max(100) @RequestParam("size") Integer size,
             @RequestParam(value = "keyword", required = false) String keyword
     ) {
-        PageWrapper<ProjectVO> projectVosPage = myAiService.getProjects(page, size, keyword);
+        String userId = "USER";
+        PageWrapper<ProjectVO> projectVosPage = myAiService.getProjects(userId, page, size, keyword);
 
         PageResponseDto<GetProjectResponseDto> pageResponseDto = PageResponseDto.<GetProjectResponseDto>builder()
                 .content(projectVosPage.getContent().stream().map(GetProjectResponseDto::of).toList())
@@ -103,6 +105,7 @@ public class MyAiController {
             @Valid @RequestPart("requestDto") CreateProjectRequestDto createProjectRequestDto,
             @RequestPart("uploadFiles") MultipartFile[] multipartFiles
     ) {
+        String userId = "USER";
         String sessionId = StringUtil.generateRandomId();
         String projectName = createProjectRequestDto.getProjectName();
         String projectDesc = createProjectRequestDto.getProjectDesc();
@@ -113,7 +116,7 @@ public class MyAiController {
 
         // 프로젝트 등록 Mono
         Mono<Pair<StreamEvent, CreateProjectVO>> createProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
-                    CreateProjectVO createProject = myAiService.createProject(projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
+                    CreateProjectVO createProject = myAiService.createProject(userId, projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
 
                     return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
                             .progress(0.3f)
@@ -169,7 +172,8 @@ public class MyAiController {
     @DeleteMapping("/{projectId}")
     public ResponseEntity<ResponseDto<?>> deleteProject(@NotNull @PathVariable("projectId") Long projectId) {
 
-        DeleteProjectVO deleteProjectVO = myAiService.deleteProject(projectId);
+        String userId = "USER";
+        DeleteProjectVO deleteProjectVO = myAiService.deleteProject(userId, projectId);
 
         // 임베딩 문서 삭제
         embedCoreService.deleteEmbedSources(
@@ -189,7 +193,8 @@ public class MyAiController {
     public ResponseEntity<ResponseDto<List<GetProjectSourceResponseDto>>> getProjectSources(
             @NotNull @PathVariable("projectId") Long projectId
     ) {
-        List<FileDetailVO> fileDetailVos = myAiService.getProjectSources(projectId);
+        String userId = "USER";
+        List<FileDetailVO> fileDetailVos = myAiService.getProjectSources(userId, projectId);
 
         return ResponseEntity.ok().body(Response.MYAI_GET_PROJECT_SOURCES_SUCCESS.toResponseDto(GetProjectSourceResponseDto.toList(fileDetailVos)));
     }
@@ -206,13 +211,14 @@ public class MyAiController {
             @Valid @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
             @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles
     ) {
+        String userId = "USER";
         String sessionId = StringUtil.generateRandomId();
         List<Long> deleteFileDetailIds = updateProjectSourcesRequestDto.getDeleteFileDetailIds();
         CollectionType collectionType = CollectionType.myai();
 
         // 프로젝트 업데이트 Mono
         Mono<Pair<StreamEvent, UpdateProjectVO>> updateProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
-                    UpdateProjectVO updateProject = myAiService.updateProjectSources(projectId, multipartFiles, deleteFileDetailIds);
+                    UpdateProjectVO updateProject = myAiService.updateProjectSources(userId, projectId, multipartFiles, deleteFileDetailIds);
 
                     return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
                             .progress(0.3f)
