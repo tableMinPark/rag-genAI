@@ -9,7 +9,9 @@ import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
 import com.genai.global.enums.Menu;
+import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,44 @@ public class ChatServiceImpl implements ChatService {
                 .sysCreateUser(chatEntity.getSysCreateUser())
                 .sysCreateDt(chatEntity.getSysCreateDt())
                 .sysModifyDt(chatEntity.getSysModifyDt())
+                .build();
+    }
+
+    /**
+     * 대화 목록 조회
+     *
+     * @param userId   사용자 식별자
+     * @param menuCode 메뉴 코드
+     * @param page     페이지 번호
+     * @param size     페이지 크기
+     * @return 대화 목록 (페이지)
+     */
+    @Transactional(readOnly = true)
+    @Override
+    public PageWrapper<ChatVO> getChats(String userId, String menuCode, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<ChatEntity> chatPage = chatRepository.findBySysCreateUserAndMenuCodeOrderBySysCreateDtDesc(userId, menuCode, pageable);
+
+        List<ChatVO> chatVOs = chatPage.getContent().stream()
+                .map(chatEntity -> ChatVO.builder()
+                        .chatId(chatEntity.getChatId())
+                        .title(chatEntity.getTitle())
+                        .menuCode(chatEntity.getMenuCode())
+                        .sysCreateUser(chatEntity.getSysCreateUser())
+                        .sysCreateDt(chatEntity.getSysCreateDt())
+                        .sysModifyDt(chatEntity.getSysModifyDt())
+                        .build())
+                .toList();
+
+        return PageWrapper.<ChatVO>builder()
+                .content(chatVOs)
+                .isLast(chatPage.isLast())
+                .pageNo(chatPage.getNumber())
+                .pageSize(chatPage.getSize())
+                .totalCount(chatPage.getTotalElements())
+                .totalPages(chatPage.getTotalPages())
                 .build();
     }
 

@@ -18,3 +18,10 @@ export interface PageResponse {
   totalCount: number
   totalPages: number
 }
+
+/**
+ * 페이징 래퍼
+ */
+export interface PageWrapper<T> extends PageResponse {
+  content: T[]
+}

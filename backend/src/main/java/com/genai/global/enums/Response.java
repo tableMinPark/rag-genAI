@@ -18,7 +18,8 @@ public enum Response {
 
     // CHAT
     CHAT_CATEGORIES_SUCCESS(HttpStatus.OK, 1000, "대화 카테고리 목록 조회에 성공했습니다.", ""),
-    CHAT_DETAILS_SUCCESS(HttpStatus.OK, 1001, "대화 아력 목록 조회에 성공했습니다.", ""),
+    CHAT_DETAILS_SUCCESS(HttpStatus.OK, 1001, "대화 이력 목록 조회에 성공했습니다.", ""),
+    CHAT_LIST_SUCCESS(HttpStatus.OK, 1002, "대화 목록 조회에 성공했습니다.", ""),
 
     // MYAI
     MYAI_GET_PROJECTS_SUCCESS(HttpStatus.OK, 2000, "나만의 AI 프로젝트 목록 조회에 성공했습니다.", ""),

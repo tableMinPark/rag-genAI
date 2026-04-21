@@ -2,10 +2,11 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import ChatArea from '@/components/chat/ChatArea'
+import ChatHistoryPanel from '@/components/chat/ChatHistoryPanel'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, FetchEventSource, streamApi } from '@/api/stream'
-import { chatAiApi, getCategoriesApi } from '@/api/chat'
-import { Category } from '@/types/domain'
+import { chatAiApi, getCategoriesApi, getChatDetailsApi } from '@/api/chat'
+import { Category, Chat } from '@/types/domain'
 import { useSearchParams } from 'next/navigation'
 import { StreamEvent } from '@/types/streamEvent'
 import { GreetingMessage } from '@/public/const/greeting'
@@ -37,6 +38,8 @@ function AiContent() {
   // 선택한 카테고리 목록
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const sentQueryRef = useRef<Set<string>>(new Set())
+  // 선택된 대화 이력
+  const [selectedChatId, setSelectedChatId] = useState<number | null>(null)
 
   // ###################################################
   // 랜더링 이펙트
@@ -232,21 +235,37 @@ function AiContent() {
     }
   }
 
+  /**
+   * 대화 이력 선택 핸들러 — 해당 채팅의 Q&A를 불러와 대화창에 반영
+   */
+  const handleSelectChat = async (chat: Chat) => {
+    setSelectedChatId(chat.chatId)
+    try {
+      const res = await getChatDetailsApi(chat.chatId, 0, 100)
+      const details = [...res.result].reverse()
+      const loaded: Message[] = details.flatMap((d) => [
+        createQueryMessage(d.query),
+        createAnswerMessage(d.answer, ''),
+      ])
+      setMessages(loaded)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   // ###################################################
   // 렌더링 (Render)
   // ###################################################
   return (
-    <div className="flex h-full w-full flex-col p-6">
-      {/* 헤더 영역 */}
-      <div className="mb-6 flex items-center justify-between">
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      {/* 상단 헤더 영역 (전체 너비) */}
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
         <div className="flex items-center gap-3">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
-              <menuInfo.icon className="text-primary h-6 w-6" />
-              {menuInfo.name}
-            </h2>
-            <p className="mt-1 text-xs text-gray-500">{menuInfo.description}</p>
-          </div>
+          <h2 className="flex items-center gap-2 text-2xl font-bold text-gray-800">
+            <menuInfo.icon className="text-primary h-6 w-6" />
+            {menuInfo.name}
+          </h2>
+          <p className="text-xs text-gray-400">{menuInfo.description}</p>
         </div>
         {categories.length > 0 && (
           <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 shadow-sm">
@@ -318,14 +337,27 @@ function AiContent() {
           </div>
         )}
       </div>
-      {/* 채팅 영역 */}
-      <div className="min-h-0 flex-1">
-        <ChatArea
-          messages={messages}
-          onSendMessage={handleSendQuery}
-          onStop={handleStop}
-          isStreaming={isStreaming}
-        />
+
+      {/* 하단: 이력 패널(1) + 채팅 영역(3) */}
+      <div className="flex min-h-0 flex-1 overflow-hidden p-6 gap-4">
+        {/* 좌측: 대화 이력 패널 (1/4) */}
+        <div className="w-1/4 shrink-0 min-h-0">
+          <ChatHistoryPanel
+            menuCode="MENU_AI"
+            selectedChatId={selectedChatId}
+            onSelectChat={handleSelectChat}
+          />
+        </div>
+
+        {/* 우측: 채팅 영역 (3/4) */}
+        <div className="flex min-w-0 flex-1 flex-col min-h-0">
+          <ChatArea
+            messages={messages}
+            onSendMessage={handleSendQuery}
+            onStop={handleStop}
+            isStreaming={isStreaming}
+          />
+        </div>
       </div>
     </div>
   )

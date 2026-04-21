@@ -1,6 +1,6 @@
 import { client } from './client'
-import { ApiResponse } from '@/types/api'
-import { Category, Document } from '@/types/domain'
+import { ApiResponse, PageWrapper } from '@/types/api'
+import { Category, Chat, ChatDetail, Document } from '@/types/domain'
 import { FetchEventSource, streamApi } from './stream'
 import { StreamEvent } from '@/types/streamEvent'
 
@@ -151,6 +151,46 @@ export const getCategoriesApi = async (): Promise<
 > => {
   const response =
     await client.get<ApiResponse<GetCategoriesResponse[]>>(`/chat/category`)
+
+  return response.data
+}
+
+/**
+ * 대화 목록 조회 API
+ *
+ * @param menuCode 메뉴 코드
+ * @param page     페이지 번호
+ * @param size     페이지 크기
+ */
+export const getChatsApi = async (
+  menuCode: string,
+  page: number,
+  size: number,
+): Promise<ApiResponse<PageWrapper<Chat>>> => {
+  const response = await client.get<ApiResponse<PageWrapper<Chat>>>(
+    `/chat/chats`,
+    { params: { menuCode, page, size } },
+  )
+
+  return response.data
+}
+
+/**
+ * 대화 이력 목록 조회 API
+ *
+ * @param chatId 대화 ID
+ * @param page   페이지 번호
+ * @param size   페이지 크기
+ */
+export const getChatDetailsApi = async (
+  chatId: number,
+  page: number,
+  size: number,
+): Promise<ApiResponse<ChatDetail[]>> => {
+  const response = await client.get<ApiResponse<ChatDetail[]>>(
+    `/chat/history`,
+    { params: { chatId, page, size } },
+  )
 
   return response.data
 }

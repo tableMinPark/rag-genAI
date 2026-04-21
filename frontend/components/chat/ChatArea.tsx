@@ -44,6 +44,10 @@ export default function ChatArea({
     }
   }, [isStreaming])
 
+  useEffect(() => {
+    handleScrollToBottom()
+  }, [messages])
+
   // ###################################################
   // 핸들러
   // ###################################################

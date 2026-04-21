@@ -55,3 +55,22 @@ export interface SummaryResult {
   type: string
   content: string
 }
+
+// 대화
+export interface Chat {
+  chatId: number
+  title: string
+  menuCode: string
+  sysCreateDt: string
+  sysModifyDt: string
+}
+
+// 대화 상세 (Q&A)
+export interface ChatDetail {
+  msgId: number
+  chatId: number
+  query: string
+  answer: string
+  sysCreateDt: string
+  sysModifyDt: string
+}

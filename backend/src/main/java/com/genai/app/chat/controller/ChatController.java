@@ -6,8 +6,11 @@ import com.genai.app.chat.controller.dto.request.ChatMyAiRequestDto;
 import com.genai.app.chat.controller.dto.request.ChatSimulationRequestDto;
 import com.genai.app.chat.controller.dto.response.GetCategoriesResponseDto;
 import com.genai.app.chat.controller.dto.response.GetChatDetailResponseDto;
+import com.genai.app.chat.controller.dto.response.GetChatResponseDto;
 import com.genai.app.chat.service.ChatService;
 import com.genai.app.chat.service.vo.ChatDetailVO;
+import com.genai.app.chat.service.vo.ChatVO;
+import com.genai.global.wrapper.PageWrapper;
 import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
@@ -136,6 +139,35 @@ public class ChatController {
         List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(CommonConst.CHUNK_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.CHAT_CATEGORIES_SUCCESS.toResponseDto(GetCategoriesResponseDto.toList(categoryCodes)));
+    }
+
+    /**
+     * 대화 목록 조회
+     *
+     * @param menuCode 메뉴 코드
+     * @param page     페이지
+     * @param size     사이즈
+     */
+    @GetMapping("/chats")
+    public ResponseEntity<ResponseDto<PageWrapper<GetChatResponseDto>>> getChats(
+            @RequestParam("menuCode") String menuCode,
+            @RequestParam("page") int page,
+            @RequestParam("size") int size
+    ) {
+        String userId = "USER";
+
+        PageWrapper<ChatVO> chatPage = chatService.getChats(userId, menuCode, page, size);
+
+        PageWrapper<GetChatResponseDto> result = PageWrapper.<GetChatResponseDto>builder()
+                .content(GetChatResponseDto.toList(chatPage.getContent()))
+                .isLast(chatPage.isLast())
+                .pageNo(chatPage.getPageNo())
+                .pageSize(chatPage.getPageSize())
+                .totalCount(chatPage.getTotalCount())
+                .totalPages(chatPage.getTotalPages())
+                .build();
+
+        return ResponseEntity.ok().body(Response.CHAT_LIST_SUCCESS.toResponseDto(result));
     }
 
     /**
