@@ -42,6 +42,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     developmentOnly "org.springframework.boot:spring-boot-devtools"
 
+    // security
+    implementation "org.springframework.security:spring-security-core:${securityVersion}"
+    implementation "org.springframework.security:spring-security-web:${securityVersion}"
+    implementation "org.springframework.security:spring-security-config:${securityVersion}"
+
+    // jwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
     // lombok
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
     annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
