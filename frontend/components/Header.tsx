@@ -22,18 +22,16 @@ export default function Header() {
   return (
     <header className="bg-primary z-10 flex h-10 items-center justify-between px-4 text-white shadow-md">
       <div className="flex items-center" />
-      {name && (
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">{name}</span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/20 transition"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            로그아웃
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-3">
+        {name && <span className="text-sm font-medium">{name}</span>}
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white/80 hover:bg-white/20 transition"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          로그아웃
+        </button>
+      </div>
     </header>
   )
 }

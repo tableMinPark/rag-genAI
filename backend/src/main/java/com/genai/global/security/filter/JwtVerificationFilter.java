@@ -27,23 +27,20 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (StringUtils.hasText(token)) {
-            try {
-                if (jwtUtil.isValid(token)) {
-                    String userId = jwtUtil.getUserId(token);
-                    UserDetails userDetails = memberDetailsService.loadUserByUsername(userId);
-
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities());
-
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    throw new RuntimeException("Invalid Token");
-                }
-            } catch (Exception e) {
+            if (!jwtUtil.isValid(token)) {
                 SecurityContextHolder.clearContext();
-                throw e;
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
             }
+
+            String userId = jwtUtil.getUserId(token);
+            UserDetails userDetails = memberDetailsService.loadUserByUsername(userId);
+
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
         filterChain.doFilter(request, response);

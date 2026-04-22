@@ -62,11 +62,6 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
-
-    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         AuthenticationManager authManager = authenticationConfiguration.getAuthenticationManager();
 
@@ -94,12 +89,10 @@ public class SecurityConfig {
             .addFilterBefore(jwtVerificationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(tokenReissueFilter, JwtVerificationFilter.class)
             .exceptionHandling()
-            .authenticationEntryPoint((request, response, authException) -> {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            })
-            .accessDeniedHandler((request, response, accessDeniedException) -> {
-                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            });
+                .authenticationEntryPoint((request, response, authException) ->
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN));
 
         return http.build();
     }

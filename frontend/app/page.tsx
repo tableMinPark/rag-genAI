@@ -36,7 +36,7 @@ export default function MainPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-50 p-6">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-gray-50 p-6">
       {/* 메인 컨텐츠 래퍼 */}
       <div className="animate-in fade-in slide-in-from-bottom-4 flex w-full max-w-3xl flex-col items-center gap-10 duration-700">
         {/* 타이틀 영역 */}

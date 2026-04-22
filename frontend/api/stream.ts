@@ -1,7 +1,7 @@
 import { client } from './client'
 import { ApiResponse } from '@/types/api'
-import { config } from '@/public/ts/config'
 import { StreamEvent } from '@/types/streamEvent'
+import { BASE_URL, fetchWithAuth } from '@/lib/authCore'
 
 export class FetchEventSource {
   private listeners: Record<string, Function[]> = {}
@@ -25,7 +25,7 @@ export class FetchEventSource {
   }
   async connect() {
     try {
-      const res = await fetch(this.url, {
+      const res = await fetchWithAuth(this.url, {
         ...this.options,
         signal: this.controller.signal,
       })
