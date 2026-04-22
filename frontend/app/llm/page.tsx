@@ -11,7 +11,6 @@ import { useModalStore } from '@/stores/modalStore'
 import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { StreamEvent } from '@/types/streamEvent'
-import NotFound from '@/components/NotFound'
 import { menuInfos } from '@/public/const/menu'
 
 function LlmContent() {
@@ -298,7 +297,7 @@ function LlmContent() {
 
 export default function LlmPage() {
   return (
-    <Suspense fallback={<NotFound />}>
+    <Suspense fallback={null}>
       <LlmContent />
     </Suspense>
   )

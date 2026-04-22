@@ -11,7 +11,6 @@ import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { GreetingMessage } from '@/public/const/greeting'
 import { StreamEvent } from '@/types/streamEvent'
 import { useModalStore } from '@/stores/modalStore'
-import NotFound from '@/components/NotFound'
 import { Project } from '@/types/domain'
 import { useUiStore } from '@/stores/uiStore'
 import { getProjectApi } from '@/api/myai'
@@ -275,7 +274,7 @@ function MyAiContent() {
 
 export default function MyAiPage() {
   return (
-    <Suspense fallback={<NotFound />}>
+    <Suspense fallback={null}>
       <MyAiContent />
     </Suspense>
   )

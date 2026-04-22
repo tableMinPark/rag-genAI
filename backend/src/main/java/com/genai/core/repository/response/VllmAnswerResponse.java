@@ -74,7 +74,7 @@ public class VllmAnswerResponse implements AnswerResponse {
 
         private String content;
 
-        @JsonProperty("reasoning_content")
+        @JsonAlias({"reasoning", "reasoning contents"})
         private String reasoningContent;
     }
 }

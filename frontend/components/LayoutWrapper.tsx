@@ -10,7 +10,6 @@ import { usePathname } from 'next/navigation'
 import { ModalType, useModalStore } from '@/stores/modalStore'
 import ModalInfo from './modal/ModalInfo'
 import ModalConfirm from './modal/ModalConfirm'
-import NotFound from './NotFound'
 
 export default function LayoutWrapper({
   children,

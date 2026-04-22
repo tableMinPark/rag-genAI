@@ -3,20 +3,29 @@
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { logoutApi } from '@/api/auth'
+import { useModalStore } from '@/stores/modalStore'
 import { LogOut } from 'lucide-react'
 
 export default function Header() {
   const { name, clearAuth } = useAuthStore()
   const router = useRouter()
+  const { setConfirm } = useModalStore()
 
-  const handleLogout = async () => {
-    try {
-      await logoutApi()
-    } catch {
-      // 쿠키 삭제 실패해도 클라이언트 상태는 초기화
-    }
-    clearAuth()
-    router.replace('/login')
+  const handleLogout = () => {
+    setConfirm(
+      '로그아웃',
+      '로그아웃 하시겠습니까?',
+      '로그아웃 후 로그인 페이지로 이동합니다.',
+      async () => {
+        try {
+          await logoutApi()
+        } catch {
+          // 쿠키 삭제 실패해도 클라이언트 상태는 초기화
+        }
+        clearAuth()
+        router.replace('/login')
+      },
+    )
   }
 
   return (

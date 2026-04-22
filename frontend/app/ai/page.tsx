@@ -12,7 +12,6 @@ import { StreamEvent } from '@/types/streamEvent'
 import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { useUiStore } from '@/stores/uiStore'
-import NotFound from '@/components/NotFound'
 import { useModalStore } from '@/stores/modalStore'
 import { menuInfos } from '@/public/const/menu'
 
@@ -440,7 +439,7 @@ function AiContent() {
 
 export default function AiPage() {
   return (
-    <Suspense fallback={<NotFound />}>
+    <Suspense fallback={null}>
       <AiContent />
     </Suspense>
   )
