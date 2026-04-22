@@ -19,6 +19,7 @@ import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.type.CollectionType;
 import com.genai.global.dto.PageResponseDto;
+import com.genai.core.domain.Member;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Response;
 import com.genai.global.wrapper.PageWrapper;
@@ -27,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -58,9 +60,10 @@ public class MyAiController {
      * @param projectId 프로젝트 ID
      */
     @GetMapping("/{projectId}")
-    public ResponseEntity<ResponseDto<GetProjectResponseDto>> getProject(@NotNull @PathVariable("projectId") Long projectId) {
+    public ResponseEntity<ResponseDto<GetProjectResponseDto>> getProject(@NotNull @PathVariable("projectId") Long projectId,
+                                                                         @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         ProjectVO projectVo = myAiService.getProject(userId, projectId);
 
         return ResponseEntity.ok().body(Response.MYAI_GET_PROJECTS_SUCCESS.toResponseDto(GetProjectResponseDto.of(projectVo)));
@@ -77,9 +80,10 @@ public class MyAiController {
     public ResponseEntity<ResponseDto<PageResponseDto<GetProjectResponseDto>>> getProjects(
             @NotNull @Min(1) @RequestParam("page") Integer page,
             @NotNull @Min(1) @Max(100) @RequestParam("size") Integer size,
-            @RequestParam(value = "keyword", required = false) String keyword
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
         PageWrapper<ProjectVO> projectVosPage = myAiService.getProjects(userId, page, size, keyword);
 
         PageResponseDto<GetProjectResponseDto> pageResponseDto = PageResponseDto.<GetProjectResponseDto>builder()
@@ -103,9 +107,10 @@ public class MyAiController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public SseEmitter createProject(
             @Valid @RequestPart("requestDto") CreateProjectRequestDto createProjectRequestDto,
-            @RequestPart("uploadFiles") MultipartFile[] multipartFiles
+            @RequestPart("uploadFiles") MultipartFile[] multipartFiles,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = StringUtil.generateRandomId();
         String projectName = createProjectRequestDto.getProjectName();
         String projectDesc = createProjectRequestDto.getProjectDesc();
@@ -170,9 +175,10 @@ public class MyAiController {
      * @param projectId 프로젝트 ID
      */
     @DeleteMapping("/{projectId}")
-    public ResponseEntity<ResponseDto<?>> deleteProject(@NotNull @PathVariable("projectId") Long projectId) {
+    public ResponseEntity<ResponseDto<?>> deleteProject(@NotNull @PathVariable("projectId") Long projectId,
+                                                        @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         DeleteProjectVO deleteProjectVO = myAiService.deleteProject(userId, projectId);
 
         // 임베딩 문서 삭제
@@ -191,9 +197,10 @@ public class MyAiController {
      */
     @GetMapping(value = "/{projectId}/source")
     public ResponseEntity<ResponseDto<List<GetProjectSourceResponseDto>>> getProjectSources(
-            @NotNull @PathVariable("projectId") Long projectId
+            @NotNull @PathVariable("projectId") Long projectId,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
         List<FileDetailVO> fileDetailVos = myAiService.getProjectSources(userId, projectId);
 
         return ResponseEntity.ok().body(Response.MYAI_GET_PROJECT_SOURCES_SUCCESS.toResponseDto(GetProjectSourceResponseDto.toList(fileDetailVos)));
@@ -209,9 +216,10 @@ public class MyAiController {
     public SseEmitter updateProjectSources(
             @NotNull @PathVariable("projectId") Long projectId,
             @Valid @RequestPart("requestDto") UpdateProjectSourcesRequestDto updateProjectSourcesRequestDto,
-            @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles
+            @RequestPart(value = "uploadFiles", required = false) MultipartFile[] multipartFiles,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = StringUtil.generateRandomId();
         List<Long> deleteFileDetailIds = updateProjectSourcesRequestDto.getDeleteFileDetailIds();
         CollectionType collectionType = CollectionType.myai();

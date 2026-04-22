@@ -21,11 +21,13 @@ import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.vo.QuestionVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
+import com.genai.core.domain.Member;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Menu;
 import com.genai.global.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -51,9 +53,10 @@ public class ChatController {
      * @param chatAiRequestDto 질의 정보
      */
     @PostMapping("/ai")
-    public SseEmitter chatAi(@Valid @RequestBody ChatAiRequestDto chatAiRequestDto) {
+    public SseEmitter chatAi(@Valid @RequestBody ChatAiRequestDto chatAiRequestDto,
+                             @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = chatAiRequestDto.getSessionId();
         String query = chatAiRequestDto.getQuery();
 
@@ -70,9 +73,10 @@ public class ChatController {
      * @param chatLlmRequestDto 질의 정보
      */
     @PostMapping("/llm")
-    public SseEmitter chatLlm(@Valid @RequestBody ChatLlmRequestDto chatLlmRequestDto) {
+    public SseEmitter chatLlm(@Valid @RequestBody ChatLlmRequestDto chatLlmRequestDto,
+                              @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = chatLlmRequestDto.getSessionId();
         String query = chatLlmRequestDto.getQuery();
 
@@ -89,9 +93,10 @@ public class ChatController {
      * @param chatMyAiRequestDto 질의 정보
      */
     @PostMapping("/myai")
-    public SseEmitter chatMyAi(@Valid @RequestBody ChatMyAiRequestDto chatMyAiRequestDto) {
+    public SseEmitter chatMyAi(@Valid @RequestBody ChatMyAiRequestDto chatMyAiRequestDto,
+                               @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = chatMyAiRequestDto.getSessionId();
         String query = chatMyAiRequestDto.getQuery();
         Long projectId = chatMyAiRequestDto.getProjectId();
@@ -112,9 +117,10 @@ public class ChatController {
      * @param chatSimulationRequestDto 질의 정보
      */
     @PostMapping("/simulation")
-    public SseEmitter chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto) {
+    public SseEmitter chatSimulation(@Valid @RequestBody ChatSimulationRequestDto chatSimulationRequestDto,
+                                     @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = chatSimulationRequestDto.getSessionId();
         String query = chatSimulationRequestDto.getQuery();
         String context = chatSimulationRequestDto.getContext();
@@ -152,9 +158,10 @@ public class ChatController {
     public ResponseEntity<ResponseDto<PageWrapper<GetChatResponseDto>>> getChats(
             @RequestParam("menuCode") String menuCode,
             @RequestParam("page") int page,
-            @RequestParam("size") int size
+            @RequestParam("size") int size,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
 
         PageWrapper<ChatVO> chatPage = chatService.getChats(userId, menuCode, page, size);
 
@@ -181,9 +188,10 @@ public class ChatController {
     public ResponseEntity<ResponseDto<List<GetChatDetailResponseDto>>> getChatDetails(
             @RequestParam("chatId") long chatId,
             @RequestParam("page") int page,
-            @RequestParam("size") int size
+            @RequestParam("size") int size,
+            @AuthenticationPrincipal Member member
     ) {
-        String userId = "USER";
+        String userId = member.getUserId();
 
         List<ChatDetailVO> chatDetails = chatService.getChatDetails(userId, chatId, page, size);
 
