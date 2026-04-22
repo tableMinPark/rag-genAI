@@ -28,7 +28,7 @@ public class TokenReissueFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !request.getRequestURI().equals("/api/auth/reissue") ||
-               !request.getMethod().equals("POST");
+               !"POST".equals(request.getMethod());
     }
 
     @Override

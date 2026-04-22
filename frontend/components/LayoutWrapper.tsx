@@ -92,6 +92,12 @@ export default function LayoutWrapper({
     }
   }
 
+  const isAuthPage = pathname === '/login' || pathname === '/register'
+
+  if (isAuthPage) {
+    return <>{children}</>
+  }
+
   return (
     <>
       <Sidebar isOpen={isSidebarOpen} onToggle={handleToggleSidebar} />

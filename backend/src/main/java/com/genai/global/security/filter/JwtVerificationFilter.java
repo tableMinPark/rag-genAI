@@ -26,12 +26,24 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if (StringUtils.hasText(token) && jwtUtil.isValid(token)) {
-            String userId = jwtUtil.getUserId(token);
-            UserDetails userDetails = memberDetailsService.loadUserByUsername(userId);
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        if (StringUtils.hasText(token)) {
+            try {
+                if (jwtUtil.isValid(token)) {
+                    String userId = jwtUtil.getUserId(token);
+                    UserDetails userDetails = memberDetailsService.loadUserByUsername(userId);
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    throw new RuntimeException("Invalid Token");
+                }
+            } catch (Exception e) {
+                SecurityContextHolder.clearContext();
+                throw e;
+            }
         }
 
         filterChain.doFilter(request, response);

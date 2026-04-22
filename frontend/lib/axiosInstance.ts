@@ -18,7 +18,10 @@ axiosInstance.interceptors.request.use((cfg) => {
 })
 
 let isRefreshing = false
-let pendingQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = []
+let pendingQueue: Array<{
+  resolve: (token: string) => void
+  reject: (err: unknown) => void
+}> = []
 
 const processPendingQueue = (token: string | null, error: unknown = null) => {
   pendingQueue.forEach(({ resolve, reject }) => {
@@ -34,6 +37,12 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status !== 401 || originalRequest._retry) {
+      return Promise.reject(error)
+    }
+
+    if (originalRequest._retry) {
+      useAuthStore.getState().clearAuth()
+      window.location.href = `${config.basePath}/login`
       return Promise.reject(error)
     }
 
@@ -53,14 +62,16 @@ axiosInstance.interceptors.response.use(
       const response = await axios.post<{ accessToken: string }>(
         `${BASE_URL}/auth/reissue`,
         {},
-        { withCredentials: true }
+        { withCredentials: true },
       )
       const newToken = response.data.accessToken
-      useAuthStore.getState().setAuth(
-        newToken,
-        useAuthStore.getState().userId ?? '',
-        useAuthStore.getState().name ?? ''
-      )
+      useAuthStore
+        .getState()
+        .setAuth(
+          newToken,
+          useAuthStore.getState().userId ?? '',
+          useAuthStore.getState().name ?? '',
+        )
       processPendingQueue(newToken)
       originalRequest.headers.Authorization = `Bearer ${newToken}`
       return axiosInstance(originalRequest)
@@ -70,9 +81,10 @@ axiosInstance.interceptors.response.use(
       if (typeof window !== 'undefined') {
         window.location.href = '/login'
       }
+      window.location.href = `${config.basePath}/login`
       return Promise.reject(reissueError)
     } finally {
       isRefreshing = false
     }
-  }
+  },
 )

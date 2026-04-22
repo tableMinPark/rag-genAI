@@ -1,3 +1,7 @@
+-- 기본 계정 (비밀번호: admin123)
+INSERT INTO GEN_MEMBER(USER_ID, PASSWORD, NAME, EMAIL, ROLE, CREATED_AT)
+VALUES ('admin', '$2a$10$dkjOrDW55.mqX3hm4x1dae0D5ricZLTZXgg/7nzP.l4qU0MBR6Uei', '관리자', 'admin@example.com', 'ROLE_ADMIN', NOW());
+
 -- 1 : 법령
 -- 2 : 지침
 -- 3 : 메뉴얼
