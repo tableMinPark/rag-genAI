@@ -3,12 +3,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Chat } from '@/types/domain'
 import { getChatsApi } from '@/api/chat'
-import { Clock, MessageSquareDashed } from 'lucide-react'
+import { Clock, MessageSquareDashed, SquarePen } from 'lucide-react'
 
 interface ChatHistoryPanelProps {
   menuCode: string
   selectedChatId: number | null
   onSelectChat: (chat: Chat) => void
+  onNewChat?: () => void
+  refreshTrigger?: number
 }
 
 const PAGE_SIZE = 20
@@ -34,6 +36,8 @@ export default function ChatHistoryPanel({
   menuCode,
   selectedChatId,
   onSelectChat,
+  onNewChat,
+  refreshTrigger,
 }: ChatHistoryPanelProps) {
   const [chats, setChats] = useState<Chat[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -72,6 +76,14 @@ export default function ChatHistoryPanel({
   }, [menuCode])
 
   useEffect(() => {
+    if (!refreshTrigger) return
+    pageRef.current = 0
+    isLastRef.current = false
+    isLoadingRef.current = false
+    fetchChats(0)
+  }, [refreshTrigger])
+
+  useEffect(() => {
     const el = observerRef.current
     if (!el) return
     const observer = new IntersectionObserver(
@@ -93,11 +105,22 @@ export default function ChatHistoryPanel({
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
       {/* 헤더 */}
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-gray-200 bg-gray-50 px-4 py-3">
-        <Clock className="h-3.5 w-3.5 text-gray-400" />
-        <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">
-          대화 이력
-        </p>
+      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5 text-gray-400" />
+          <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">
+            대화 이력
+          </p>
+        </div>
+        {onNewChat && (
+          <button
+            onClick={onNewChat}
+            title="새 채팅"
+            className="text-primary hover:bg-primary/10 rounded-md p-1 transition-colors"
+          >
+            <SquarePen className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       {/* 목록 */}

@@ -22,7 +22,7 @@ function LlmContent() {
   // 상태 관리
   // ###################################################
   // 세션 ID 상태
-  const [sessionId] = useState<string>(randomUUID())
+  const sessionIdRef = useRef<string>(randomUUID())
   // 대화 내역 목록 상태
   const [messages, setMessages] = useState<Message[]>([])
   // 스트리밍 여부 상태
@@ -30,50 +30,94 @@ function LlmContent() {
   const streamRef = useRef<FetchEventSource | null>(null)
   // 선택된 대화 이력
   const [selectedChatId, setSelectedChatId] = useState<number | null>(null)
+  // 채팅 이력 패널 리셋 키
+  const [historyKey, setHistoryKey] = useState(0)
+  // 채팅 이력 패널 새로고침 트리거
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0)
+  // 대화 이력 무한스크롤 상태
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false)
+  const historyPageRef = useRef(0)
+  const historyIsLastRef = useRef(true)
+  const HISTORY_PAGE_SIZE = 5
 
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChatId(chat.chatId)
+    historyPageRef.current = 0
+    historyIsLastRef.current = false
+    setIsLoadingHistory(true)
     try {
-      const res = await getChatDetailsApi(chat.chatId, 0, 100)
+      const res = await getChatDetailsApi(chat.chatId, 0, HISTORY_PAGE_SIZE)
+      historyIsLastRef.current = res.result.length < HISTORY_PAGE_SIZE
       const details = [...res.result].reverse()
       const loaded: Message[] = details.flatMap((d) => [
-        createQueryMessage(d.query),
-        createAnswerMessage(d.answer, ''),
+        createQueryMessage(d.query, d.sysCreateDt),
+        createAnswerMessage(d.answer, '', undefined, d.sysModifyDt),
       ])
       setMessages(loaded)
     } catch (e) {
       console.error(e)
+    } finally {
+      setIsLoadingHistory(false)
+    }
+  }
+
+  const handleLoadMoreHistory = async () => {
+    if (isLoadingHistory || historyIsLastRef.current || selectedChatId === null) return
+    setIsLoadingHistory(true)
+    const nextPage = historyPageRef.current + 1
+    try {
+      const res = await getChatDetailsApi(selectedChatId, nextPage, HISTORY_PAGE_SIZE)
+      if (res.result.length === 0) {
+        historyIsLastRef.current = true
+        return
+      }
+      historyPageRef.current = nextPage
+      historyIsLastRef.current = res.result.length < HISTORY_PAGE_SIZE
+      const details = [...res.result].reverse()
+      const prepend: Message[] = details.flatMap((d) => [
+        createQueryMessage(d.query, d.sysCreateDt),
+        createAnswerMessage(d.answer, '', undefined, d.sysModifyDt),
+      ])
+      setMessages((prev) => [...prepend, ...prev])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoadingHistory(false)
     }
   }
 
   // ###################################################
   // 랜더링 이펙트
   // ###################################################
-  useEffect(() => {
+  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startGreeting = () => {
+    if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
     setMessages([createAnswerMessage('', '')])
-    let greetingMessageIndex = 0
-    const greetingMessageInterval = setInterval(() => {
+    let idx = 0
+    greetingIntervalRef.current = setInterval(() => {
       setMessages((prev) => {
         if (prev.length === 0) return prev
         const messages = [...prev]
-        const lastIndex = 0
-        messages[lastIndex] = {
-          ...messages[lastIndex],
-          content: replaceEventDataToText(
-            GreetingMessage.llm.substring(0, greetingMessageIndex),
-          ),
+        messages[0] = {
+          ...messages[0],
+          content: replaceEventDataToText(GreetingMessage.llm.substring(0, idx)),
         }
         return messages
       })
-      if (greetingMessageIndex >= GreetingMessage.llm.length) {
-        clearInterval(greetingMessageInterval)
+      if (idx >= GreetingMessage.llm.length) {
+        clearInterval(greetingIntervalRef.current!)
+        greetingIntervalRef.current = null
       } else {
-        greetingMessageIndex++
+        idx++
       }
     }, 10)
+  }
 
+  useEffect(() => {
+    startGreeting()
     return () => {
-      clearInterval(greetingMessageInterval)
+      if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
       streamRef.current?.close()
     }
   }, [])
@@ -94,7 +138,14 @@ function LlmContent() {
     setIsStreaming(true)
     // 스트림 옵션 설정
     const streamEvent = new StreamEvent({
-      onConnect: async (_) => {
+      onConnect: async (event) => {
+        const receivedChatId = Number(event.data)
+        if (!isNaN(receivedChatId) && receivedChatId > 0) {
+          setSelectedChatId((prev) => {
+            if (prev === null) setHistoryRefreshTrigger((t) => t + 1)
+            return receivedChatId
+          })
+        }
         console.log(`📡 질의 요청 : ${query}`)
       },
       onDisconnect: (_) => {
@@ -149,7 +200,7 @@ function LlmContent() {
       },
     })
     // 스트림 이벤트 연결
-    await chatLlmApi(query, sessionId, streamEvent)
+    await chatLlmApi(query, sessionIdRef.current, streamEvent, selectedChatId)
       .then((stream) => {
         console.log(`📡 답변 요청 성공`)
         streamRef.current = stream
@@ -170,10 +221,25 @@ function LlmContent() {
   }
 
   /**
+   * 새 채팅 시작 핸들러
+   */
+  const handleNewChat = () => {
+    streamRef.current?.close()
+    streamRef.current = null
+    setIsStreaming(false)
+    sessionIdRef.current = randomUUID()
+    setSelectedChatId(null)
+    setHistoryKey((k) => k + 1)
+    historyPageRef.current = 0
+    historyIsLastRef.current = true
+    startGreeting()
+  }
+
+  /**
    * 스트림 중단 핸들러
    */
   const handleStop = async () => {
-    await cancelStreamApi(sessionId)
+    await cancelStreamApi(sessionIdRef.current)
       .then((response) => {
         console.log(`📡 ${response.message}`)
       })
@@ -205,9 +271,12 @@ function LlmContent() {
         {/* 좌측: 대화 이력 패널 (1/4) */}
         <div className="w-1/4 shrink-0 min-h-0">
           <ChatHistoryPanel
+            key={historyKey}
             menuCode="MENU_LLM"
             selectedChatId={selectedChatId}
             onSelectChat={handleSelectChat}
+            onNewChat={handleNewChat}
+            refreshTrigger={historyRefreshTrigger}
           />
         </div>
 
@@ -218,6 +287,8 @@ function LlmContent() {
             onSendMessage={handleSendQuery}
             onStop={handleStop}
             isStreaming={isStreaming}
+            isLoadingHistory={isLoadingHistory}
+            onLoadMoreHistory={selectedChatId !== null && !historyIsLastRef.current ? handleLoadMoreHistory : undefined}
           />
         </div>
       </div>

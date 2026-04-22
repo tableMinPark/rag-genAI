@@ -8,6 +8,7 @@ import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
 import com.genai.core.repository.entity.ChatDetailEntity;
 import com.genai.core.repository.entity.ChatEntity;
+import com.genai.core.exception.NotFoundException;
 import com.genai.global.enums.Menu;
 import com.genai.global.wrapper.PageWrapper;
 import lombok.RequiredArgsConstructor;
@@ -27,23 +28,27 @@ public class ChatServiceImpl implements ChatService {
     private final ChatDetailRepository chatDetailRepository;
 
     /**
-     * 대화 조회
+     * 대화 조회 또는 생성
+     * chatId가 있으면 기존 대화를 조회하고, 없으면 새 대화를 생성한다.
      *
      * @param userId 사용자 식별자
      * @param title  대화 제목
      * @param menu   메뉴
+     * @param chatId 기존 대화 ID (null이면 신규 생성)
      * @return 대화 VO
      */
     @Transactional
     @Override
-    public ChatVO getChat(String userId, String title, Menu menu) {
+    public ChatVO getChat(String userId, String title, Menu menu, Long chatId) {
 
-        ChatEntity chatEntity = chatRepository.findBySysCreateUser(userId)
-                .orElseGet(() -> chatRepository.save(ChatEntity.builder()
+        ChatEntity chatEntity = (chatId != null)
+                ? chatRepository.findById(chatId)
+                        .orElseThrow(() -> new NotFoundException("대화"))
+                : chatRepository.save(ChatEntity.builder()
                         .title(title)
                         .menuCode(menu.name())
                         .sysCreateUser(userId)
-                        .build()));
+                        .build());
 
         return ChatVO.builder()
                 .chatId(chatEntity.getChatId())

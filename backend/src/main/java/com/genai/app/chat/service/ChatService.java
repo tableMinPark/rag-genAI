@@ -10,14 +10,19 @@ import java.util.List;
 public interface ChatService {
 
     /**
-     * 대화 조회
+     * 대화 조회 또는 생성
      *
      * @param userId 사용자 식별자
      * @param title  대화 제목
      * @param menu   메뉴
+     * @param chatId 기존 대화 ID (null이면 신규 생성)
      * @return 대화 VO
      */
-    ChatVO getChat(String userId, String title, Menu menu);
+    ChatVO getChat(String userId, String title, Menu menu, Long chatId);
+
+    default ChatVO getChat(String userId, String title, Menu menu) {
+        return getChat(userId, title, menu, null);
+    }
 
     /**
      * 대화 목록 조회

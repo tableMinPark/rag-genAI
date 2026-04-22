@@ -20,4 +20,6 @@ public class ChatMyAiRequestDto {
 
     @NotNull
     private Long projectId;
+
+    private Long chatId;
 }

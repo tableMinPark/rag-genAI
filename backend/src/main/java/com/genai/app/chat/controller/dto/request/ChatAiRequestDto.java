@@ -20,4 +20,6 @@ public class ChatAiRequestDto {
     private String query;
 
     private List<String> categoryCodes = new ArrayList<>();
+
+    private Long chatId;
 }

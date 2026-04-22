@@ -28,7 +28,7 @@ public class StreamCoreServiceImpl implements StreamCoreService {
      * @return StreamVO
      */
     @Override
-    public StreamSubscriber createStream(String streamId) {
+    public StreamSubscriber createStream(String streamId, long chatId) {
 
         StreamSubscriber streamSubscriber = new StreamSubscriber(Stream.builder()
                 .streamId(streamId)
@@ -52,11 +52,11 @@ public class StreamCoreServiceImpl implements StreamCoreService {
             log.error("[{}] " + String.format("%-20s", "Stream SSE error") + " |", streamId, throwable);
         });
 
-        // 연결 이벤트 전송
+        // 연결 이벤트 전송 (chatId 포함)
         try {
             streamSubscriber.getEmitter().send(SseEmitter.event()
                     .name(StreamCoreConst.CONNECT)
-                    .data(StreamCoreConst.CONNECT));
+                    .data(String.valueOf(chatId)));
         } catch (IOException e) {
             streamSubscriber.getEmitter().completeWithError(e);
         }

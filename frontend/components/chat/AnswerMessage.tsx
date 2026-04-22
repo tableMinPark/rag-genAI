@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import MarkdownIt from 'markdown-it'
 import mermaid from 'mermaid'
-import { Bot, BookOpen } from 'lucide-react'
+import { Bot, BookOpen, Copy, Check } from 'lucide-react'
 import InferenceAccordion from './InferenceAccordion'
 import styles from '@/public/css/markdown.module.css'
 import { Document } from '@/types/domain'
@@ -47,11 +47,26 @@ md.renderer.rules.fence = function (tokens, idx, options, env, self) {
   return defaultFence(tokens, idx, options, env, self)
 }
 
+function formatTimestamp(ts?: string) {
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+}
+
 interface AnswerMessageProps {
   isStreaming: boolean
   content: string
   inference?: string
   documents?: Document[]
+  timestamp?: string
   onSelectDocument?: (documents: Document[]) => void
 }
 
@@ -60,6 +75,7 @@ export default React.memo(function AnswerMessage({
   content,
   inference,
   documents,
+  timestamp,
   onSelectDocument: onSelectDocument,
 }: AnswerMessageProps) {
   // ###################################################
@@ -67,6 +83,14 @@ export default React.memo(function AnswerMessage({
   // ###################################################
   const containerRef = useRef<HTMLDivElement>(null)
   const [uid] = useState(`mermaid-${Math.random().toString(36).substr(2, 9)}`)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
   const convertContent = useMemo(() => {
     if (!content) return ''
     return content.replace(/```mermaid([\s\S]*?)```/g, (match, code) => {
@@ -125,7 +149,20 @@ export default React.memo(function AnswerMessage({
           <InferenceAccordion content={inference || 'thinking...'} />
         )}
         {convertContent && (
-          <div className="rounded-2xl rounded-tl-none border border-gray-200 bg-white px-5 py-3 text-sm leading-relaxed text-gray-800 shadow-sm">
+          <div className="group relative rounded-2xl rounded-tl-none border border-gray-200 bg-white px-5 py-3 text-sm leading-relaxed text-gray-800 shadow-sm">
+            {!isStreaming && (
+              <button
+                onClick={handleCopy}
+                className="absolute right-3 top-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150 rounded-md p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                title="복사"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
             <div
               ref={containerRef}
               className={`${styles.markdown} warp-break-words`}
@@ -143,6 +180,9 @@ export default React.memo(function AnswerMessage({
               <span>참고 청크 ({documents.length})</span>
             </button>
           </div>
+        )}
+        {timestamp && !isStreaming && (
+          <span className="text-[10px] text-gray-400">{formatTimestamp(timestamp)}</span>
         )}
       </div>
     </div>

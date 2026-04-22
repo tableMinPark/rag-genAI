@@ -38,6 +38,7 @@ export const chatAiApi = async (
   sessionId: string,
   categoryCodes: string[],
   streamEvent: StreamEvent,
+  chatId?: number | null,
 ): Promise<FetchEventSource> => {
   return new Promise((resolve) => {
     const stream = streamApi(
@@ -46,6 +47,7 @@ export const chatAiApi = async (
         query,
         sessionId,
         categoryCodes,
+        ...(chatId != null && { chatId }),
       },
       streamEvent,
     )
@@ -63,6 +65,7 @@ export const chatLlmApi = async (
   query: string,
   sessionId: string,
   streamEvent: StreamEvent,
+  chatId?: number | null,
 ): Promise<FetchEventSource> => {
   return new Promise((resolve) => {
     const stream = streamApi(
@@ -70,6 +73,7 @@ export const chatLlmApi = async (
       {
         query,
         sessionId,
+        ...(chatId != null && { chatId }),
       },
       streamEvent,
     )

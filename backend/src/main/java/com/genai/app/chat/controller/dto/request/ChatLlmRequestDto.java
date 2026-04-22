@@ -16,4 +16,6 @@ public class ChatLlmRequestDto {
 
     @NotBlank
     private String query;
+
+    private Long chatId;
 }

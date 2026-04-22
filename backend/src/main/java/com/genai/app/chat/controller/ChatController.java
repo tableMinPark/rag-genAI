@@ -57,11 +57,11 @@ public class ChatController {
         String sessionId = chatAiRequestDto.getSessionId();
         String query = chatAiRequestDto.getQuery();
 
-        long chatId = chatService.getChat(userId, query, Menu.MENU_AI).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_AI, chatAiRequestDto.getChatId()).getChatId();
         long promptId = PromptConst.QUESTION_AI_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionAi(query, sessionId, chatId, promptId, chatAiRequestDto.getCategoryCodes());
 
-        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
+        return streamCoreService.createStream(sessionId, chatId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
@@ -76,11 +76,11 @@ public class ChatController {
         String sessionId = chatLlmRequestDto.getSessionId();
         String query = chatLlmRequestDto.getQuery();
 
-        long chatId = chatService.getChat(userId, query, Menu.MENU_LLM).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_LLM, chatLlmRequestDto.getChatId()).getChatId();
         long promptId = PromptConst.QUESTION_PROMPT_ID;
         QuestionVO questionVO = questionCoreService.questionLlm(query, sessionId, chatId, promptId);
 
-        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
+        return streamCoreService.createStream(sessionId, chatId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
@@ -98,12 +98,12 @@ public class ChatController {
 
         ProjectVO projectVO = myAiService.getProject(userId, projectId);
 
-        long chatId = chatService.getChat(userId, query, Menu.MENU_MYAI).getChatId();
+        long chatId = chatService.getChat(userId, query, Menu.MENU_MYAI, chatMyAiRequestDto.getChatId()).getChatId();
         long promptId = projectVO.getPromptId();
         String categoryCode = MyAiConst.categoryCode(projectId);
         QuestionVO questionVO = questionCoreService.questionMyAi(query, sessionId, chatId, promptId, categoryCode);
 
-        return streamCoreService.createStream(sessionId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
+        return streamCoreService.createStream(sessionId, chatId).subscribeWithTrace(questionVO.streamFlux(), questionVO.streamEndMono());
     }
 
     /**
