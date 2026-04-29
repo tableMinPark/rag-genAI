@@ -1,7 +1,5 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.common.utils.*;
-import com.genai.common.vo.UploadFileVO;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
@@ -20,6 +18,8 @@ import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.TranslateModuleService;
 import com.genai.core.service.module.vo.PartTranslateContextVO;
 import com.genai.core.service.module.vo.PartTranslateState;
+import com.genai.global.utils.*;
+import com.genai.global.vo.UploadFileVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -2,7 +2,7 @@ package com.genai.core.repository.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import com.genai.core.config.instance.LlmInstance;
 import com.genai.core.config.properties.LlmInstanceProperty;
 import com.genai.core.config.properties.LlmRetryProperty;

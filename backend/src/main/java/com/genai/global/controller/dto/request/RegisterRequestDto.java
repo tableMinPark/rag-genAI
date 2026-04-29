@@ -1,4 +1,4 @@
-package com.genai.app.auth.controller.dto.request;
+package com.genai.global.controller.dto.request;
 
 import lombok.Getter;
 

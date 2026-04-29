@@ -6,6 +6,7 @@ import com.genai.global.security.service.MemberDetailsService;
 import com.genai.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -32,8 +33,8 @@ public class TokenReissueFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
         String refreshToken = extractRefreshToken(request);
 
         if (refreshToken == null || !jwtUtil.isValid(refreshToken)) {

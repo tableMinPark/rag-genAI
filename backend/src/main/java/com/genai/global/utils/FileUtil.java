@@ -1,6 +1,6 @@
-package com.genai.common.utils;
+package com.genai.global.utils;
 
-import com.genai.common.vo.UploadFileVO;
+import com.genai.global.vo.UploadFileVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;

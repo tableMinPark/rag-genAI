@@ -1,7 +1,7 @@
 package com.genai.core.service.module.vo;
 
-import com.genai.common.utils.StringUtil;
-import com.genai.common.vo.IndexedContentVO;
+import com.genai.global.utils.StringUtil;
+import com.genai.global.vo.IndexedContentVO;
 import com.genai.core.service.business.vo.DictionaryVO;
 import lombok.Builder;
 import lombok.Getter;

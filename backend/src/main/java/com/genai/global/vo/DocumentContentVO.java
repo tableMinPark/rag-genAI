@@ -1,6 +1,6 @@
-package com.genai.common.vo;
+package com.genai.global.vo;
 
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

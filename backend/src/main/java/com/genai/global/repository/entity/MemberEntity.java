@@ -1,4 +1,4 @@
-package com.genai.core.repository.entity;
+package com.genai.global.repository.entity;
 
 import lombok.*;
 import org.hibernate.annotations.Comment;

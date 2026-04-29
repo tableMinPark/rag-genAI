@@ -1,7 +1,7 @@
-package com.genai.app.auth.controller;
+package com.genai.global.controller;
 
-import com.genai.app.auth.controller.dto.request.RegisterRequestDto;
-import com.genai.app.auth.service.AuthService;
+import com.genai.global.controller.dto.request.RegisterRequestDto;
+import com.genai.global.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;

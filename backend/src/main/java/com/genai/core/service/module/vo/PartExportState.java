@@ -1,6 +1,6 @@
 package com.genai.core.service.module.vo;
 
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;

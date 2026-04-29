@@ -1,7 +1,7 @@
 package com.genai.global.security.service;
 
 import com.genai.core.domain.Member;
-import com.genai.core.repository.MemberRepository;
+import com.genai.global.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.HtmlUtil;
+import com.genai.global.utils.ExtractUtil;
+import com.genai.global.utils.HtmlUtil;
 import com.genai.core.config.properties.ChunkProperty;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.CollectionRepository;

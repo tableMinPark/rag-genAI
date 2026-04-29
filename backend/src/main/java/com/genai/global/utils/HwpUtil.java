@@ -1,6 +1,6 @@
-package com.genai.common.utils;
+package com.genai.global.utils;
 
-import com.genai.common.vo.HwpImageVO;
+import com.genai.global.vo.HwpImageVO;
 import kr.dogfoot.hwp2hwpx.Hwp2Hwpx;
 import kr.dogfoot.hwplib.object.HWPFile;
 import kr.dogfoot.hwplib.reader.HWPReader;

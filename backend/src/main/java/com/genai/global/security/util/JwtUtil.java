@@ -2,6 +2,7 @@ package com.genai.global.security.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,7 @@ public class JwtUtil {
 
     private final SecretKey secretKey;
     private final long accessTokenExpiry;
+    @Getter
     private final long refreshTokenExpiry;
 
     public JwtUtil(
@@ -68,7 +70,4 @@ public class JwtUtil {
         return parseClaims(token).getSubject();
     }
 
-    public long getRefreshTokenExpiry() {
-        return refreshTokenExpiry;
-    }
 }

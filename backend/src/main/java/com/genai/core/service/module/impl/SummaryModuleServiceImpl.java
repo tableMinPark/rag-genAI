@@ -1,7 +1,7 @@
 package com.genai.core.service.module.impl;
 
-import com.genai.common.utils.StringUtil;
-import com.genai.common.vo.IndexedContentVO;
+import com.genai.global.utils.StringUtil;
+import com.genai.global.vo.IndexedContentVO;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.SummaryModuleService;

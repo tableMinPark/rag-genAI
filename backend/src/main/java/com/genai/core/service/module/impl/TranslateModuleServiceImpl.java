@@ -1,7 +1,7 @@
 package com.genai.core.service.module.impl;
 
-import com.genai.common.utils.AhoCorasick;
-import com.genai.common.vo.IndexedContentVO;
+import com.genai.global.utils.AhoCorasick;
+import com.genai.global.vo.IndexedContentVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;

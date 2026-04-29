@@ -10,7 +10,7 @@ import com.genai.app.myai.service.vo.CreateProjectVO;
 import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.app.myai.service.vo.UpdateProjectVO;
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import com.genai.core.service.business.EmbedCoreService;
 import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.subscriber.StreamEvent;

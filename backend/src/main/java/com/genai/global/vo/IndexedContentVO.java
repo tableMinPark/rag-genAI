@@ -1,4 +1,4 @@
-package com.genai.common.vo;
+package com.genai.global.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

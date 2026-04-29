@@ -1,10 +1,10 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
-import com.genai.common.utils.StringUtil;
-import com.genai.common.vo.UploadFileVO;
+import com.genai.global.utils.ExtractUtil;
+import com.genai.global.utils.FileUtil;
+import com.genai.global.utils.HtmlUtil;
+import com.genai.global.utils.StringUtil;
+import com.genai.global.vo.UploadFileVO;
 import com.genai.core.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
@@ -31,11 +31,9 @@ import org.springframework.web.multipart.MultipartFile;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.IntStream;
 
 @Service
 @RequiredArgsConstructor

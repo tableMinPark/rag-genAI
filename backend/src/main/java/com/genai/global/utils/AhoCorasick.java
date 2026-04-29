@@ -1,4 +1,4 @@
-package com.genai.common.utils;
+package com.genai.global.utils;
 
 import java.util.*;
 

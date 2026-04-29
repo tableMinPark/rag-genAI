@@ -1,7 +1,7 @@
 package com.genai.core.service.business.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.*;
 import com.genai.core.repository.entity.*;

@@ -1,9 +1,9 @@
-package com.genai.app.auth.service.impl;
+package com.genai.global.service.impl;
 
-import com.genai.app.auth.controller.dto.request.RegisterRequestDto;
-import com.genai.app.auth.service.AuthService;
-import com.genai.core.repository.MemberRepository;
-import com.genai.core.repository.entity.MemberEntity;
+import com.genai.global.controller.dto.request.RegisterRequestDto;
+import com.genai.global.service.AuthService;
+import com.genai.global.repository.MemberRepository;
+import com.genai.global.repository.entity.MemberEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

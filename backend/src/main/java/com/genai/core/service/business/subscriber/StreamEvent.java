@@ -1,6 +1,6 @@
 package com.genai.core.service.business.subscriber;
 
-import com.genai.common.utils.StringUtil;
+import com.genai.global.utils.StringUtil;
 import com.genai.core.service.business.constant.StreamCoreConst;
 import lombok.*;
 

@@ -1,6 +1,6 @@
-package com.genai.common.utils;
+package com.genai.global.utils;
 
-import com.genai.common.vo.*;
+import com.genai.global.vo.*;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;

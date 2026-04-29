@@ -1,6 +1,6 @@
-package com.genai.core.repository;
+package com.genai.global.repository;
 
-import com.genai.core.repository.entity.MemberEntity;
+import com.genai.global.repository.entity.MemberEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

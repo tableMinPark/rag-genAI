@@ -1,9 +1,9 @@
-package com.genai.common.utils;
+package com.genai.global.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.genai.common.vo.IndexedContentVO;
+import com.genai.global.vo.IndexedContentVO;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;

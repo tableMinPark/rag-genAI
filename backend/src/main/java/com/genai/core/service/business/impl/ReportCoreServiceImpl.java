@@ -1,10 +1,10 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.common.utils.ExtractUtil;
-import com.genai.common.utils.FileUtil;
-import com.genai.common.utils.HtmlUtil;
-import com.genai.common.utils.StringUtil;
-import com.genai.common.vo.UploadFileVO;
+import com.genai.global.utils.ExtractUtil;
+import com.genai.global.utils.FileUtil;
+import com.genai.global.utils.HtmlUtil;
+import com.genai.global.utils.StringUtil;
+import com.genai.global.vo.UploadFileVO;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;

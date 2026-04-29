@@ -1,6 +1,6 @@
 package com.genai.core.domain;
 
-import com.genai.core.repository.entity.MemberEntity;
+import com.genai.global.repository.entity.MemberEntity;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
