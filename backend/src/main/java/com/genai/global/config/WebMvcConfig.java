@@ -25,7 +25,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix("/api", c -> {
-            return c.getPackageName().startsWith("com.genai.app") || c.getPackageName().startsWith("com.genai.core");
+            return c.getPackageName().startsWith("com.genai");
         });
     }
 
