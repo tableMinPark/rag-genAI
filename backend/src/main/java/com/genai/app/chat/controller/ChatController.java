@@ -21,7 +21,7 @@ import com.genai.core.service.business.StreamCoreService;
 import com.genai.core.service.business.vo.QuestionVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
-import com.genai.core.domain.Member;
+import com.genai.global.service.domain.Member;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Menu;
 import com.genai.global.enums.Response;

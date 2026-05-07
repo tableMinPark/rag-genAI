@@ -1,4 +1,4 @@
-package com.genai.core.domain;
+package com.genai.global.service.domain;
 
 import com.genai.global.repository.entity.MemberEntity;
 import lombok.Getter;

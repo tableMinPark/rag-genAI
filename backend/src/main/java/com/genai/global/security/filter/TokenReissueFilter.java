@@ -1,7 +1,7 @@
 package com.genai.global.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.core.domain.Member;
+import com.genai.global.service.domain.Member;
 import com.genai.global.security.service.MemberDetailsService;
 import com.genai.global.security.util.JwtUtil;
 import lombok.RequiredArgsConstructor;

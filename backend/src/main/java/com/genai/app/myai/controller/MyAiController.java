@@ -19,7 +19,7 @@ import com.genai.core.service.business.vo.FileDetailVO;
 import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.type.CollectionType;
 import com.genai.global.dto.PageResponseDto;
-import com.genai.core.domain.Member;
+import com.genai.global.service.domain.Member;
 import com.genai.global.dto.ResponseDto;
 import com.genai.global.enums.Response;
 import com.genai.global.wrapper.PageWrapper;
