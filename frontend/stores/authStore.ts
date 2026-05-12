@@ -5,7 +5,13 @@ interface AuthState {
   accessToken: string | null
   userId: string | null
   name: string | null
-  setAuth: (accessToken: string, userId: string, name: string) => void
+  menus: string[] | null
+  setAuth: (
+    accessToken: string,
+    userId: string,
+    name: string,
+    menus: string[] | null,
+  ) => void
   clearAuth: () => void
 }
 
@@ -15,8 +21,11 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       userId: null,
       name: null,
-      setAuth: (accessToken, userId, name) => set({ accessToken, userId, name }),
-      clearAuth: () => set({ accessToken: null, userId: null, name: null }),
+      menus: null,
+      setAuth: (accessToken, userId, name, menus) =>
+        set({ accessToken, userId, name, menus }),
+      clearAuth: () =>
+        set({ accessToken: null, userId: null, name: null, menus: null }),
     }),
     { name: 'auth' },
   ),

@@ -13,10 +13,10 @@ import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { useUiStore } from '@/stores/uiStore'
 import { useModalStore } from '@/stores/modalStore'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 
 function AiContent() {
-  const menuInfo = menuInfos.ai
+  const menuInfo = getMenuInfo('ai')
   const uiStore = useUiStore()
   const modalStore = useModalStore()
   const searchParams = useSearchParams()
@@ -63,7 +63,9 @@ function AiContent() {
     handleSendQuery(outerQuery)
   }, [outerQuery])
 
-  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  )
 
   const startGreeting = () => {
     if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
@@ -93,7 +95,8 @@ function AiContent() {
     if (outerQuery) return
     startGreeting()
     return () => {
-      if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
+      if (greetingIntervalRef.current)
+        clearInterval(greetingIntervalRef.current)
       streamRef.current?.close()
     }
   }, [])
@@ -186,7 +189,13 @@ function AiContent() {
       },
     })
     // 세션 기반 SSE 연결
-    await chatAiApi(query, sessionIdRef.current, selectedCategories, streamEvent, selectedChatId)
+    await chatAiApi(
+      query,
+      sessionIdRef.current,
+      selectedCategories,
+      streamEvent,
+      selectedChatId,
+    )
       .then((stream) => {
         console.log(`📡 답변 요청 성공`)
         streamRef.current = stream
@@ -298,11 +307,16 @@ function AiContent() {
    * 대화 이력 추가 로드 핸들러 (무한스크롤 — 위로 올릴 때)
    */
   const handleLoadMoreHistory = async () => {
-    if (isLoadingHistory || historyIsLastRef.current || selectedChatId === null) return
+    if (isLoadingHistory || historyIsLastRef.current || selectedChatId === null)
+      return
     setIsLoadingHistory(true)
     const nextPage = historyPageRef.current + 1
     try {
-      const res = await getChatDetailsApi(selectedChatId, nextPage, HISTORY_PAGE_SIZE)
+      const res = await getChatDetailsApi(
+        selectedChatId,
+        nextPage,
+        HISTORY_PAGE_SIZE,
+      )
       if (res.result.length === 0) {
         historyIsLastRef.current = true
         return
@@ -408,9 +422,9 @@ function AiContent() {
       </div>
 
       {/* 하단: 이력 패널(1) + 채팅 영역(3) */}
-      <div className="flex min-h-0 flex-1 overflow-hidden p-6 gap-4">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-6">
         {/* 좌측: 대화 이력 패널 (1/4) */}
-        <div className="w-1/4 shrink-0 min-h-0">
+        <div className="min-h-0 w-1/4 shrink-0">
           <ChatHistoryPanel
             key={historyKey}
             menuCode="MENU_AI"
@@ -422,14 +436,18 @@ function AiContent() {
         </div>
 
         {/* 우측: 채팅 영역 (3/4) */}
-        <div className="flex min-w-0 flex-1 flex-col min-h-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ChatArea
             messages={messages}
             onSendMessage={handleSendQuery}
             onStop={handleStop}
             isStreaming={isStreaming}
             isLoadingHistory={isLoadingHistory}
-            onLoadMoreHistory={selectedChatId !== null && !historyIsLastRef.current ? handleLoadMoreHistory : undefined}
+            onLoadMoreHistory={
+              selectedChatId !== null && !historyIsLastRef.current
+                ? handleLoadMoreHistory
+                : undefined
+            }
           />
         </div>
       </div>

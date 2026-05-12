@@ -3,7 +3,7 @@ package com.genai.global.security.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.global.auth.service.domain.Member;
 import com.genai.global.security.utils.JwtUtil;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -14,7 +14,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -43,10 +43,20 @@ public class AuthSuccessHandler implements AuthenticationSuccessHandler {
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        objectMapper.writeValue(response.getWriter(), Map.of(
-                "accessToken", accessToken,
-                "userId", member.getUserId(),
-                "name", member.getName()
-        ));
+        objectMapper.writeValue(
+                response.getWriter(),
+                new LoginResponse(accessToken, member.getUserId(), member.getName(), member.getMenus())
+        );
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    private static class LoginResponse {
+        private String accessToken;
+        private String userId;
+        private String name;
+        private List<String> menus;
     }
 }

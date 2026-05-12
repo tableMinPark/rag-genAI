@@ -12,6 +12,7 @@ export interface LoginResponse {
   accessToken: string
   userId: string
   name: string
+  menus: string[]
 }
 
 export interface RegisterRequest {
@@ -21,10 +22,16 @@ export interface RegisterRequest {
   email: string
 }
 
-export const loginApi = async (request: LoginRequest): Promise<LoginResponse> => {
-  const response = await axios.post<LoginResponse>(`${BASE_URL}/auth/login`, request, {
-    withCredentials: true,
-  })
+export const loginApi = async (
+  request: LoginRequest,
+): Promise<LoginResponse> => {
+  const response = await axios.post<LoginResponse>(
+    `${BASE_URL}/auth/login`,
+    request,
+    {
+      withCredentials: true,
+    },
+  )
   return response.data
 }
 

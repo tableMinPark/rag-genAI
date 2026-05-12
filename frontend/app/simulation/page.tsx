@@ -5,11 +5,11 @@ import MarkdownIt from 'markdown-it'
 import { Play, Square, RotateCcw } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
-import { cancelStreamApi, FetchEventSource, streamApi } from '@/api/stream'
+import { cancelStreamApi, FetchEventSource } from '@/api/stream'
 import { chatSimulateionApi } from '@/api/chat'
 import { StreamEvent } from '@/types/streamEvent'
 import { useModalStore } from '@/stores/modalStore'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 
 const md = new MarkdownIt({
   html: true,
@@ -24,7 +24,7 @@ const DEFAULT_TOP_P = 0.95
 const DEFAULT_MAX_TOKENS = 1200
 
 export default function SimulationPage() {
-  const menuInfo = menuInfos.simulation
+  const menuInfo = getMenuInfo('simulation')
   const modalStore = useModalStore()
 
   // ###################################################

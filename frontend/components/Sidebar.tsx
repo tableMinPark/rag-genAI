@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ChevronLeft, Sparkles } from 'lucide-react'
 import { menuInfos } from '@/public/const/menu'
+import { useAuthStore } from '@/stores/authStore'
 
 interface SidebarProps {
   isOpen: boolean
@@ -11,7 +12,11 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
+  const authStore = useAuthStore()
   const pathname = usePathname()
+  const finalMenuInfos = Object.values(menuInfos).filter(
+    (menuInfo) => authStore.menus?.includes(menuInfo.id) ?? false,
+  )
 
   return (
     <aside
@@ -46,7 +51,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       </div>
       {/* Menu */}
       <nav className="mt-2 flex flex-col gap-1 px-2">
-        {Object.values(menuInfos).map((item) => {
+        {Object.values(finalMenuInfos).map((item) => {
           const isActive = pathname.startsWith(item.path)
           const Icon = item.icon
           return (

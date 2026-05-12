@@ -9,7 +9,7 @@ import {
   translateTextApi,
 } from '@/api/translate'
 import { TranslateLanguage } from '@/types/domain'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'
 import { FetchEventSource, streamApi } from '@/api/stream'
@@ -19,7 +19,7 @@ import styles from '@/public/css/markdown.module.css'
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
 
 export default function TranslatePage() {
-  const menuInfo = menuInfos.translate
+  const menuInfo = getMenuInfo('translate')
   const uiStore = useUiStore()
   const modalStore = useModalStore()
 

@@ -20,7 +20,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const data = await loginApi({ userId, password })
-      setAuth(data.accessToken, data.userId, data.name)
+      setAuth(data.accessToken, data.userId, data.name, data.menus)
       router.replace('/')
     } catch {
       setError('아이디 또는 비밀번호가 올바르지 않습니다.')
@@ -33,27 +33,27 @@ export default function LoginPage() {
     <div className="flex h-screen w-screen overflow-hidden">
       {/* 왼쪽 브랜드 패널 */}
       <div
-        className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16 relative"
+        className="relative hidden flex-col justify-between p-16 lg:flex lg:w-1/2"
         style={{ backgroundColor: '#c64f4f' }}
       >
         {/* 배경 장식 원 */}
         <div
-          className="absolute top-[-80px] right-[-80px] w-72 h-72 rounded-full opacity-20"
+          className="absolute top-[-80px] right-[-80px] h-72 w-72 rounded-full opacity-20"
           style={{ backgroundColor: '#fff' }}
         />
         <div
-          className="absolute bottom-[-60px] left-[-60px] w-96 h-96 rounded-full opacity-10"
+          className="absolute bottom-[-60px] left-[-60px] h-96 w-96 rounded-full opacity-10"
           style={{ backgroundColor: '#fff' }}
         />
         <div
-          className="absolute bottom-40 right-16 w-32 h-32 rounded-full opacity-15"
+          className="absolute right-16 bottom-40 h-32 w-32 rounded-full opacity-15"
           style={{ backgroundColor: '#fff' }}
         />
 
         {/* 로고 */}
         <div className="relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path
                   d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
@@ -64,37 +64,39 @@ export default function LoginPage() {
                 />
               </svg>
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">RAG GenAI</span>
+            <span className="text-xl font-bold tracking-tight text-white">
+              RAG GenAI
+            </span>
           </div>
         </div>
 
         {/* 중앙 카피 */}
         <div className="relative z-10">
-          <h2 className="text-white text-4xl font-bold leading-tight mb-4">
+          <h2 className="mb-4 text-4xl leading-tight font-bold text-white">
             지식을 연결하고
             <br />
             AI로 답을 찾다
           </h2>
-          <p className="text-white/70 text-base leading-relaxed max-w-xs">
+          <p className="max-w-xs text-base leading-relaxed text-white/70">
             문서 기반 AI 검색 플랫폼으로 더 빠르고 정확한 인사이트를 경험하세요.
           </p>
         </div>
 
         {/* 하단 장식 */}
         <div className="relative z-10 flex gap-2">
-          <div className="w-8 h-1 rounded-full bg-white/60" />
-          <div className="w-2 h-1 rounded-full bg-white/30" />
-          <div className="w-2 h-1 rounded-full bg-white/30" />
+          <div className="h-1 w-8 rounded-full bg-white/60" />
+          <div className="h-1 w-2 rounded-full bg-white/30" />
+          <div className="h-1 w-2 rounded-full bg-white/30" />
         </div>
       </div>
 
       {/* 오른쪽 로그인 폼 */}
-      <div className="flex-1 flex items-center justify-center px-8 bg-gray-50">
+      <div className="flex flex-1 items-center justify-center bg-gray-50 px-8">
         <div className="w-full max-w-sm">
           {/* 모바일용 로고 */}
-          <div className="lg:hidden flex items-center gap-2 mb-10">
+          <div className="mb-10 flex items-center gap-2 lg:hidden">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              className="flex h-8 w-8 items-center justify-center rounded-lg"
               style={{ backgroundColor: '#c64f4f' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -107,41 +109,67 @@ export default function LoginPage() {
                 />
               </svg>
             </div>
-            <span className="font-bold text-lg text-gray-900">RAG GenAI</span>
+            <span className="text-lg font-bold text-gray-900">RAG GenAI</span>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">다시 오셨군요</h1>
-          <p className="text-sm text-gray-500 mb-8">계정에 로그인하세요</p>
+          <h1 className="mb-1 text-2xl font-bold text-gray-900">
+            다시 오셨군요
+          </h1>
+          <p className="mb-8 text-sm text-gray-500">계정에 로그인하세요</p>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">아이디</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                아이디
+              </label>
               <input
                 type="text"
                 placeholder="아이디를 입력하세요"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-[#c64f4f] focus:ring-3 focus:ring-[#c64f4f]/10"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition-all outline-none placeholder:text-gray-400 focus:border-[#c64f4f] focus:ring-3 focus:ring-[#c64f4f]/10"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1.5">비밀번호</label>
+              <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                비밀번호
+              </label>
               <input
                 type="password"
                 placeholder="비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition-all focus:border-[#c64f4f] focus:ring-3 focus:ring-[#c64f4f]/10"
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition-all outline-none placeholder:text-gray-400 focus:border-[#c64f4f] focus:ring-3 focus:ring-[#c64f4f]/10"
               />
             </div>
 
             {error && (
               <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                  <circle cx="12" cy="12" r="10" stroke="#ef4444" strokeWidth="2" />
-                  <line x1="12" y1="8" x2="12" y2="12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="shrink-0"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#ef4444"
+                    strokeWidth="2"
+                  />
+                  <line
+                    x1="12"
+                    y1="8"
+                    x2="12"
+                    y2="12"
+                    stroke="#ef4444"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
                   <circle cx="12" cy="16" r="1" fill="#ef4444" />
                 </svg>
                 <p className="text-xs text-red-600">{error}</p>
@@ -151,10 +179,14 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white transition-all disabled:opacity-60 active:scale-[0.98]"
+              className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-white transition-all active:scale-[0.98] disabled:opacity-60"
               style={{ backgroundColor: loading ? '#c64f4f99' : '#c64f4f' }}
-              onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = '#a54242' }}
-              onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = '#c64f4f' }}
+              onMouseEnter={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = '#a54242'
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) e.currentTarget.style.backgroundColor = '#c64f4f'
+              }}
             >
               {loading ? '로그인 중...' : '로그인'}
             </button>

@@ -17,14 +17,14 @@ import {
 import { Project } from '@/types/domain'
 import { deleteProjectApi, getProjectApi, getProjectsApi } from '@/api/myai'
 import { formatDateToYYYYMMDD } from '@/public/ts/commonUtil'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 import { useUiStore } from '@/stores/uiStore'
 import { useModalStore } from '@/stores/modalStore'
 import ModalMyAiCreate from '@/components/modal/ModalMyAiCreate'
 import ModalMyAiModify from '@/components/modal/ModalMyAiModify'
 
 export default function MyAiPage() {
-  const menuInfo = menuInfos.myai
+  const menuInfo = getMenuInfo('myai')
   const router = useRouter()
   const uiStore = useUiStore()
   const modalStore = useModalStore()

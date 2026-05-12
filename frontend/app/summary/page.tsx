@@ -6,10 +6,10 @@ import { FileText, Loader2, Play, X } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { summaryFileApi, summaryTextApi } from '@/api/summary'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
-import { FetchEventSource, streamApi } from '@/api/stream'
+import { FetchEventSource } from '@/api/stream'
 import { SummaryResult } from '@/types/domain'
 
 const ALLOW_EXT = ['pdf', 'hwp', 'hwpx']
@@ -27,7 +27,7 @@ const SUMMARY_OPTIONS = [
 ]
 
 export default function SummaryPage() {
-  const menuInfo = menuInfos.summary
+  const menuInfo = getMenuInfo('summary')
   const modalStore = useModalStore()
 
   // ###################################################

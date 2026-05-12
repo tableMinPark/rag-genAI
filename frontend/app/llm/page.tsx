@@ -11,10 +11,10 @@ import { useModalStore } from '@/stores/modalStore'
 import { GreetingMessage } from '@/public/const/greeting'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { StreamEvent } from '@/types/streamEvent'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 
 function LlmContent() {
-  const menuInfo = menuInfos.llm
+  const menuInfo = getMenuInfo('llm')
   const modalStore = useModalStore()
 
   // ###################################################
@@ -61,11 +61,16 @@ function LlmContent() {
   }
 
   const handleLoadMoreHistory = async () => {
-    if (isLoadingHistory || historyIsLastRef.current || selectedChatId === null) return
+    if (isLoadingHistory || historyIsLastRef.current || selectedChatId === null)
+      return
     setIsLoadingHistory(true)
     const nextPage = historyPageRef.current + 1
     try {
-      const res = await getChatDetailsApi(selectedChatId, nextPage, HISTORY_PAGE_SIZE)
+      const res = await getChatDetailsApi(
+        selectedChatId,
+        nextPage,
+        HISTORY_PAGE_SIZE,
+      )
       if (res.result.length === 0) {
         historyIsLastRef.current = true
         return
@@ -88,7 +93,9 @@ function LlmContent() {
   // ###################################################
   // 랜더링 이펙트
   // ###################################################
-  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const greetingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  )
 
   const startGreeting = () => {
     if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
@@ -100,7 +107,9 @@ function LlmContent() {
         const messages = [...prev]
         messages[0] = {
           ...messages[0],
-          content: replaceEventDataToText(GreetingMessage.llm.substring(0, idx)),
+          content: replaceEventDataToText(
+            GreetingMessage.llm.substring(0, idx),
+          ),
         }
         return messages
       })
@@ -116,7 +125,8 @@ function LlmContent() {
   useEffect(() => {
     startGreeting()
     return () => {
-      if (greetingIntervalRef.current) clearInterval(greetingIntervalRef.current)
+      if (greetingIntervalRef.current)
+        clearInterval(greetingIntervalRef.current)
       streamRef.current?.close()
     }
   }, [])
@@ -266,9 +276,9 @@ function LlmContent() {
       </div>
 
       {/* 하단: 이력 패널(1) + 채팅 영역(3) */}
-      <div className="flex min-h-0 flex-1 overflow-hidden p-6 gap-4">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-6">
         {/* 좌측: 대화 이력 패널 (1/4) */}
-        <div className="w-1/4 shrink-0 min-h-0">
+        <div className="min-h-0 w-1/4 shrink-0">
           <ChatHistoryPanel
             key={historyKey}
             menuCode="MENU_LLM"
@@ -280,14 +290,18 @@ function LlmContent() {
         </div>
 
         {/* 우측: 채팅 영역 (3/4) */}
-        <div className="flex min-w-0 flex-1 flex-col min-h-0">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <ChatArea
             messages={messages}
             onSendMessage={handleSendQuery}
             onStop={handleStop}
             isStreaming={isStreaming}
             isLoadingHistory={isLoadingHistory}
-            onLoadMoreHistory={selectedChatId !== null && !historyIsLastRef.current ? handleLoadMoreHistory : undefined}
+            onLoadMoreHistory={
+              selectedChatId !== null && !historyIsLastRef.current
+                ? handleLoadMoreHistory
+                : undefined
+            }
           />
         </div>
       </div>

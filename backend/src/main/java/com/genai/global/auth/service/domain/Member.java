@@ -1,5 +1,6 @@
 package com.genai.global.auth.service.domain;
 
+import com.genai.global.auth.enums.Menu;
 import com.genai.global.auth.repository.entity.MemberEntity;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,6 +18,7 @@ public class Member implements UserDetails {
     private final String name;
     private final String email;
     private final String role;
+    private final List<String> menus;
 
     public Member(MemberEntity entity) {
         this.userId = entity.getUserId();
@@ -24,6 +26,7 @@ public class Member implements UserDetails {
         this.name = entity.getName();
         this.email = entity.getEmail();
         this.role = entity.getRole();
+        this.menus = Menu.getMenuIds(entity.getRole());
     }
 
     @Override

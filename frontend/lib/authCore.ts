@@ -4,6 +4,13 @@ import { useAuthStore } from '@/stores/authStore'
 
 export const BASE_URL = `http://${config.apiHost}:${config.apiPort}${config.apiBasePath}`
 
+export interface ReissueResponse {
+  accessToken: string
+  userId: string
+  name: string
+  menus: string[]
+}
+
 export const redirectToLogin = () => {
   if (typeof window !== 'undefined') {
     window.location.href = `${config.basePath}/login`
@@ -33,7 +40,7 @@ export const reissueToken = async (): Promise<string> => {
 
   isRefreshing = true
   try {
-    const response = await axios.post<{ accessToken: string }>(
+    const response = await axios.post<ReissueResponse>(
       `${BASE_URL}/auth/reissue`,
       {},
       { withCredentials: true },
@@ -43,8 +50,9 @@ export const reissueToken = async (): Promise<string> => {
       .getState()
       .setAuth(
         newToken,
-        useAuthStore.getState().userId ?? '',
-        useAuthStore.getState().name ?? '',
+        response.data.userId,
+        response.data.name,
+        response.data.menus,
       )
     processPendingQueue(newToken)
     return newToken

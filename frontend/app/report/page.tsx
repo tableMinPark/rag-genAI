@@ -6,7 +6,7 @@ import { FileText, Loader2, Play, X } from 'lucide-react'
 import styles from '@/public/css/markdown.module.css'
 import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { generateReportFileApi, generateReportTextApi } from '@/api/report'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 import { useModalStore } from '@/stores/modalStore'
 import { FetchEventSource, streamApi } from '@/api/stream'
 import { Prepare, StreamEvent } from '@/types/streamEvent'
@@ -20,7 +20,7 @@ const md = new MarkdownIt({
 })
 
 export default function ReportPage() {
-  const menuInfo = menuInfos.report
+  const menuInfo = getMenuInfo('report')
   const modalStore = useModalStore()
 
   // ###################################################

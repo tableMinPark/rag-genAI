@@ -6,7 +6,7 @@ import { randomUUID, replaceEventDataToText } from '@/public/ts/commonUtil'
 import { cancelStreamApi, FetchEventSource, streamApi } from '@/api/stream'
 import { chatMyAiApi } from '@/api/chat'
 import { useSearchParams } from 'next/navigation'
-import { menuInfos } from '@/public/const/menu'
+import { getMenuInfo } from '@/public/const/menu'
 import { createAnswerMessage, createQueryMessage, Message } from '@/types/chat'
 import { GreetingMessage } from '@/public/const/greeting'
 import { StreamEvent } from '@/types/streamEvent'
@@ -18,7 +18,7 @@ import { ArrowLeft, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 function MyAiContent() {
-  const menuInfo = menuInfos.myai
+  const menuInfo = getMenuInfo('myai')
   const router = useRouter()
   const uiStore = useUiStore()
   const modalStore = useModalStore()
