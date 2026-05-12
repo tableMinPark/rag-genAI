@@ -5,7 +5,7 @@ import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.app.myai.service.vo.UpdateProjectVO;
 import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.global.wrapper.PageWrapper;
+import com.genai.global.common.wrapper.PageWrapper;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;

@@ -2,7 +2,8 @@ package com.genai.core.repository.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.global.utils.StringUtil;
+import com.genai.core.common.enums.CoreLogMessage;
+import com.genai.global.common.utils.StringUtil;
 import com.genai.core.config.instance.LlmInstance;
 import com.genai.core.config.properties.LlmInstanceProperty;
 import com.genai.core.config.properties.LlmRetryProperty;
@@ -12,9 +13,9 @@ import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.repository.response.AnswerResponse;
 import com.genai.core.service.module.vo.ConversationVO;
-import com.genai.core.type.LlmPlatformType;
-import com.genai.core.type.LlmType;
-import com.genai.core.utils.ReactiveLogUtil;
+import com.genai.core.common.enums.LlmPlatformType;
+import com.genai.core.common.enums.LlmType;
+import com.genai.global.common.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -68,7 +69,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                 .repeatWhenEmpty(repeat -> repeat.delayElements(Duration.ofMillis(llmRetryProperty.getDelayMs())))
                 .timeout(Duration.ofMillis(llmRetryProperty.getTimeoutMs()),
                         Mono.error(new ModelErrorException("LLM Instance 획득 실패 (" + llmRetryProperty.getTimeoutMs() + "ms)")))
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_INSTANCE_TRY_ACQUIRE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.LLM_INSTANCE_TRY_ACQUIRE_MESSAGE, v -> new Object[]{
                         v.instance().getInstanceId(), v.sessionCount()
                 }))
                 .map(LlmInstance.AcquireResult::instance);
@@ -81,7 +82,7 @@ public class ModelRepositoryImpl implements ModelRepository {
      */
     private Mono<Void> releaseInstance(String requestId, LlmInstance instance) {
         return Mono.fromCallable(() -> instance.release(requestId))
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_INSTANCE_RELEASE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.LLM_INSTANCE_RELEASE_MESSAGE, v -> new Object[]{
                         instance.getInstanceId(), v
                 }))
                 .then();
@@ -224,7 +225,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                         .bodyToMono(String.class)
                         .map(json -> parseAnswerResponse(json, platformType, false))
                 )
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.LLM_RESPONSE_BLOCKING_MESSAGE, v -> new Object[]{
                         instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                 }));
     }
@@ -291,7 +292,7 @@ public class ModelRepositoryImpl implements ModelRepository {
                                     new AnswerEntity(id, answerBuilder.toString(), finishReason, false)
                             );
                         })
-                        .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
+                        .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.LLM_RESPONSE_STREAM_MESSAGE, v -> new Object[]{
                                 instance.getInstanceId(), requestId, llmInstanceProperty.getUrl(), StringUtil.writeJson(request), StringUtil.writeJson(v)
                         })))
                 .then();

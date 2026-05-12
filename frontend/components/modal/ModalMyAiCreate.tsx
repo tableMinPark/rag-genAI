@@ -1,9 +1,9 @@
-import { createProjectApi } from '@/api/myai'
 import {
+  createProjectApi,
   getPromptRolesApi,
   getPromptStylesApi,
   getPromptTonesApi,
-} from '@/api/prompt'
+} from '@/api/myai'
 import { FetchEventSource } from '@/api/stream'
 import { useModalStore } from '@/stores/modalStore'
 import { useUiStore } from '@/stores/uiStore'

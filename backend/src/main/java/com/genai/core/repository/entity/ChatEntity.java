@@ -25,13 +25,14 @@ public class ChatEntity {
     @Comment("대화 ID")
     private Long chatId;
 
-    @Column(name = "title", length = 4000)
+    @Lob
+    @Column(name = "title")
     @Comment("대화 제목")
     private String title;
 
     @Setter
     @Lob
-    @Column(name = "state", length = 4000)
+    @Column(name = "state")
     @Comment("대화 상태")
     private String state;
 

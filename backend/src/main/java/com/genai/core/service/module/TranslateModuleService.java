@@ -1,6 +1,6 @@
 package com.genai.core.service.module;
 
-import com.genai.global.utils.AhoCorasick;
+import com.genai.global.common.utils.AhoCorasick;
 import com.genai.core.service.module.vo.PartTranslateContextVO;
 import com.genai.core.service.module.vo.PartTranslateState;
 import reactor.core.publisher.Flux;

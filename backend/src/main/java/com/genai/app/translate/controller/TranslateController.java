@@ -4,18 +4,20 @@ import com.genai.app.chat.service.ChatService;
 import com.genai.app.translate.controller.dto.request.TranslateFileRequestDto;
 import com.genai.app.translate.controller.dto.request.TranslateTextRequestDto;
 import com.genai.app.translate.controller.dto.response.GetTranslateLanguageResponseDto;
-import com.genai.core.constant.CommonConst;
-import com.genai.core.service.business.StreamCoreService;
+import com.genai.core.common.constant.CommonConst;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.stream.service.StreamCoreService;
 import com.genai.core.service.business.TranslateCoreService;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
-import com.genai.global.dto.ResponseDto;
-import com.genai.global.enums.Menu;
-import com.genai.global.enums.Response;
+import com.genai.global.common.dto.ResponseDto;
+import com.genai.global.auth.enums.Menu;
+import com.genai.app.common.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,9 +43,10 @@ public class TranslateController {
      * @param translateTextRequestDto 번역 요청 정보
      */
     @PostMapping(value = "/text")
-    public SseEmitter translateText(@Valid @RequestBody TranslateTextRequestDto translateTextRequestDto) {
+    public SseEmitter translateText(@Valid @RequestBody TranslateTextRequestDto translateTextRequestDto,
+                                    @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = translateTextRequestDto.getSessionId();
         String afterLang = translateTextRequestDto.getAfterLang();
         boolean containDic = translateTextRequestDto.isContainDic();
@@ -64,10 +67,11 @@ public class TranslateController {
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public SseEmitter translateFile(
             @Valid @RequestPart("requestDto") TranslateFileRequestDto translateFileRequestDto,
-            @RequestPart("uploadFile") MultipartFile multipartFile
+            @RequestPart("uploadFile") MultipartFile multipartFile,
+            @AuthenticationPrincipal Member member
     ) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = translateFileRequestDto.getSessionId();
         String afterLang = translateFileRequestDto.getAfterLang();
         boolean containDic = translateFileRequestDto.isContainDic();

@@ -2,12 +2,24 @@ package com.genai.app.chat.service;
 
 import com.genai.app.chat.service.vo.ChatDetailVO;
 import com.genai.app.chat.service.vo.ChatVO;
-import com.genai.global.enums.Menu;
-import com.genai.global.wrapper.PageWrapper;
+import com.genai.global.auth.enums.Menu;
+import com.genai.global.common.wrapper.PageWrapper;
 
 import java.util.List;
 
 public interface ChatService {
+
+    /**
+     * 대화 조회 또는 생성
+     *
+     * @param userId 사용자 식별자
+     * @param title  대화 제목
+     * @param menu   메뉴
+     * @return 대화 VO
+     */
+    default ChatVO getChat(String userId, String title, Menu menu) {
+        return getChat(userId, title, menu, null);
+    }
 
     /**
      * 대화 조회 또는 생성
@@ -20,9 +32,6 @@ public interface ChatService {
      */
     ChatVO getChat(String userId, String title, Menu menu, Long chatId);
 
-    default ChatVO getChat(String userId, String title, Menu menu) {
-        return getChat(userId, title, menu, null);
-    }
 
     /**
      * 대화 목록 조회

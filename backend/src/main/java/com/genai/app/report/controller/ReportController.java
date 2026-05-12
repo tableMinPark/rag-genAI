@@ -5,11 +5,13 @@ import com.genai.app.report.controller.dto.request.ReportFileRequestDto;
 import com.genai.app.report.controller.dto.request.ReportTextRequestDto;
 import com.genai.core.service.business.PromptCoreService;
 import com.genai.core.service.business.ReportCoreService;
-import com.genai.core.service.business.StreamCoreService;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.stream.service.StreamCoreService;
 import com.genai.core.service.business.vo.ReportVO;
-import com.genai.global.enums.Menu;
+import com.genai.global.auth.enums.Menu;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,9 +36,10 @@ public class ReportController {
      * @param reportTextRequestDto 보고서 생성 정보
      */
     @PostMapping(value = "/text")
-    public SseEmitter generateReportText(@Valid @RequestBody ReportTextRequestDto reportTextRequestDto) {
+    public SseEmitter generateReportText(@Valid @RequestBody ReportTextRequestDto reportTextRequestDto,
+                                         @AuthenticationPrincipal Member member) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = reportTextRequestDto.getSessionId();
         String promptContext = promptCoreService.generateReportPrompt(reportTextRequestDto.getRequestContent());
         String title = reportTextRequestDto.getTitle();
@@ -57,10 +60,11 @@ public class ReportController {
     @PostMapping(value = "/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public SseEmitter generateReportFile(
             @Valid @RequestPart("requestDto") ReportFileRequestDto reportFileRequestDto,
-            @RequestPart("uploadFile") MultipartFile[] multipartFiles
+            @RequestPart("uploadFile") MultipartFile[] multipartFiles,
+            @AuthenticationPrincipal Member member
     ) {
 
-        String userId = "USER";
+        String userId = member.getUserId();
         String sessionId = reportFileRequestDto.getSessionId();
         String promptContext = promptCoreService.generateReportPrompt(reportFileRequestDto.getRequestContent());
         String title = reportFileRequestDto.getTitle();

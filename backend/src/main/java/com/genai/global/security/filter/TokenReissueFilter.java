@@ -1,12 +1,12 @@
 package com.genai.global.security.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.global.service.domain.Member;
-import com.genai.global.security.service.MemberDetailsService;
-import com.genai.global.security.util.JwtUtil;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.security.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.servlet.FilterChain;
@@ -22,7 +22,7 @@ import java.util.Map;
 public class TokenReissueFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final MemberDetailsService memberDetailsService;
+    private final UserDetailsService userDetailsService;
     private final ObjectMapper objectMapper;
     private final String refreshTokenCookieName;
 
@@ -43,7 +43,7 @@ public class TokenReissueFilter extends OncePerRequestFilter {
         }
 
         String userId = jwtUtil.getUserId(refreshToken);
-        Member member = (Member) memberDetailsService.loadUserByUsername(userId);
+        Member member = (Member) userDetailsService.loadUserByUsername(userId);
 
         String newAccessToken = jwtUtil.generateAccessToken(member.getUserId(), member.getRole());
 

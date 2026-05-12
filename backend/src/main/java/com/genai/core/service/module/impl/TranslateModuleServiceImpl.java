@@ -1,8 +1,9 @@
 package com.genai.core.service.module.impl;
 
-import com.genai.global.utils.AhoCorasick;
-import com.genai.global.vo.IndexedContentVO;
-import com.genai.core.constant.PromptConst;
+import com.genai.core.common.enums.CoreLogMessage;
+import com.genai.global.common.utils.AhoCorasick;
+import com.genai.global.common.vo.IndexedContentVO;
+import com.genai.core.common.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;
@@ -11,7 +12,7 @@ import com.genai.core.service.module.TranslateModuleService;
 import com.genai.core.service.module.constant.TranslateModuleConst;
 import com.genai.core.service.module.vo.PartTranslateContextVO;
 import com.genai.core.service.module.vo.PartTranslateState;
-import com.genai.core.utils.ReactiveLogUtil;
+import com.genai.global.common.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -67,7 +68,7 @@ public class TranslateModuleServiceImpl implements TranslateModuleService {
                             return answerBuilder.toString().trim();
 
                         })
-                        .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_TRANSLATE_MESSAGE, v -> new Object[]{
+                        .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.PART_TRANSLATE_MESSAGE, v -> new Object[]{
                                 content, v
                         }))
                 ).subscribeOn(Schedulers.boundedElastic());
@@ -86,7 +87,7 @@ public class TranslateModuleServiceImpl implements TranslateModuleService {
         Mono<List<IndexedContentVO>> contentsMono = Mono.just(state.getIndexedContents())
                 .map(indexedContents -> indexedContents.stream()
                         .filter(indexedContent -> indexedContent != null && indexedContent.getContent() != null && !indexedContent.getContent().trim().isBlank()).toList())
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PART_TRANSLATE_RECURSIVE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(CoreLogMessage.PART_TRANSLATE_RECURSIVE_MESSAGE, v -> new Object[]{
                         v.size()
                 }));
 

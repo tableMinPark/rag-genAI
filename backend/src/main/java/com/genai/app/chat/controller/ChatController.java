@@ -10,21 +10,21 @@ import com.genai.app.chat.controller.dto.response.GetChatResponseDto;
 import com.genai.app.chat.service.ChatService;
 import com.genai.app.chat.service.vo.ChatDetailVO;
 import com.genai.app.chat.service.vo.ChatVO;
-import com.genai.global.wrapper.PageWrapper;
+import com.genai.global.common.wrapper.PageWrapper;
 import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.service.MyAiService;
 import com.genai.app.myai.service.vo.ProjectVO;
-import com.genai.core.constant.CommonConst;
-import com.genai.core.constant.PromptConst;
+import com.genai.core.common.constant.CommonConst;
+import com.genai.core.common.constant.PromptConst;
 import com.genai.core.service.business.QuestionCoreService;
-import com.genai.core.service.business.StreamCoreService;
+import com.genai.global.stream.service.StreamCoreService;
 import com.genai.core.service.business.vo.QuestionVO;
 import com.genai.core.service.module.CommonCodeModuleService;
 import com.genai.core.service.module.vo.CommonCodeVO;
-import com.genai.global.service.domain.Member;
-import com.genai.global.dto.ResponseDto;
-import com.genai.global.enums.Menu;
-import com.genai.global.enums.Response;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.common.dto.ResponseDto;
+import com.genai.global.auth.enums.Menu;
+import com.genai.app.common.enums.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -142,7 +142,7 @@ public class ChatController {
     @GetMapping("/category")
     public ResponseEntity<ResponseDto<List<GetCategoriesResponseDto>>> getCategories() {
 
-        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(CommonConst.CHUNK_CODE_GROUP);
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(CommonConst.DOCUMENT_CODE_GROUP);
 
         return ResponseEntity.ok().body(Response.CHAT_CATEGORIES_SUCCESS.toResponseDto(GetCategoriesResponseDto.toList(categoryCodes)));
     }

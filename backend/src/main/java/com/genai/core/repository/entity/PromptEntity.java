@@ -23,7 +23,8 @@ public class PromptEntity {
     @Comment("프롬프트명")
     private String promptName;
 
-    @Column(name = "prompt_content", length = 4000)
+    @Lob
+    @Column(name = "prompt_content")
     @Comment("프롬프트 내용")
     private String promptContent;
 

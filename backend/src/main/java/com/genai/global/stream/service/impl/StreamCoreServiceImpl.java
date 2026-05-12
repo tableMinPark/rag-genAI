@@ -1,0 +1,101 @@
+package com.genai.global.stream.service.impl;
+
+import com.genai.core.exception.NotFoundException;
+import com.genai.global.stream.service.StreamCoreService;
+import com.genai.global.stream.constant.StreamCoreConst;
+import com.genai.global.stream.subscriber.Stream;
+import com.genai.global.stream.subscriber.StreamSubscriber;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class StreamCoreServiceImpl implements StreamCoreService {
+
+    private static final Map<String, StreamSubscriber> streamMap = new ConcurrentHashMap<>();
+
+    /**
+     * Stream 등록
+     *
+     * @param streamId stream 식별자
+     * @return StreamVO
+     */
+    @Override
+    public StreamSubscriber createStream(String streamId, long chatId) {
+
+        StreamSubscriber streamSubscriber = new StreamSubscriber(Stream.builder()
+                .streamId(streamId)
+                .build());
+
+        // 연결 끊김 처리
+        streamSubscriber.getEmitter().onCompletion(() -> {
+            deleteStream(streamId);
+            log.info("[{}] " + String.format("%-20s", "Stream SSE complete") + " |", streamId);
+        });
+
+        // 세션 만료 처리
+        streamSubscriber.getEmitter().onTimeout(() -> {
+            deleteStream(streamId);
+            log.warn("[{}] " + String.format("%-20s", "Stream SSE timeout") + " |", streamId);
+        });
+
+        // 에러 처리
+        streamSubscriber.getEmitter().onError(throwable -> {
+            deleteStream(streamId);
+            log.error("[{}] " + String.format("%-20s", "Stream SSE error") + " |", streamId, throwable);
+        });
+
+        // 연결 이벤트 전송 (chatId 포함)
+        try {
+            streamSubscriber.getEmitter().send(SseEmitter.event()
+                    .name(StreamCoreConst.CONNECT)
+                    .data(String.valueOf(chatId)));
+        } catch (IOException e) {
+            streamSubscriber.getEmitter().completeWithError(e);
+        }
+
+        streamMap.put(streamId, streamSubscriber);
+
+        log.info("[{}] " + String.format("%-20s", "Stream create") + " | stream queue size: {}", streamId, streamMap.size());
+
+        return streamSubscriber;
+    }
+
+    /**
+     * Stream 조회
+     *
+     * @param streamId stream 식별자
+     * @return StreamVO
+     */
+    @Override
+    public StreamSubscriber getStream(String streamId) {
+        if (streamMap.containsKey(streamId)) {
+            log.info("[{}] " + String.format("%-20s", "Stream get") + " | stream queue size: {}", streamId, streamMap.size());
+            return streamMap.get(streamId);
+        }
+
+        throw new NotFoundException(streamId + " 스트림");
+    }
+
+    /**
+     * Stream 중지 및 삭제
+     *
+     * @param streamId stream 식별자
+     */
+    public void deleteStream(String streamId) {
+        if (streamMap.containsKey(streamId)) {
+            // 스트림 종료
+            streamMap.get(streamId).cancelStream();
+            streamMap.remove(streamId);
+
+            log.info("[{}] " + String.format("%-20s", "Stream delete") + " | stream queue size: {}", streamId, streamMap.size());
+        }
+    }
+}

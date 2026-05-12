@@ -1,6 +1,6 @@
 package com.genai.core.service.business.vo;
 
-import com.genai.core.service.business.subscriber.StreamEvent;
+import com.genai.global.stream.subscriber.StreamEvent;
 import lombok.*;
 import reactor.core.publisher.Flux;
 

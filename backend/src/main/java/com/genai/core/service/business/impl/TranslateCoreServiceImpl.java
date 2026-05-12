@@ -10,16 +10,15 @@ import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.CommonCodeEntity;
 import com.genai.core.service.business.TranslateCoreService;
 import com.genai.core.service.business.constant.TranslateCoreConst;
-import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.DictionaryVO;
-import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.TranslateVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.TranslateModuleService;
 import com.genai.core.service.module.vo.PartTranslateContextVO;
 import com.genai.core.service.module.vo.PartTranslateState;
-import com.genai.global.utils.*;
-import com.genai.global.vo.UploadFileVO;
+import com.genai.global.common.utils.*;
+import com.genai.global.common.vo.UploadFileVO;
+import com.genai.global.stream.subscriber.StreamEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -150,10 +149,7 @@ public class TranslateCoreServiceImpl implements TranslateCoreService {
                 .delayElements(Duration.ofMillis(100));
 
         Flux<StreamEvent> partTranslateProgressFlux = Flux.concat(
-                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                        .progress(0)
-                        .message("문서 전처리중")
-                        .build())),
+                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), 0, "문서 전처리중")),
                 partTranslateFlux.map(PartTranslateContextVO::getStreamEvent)
         );
 

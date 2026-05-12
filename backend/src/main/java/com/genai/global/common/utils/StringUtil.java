@@ -1,0 +1,185 @@
+package com.genai.global.common.utils;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.genai.global.common.vo.IndexedContentVO;
+
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class StringUtil {
+
+    // 원형 숫자 기호 (0 ~ 49)
+    private static final char[] CIRCLE_NUMBERS = {
+            0x24EA, 0x2460, 0x2461, 0x2462, 0x2463, 0x2464, 0x2465, 0x2466, 0x2467, 0x2468,
+            0x2469, 0x246A, 0x246B, 0x246C, 0x246D, 0x246E, 0x246F, 0x2470, 0x2471, 0x2472,
+            0x2473, 0x3251, 0x3252, 0x3253, 0x3254, 0x3255, 0x3256, 0x3257, 0x3258, 0x3259,
+            0x325A, 0x325B, 0x325C, 0x325D, 0x325E, 0x325F, 0x32B1, 0x32B2, 0x32B3, 0x32B4,
+            0x32B5, 0x32B6, 0x32B7, 0x32B8, 0x32B9, 0x32BA, 0x32BB, 0x32BC, 0x32BD, 0x32BE
+    };
+
+    public static final ObjectMapper objectMapper;
+
+    static {
+        objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    /**
+     * 랜덤 ID 값 생성
+     *
+     * @return 랜덤 ID
+     */
+    public static String generateRandomId() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    /**
+     * 파일 확장자 제거
+     *
+     * @param originFilename 파일명
+     * @return 확장자 제거 이름
+     */
+    public static String removeExtension(String originFilename) {
+        if (originFilename == null || originFilename.isBlank()) {
+            return originFilename;
+        }
+
+        int lastDotIndex = originFilename.lastIndexOf('.');
+
+        // 점(.)이 없거나 맨 앞에만 있는 경우 (예: ".gitignore")
+        if (lastDotIndex <= 0) {
+            return originFilename;
+        }
+
+        return originFilename.substring(0, lastDotIndex);
+    }
+
+    /**
+     * 문자열 숫자 여부 확인
+     *
+     * @param str 문자열
+     * @return 숫자 여부
+     */
+    public static boolean isNumber(String str) {
+        if (str != null && !str.isBlank()) {
+            return !str.chars().allMatch(Character::isDigit);
+        }
+        return true;
+    }
+
+    /**
+     * JSON 직렬화
+     *
+     * @param object 객체
+     * @return 직렬화 문자열
+     */
+    public static String writeJson(Object object) {
+
+        String json = "{}";
+
+        try {
+            json = objectMapper.writeValueAsString(object);
+        } catch (JsonProcessingException ignored) {
+            return "{}";
+        }
+
+        return json;
+    }
+
+    /**
+     * 원형 숫자 기호 대치
+     *
+     * @param c 문자
+     * @return 대치 문자열
+     */
+    public static String getCircleNumber(char c) {
+        for (int num = 0; num < CIRCLE_NUMBERS.length; num++) {
+            if (c == CIRCLE_NUMBERS[num]) {
+                return String.valueOf(num);
+            }
+        }
+
+        return String.valueOf(c);
+    }
+
+    /**
+     * 두 문장의 코사인 유사도 반환 (Bag-of-Words, TF 기반)
+     */
+    public static double cosineSimilarity(String s1, String s2) {
+        if (s1 == null || s2 == null || s1.isEmpty() || s2.isEmpty()) return 0.0;
+
+        // 단어 단위 분리 (원하면 tokenizer 교체 가능)
+        String[] words1 = s1.split("\\s+");
+        String[] words2 = s2.split("\\s+");
+
+        // 단어 빈도 저장
+        Map<String, Integer> freq1 = new HashMap<>();
+        Map<String, Integer> freq2 = new HashMap<>();
+
+        for (String w : words1) {
+            freq1.put(w, freq1.getOrDefault(w, 0) + 1);
+        }
+        for (String w : words2) {
+            freq2.put(w, freq2.getOrDefault(w, 0) + 1);
+        }
+
+        // 전체 단어 집합 생성
+        Set<String> allWords = new HashSet<>();
+        allWords.addAll(freq1.keySet());
+        allWords.addAll(freq2.keySet());
+
+        // 벡터 생성
+        double dot = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+
+        for (String word : allWords) {
+            int a = freq1.getOrDefault(word, 0);
+            int b = freq2.getOrDefault(word, 0);
+
+            dot += a * b;
+            normA += a * a;
+            normB += b * b;
+        }
+
+        if (normA == 0 || normB == 0) return 0.0;
+
+        return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    /**
+     * 인덱싱 본문 생성
+     *
+     * @param contents 본문 목록
+     * @return 인덱싱 본문 목록
+     */
+    public static List<IndexedContentVO> indexingContent(List<String> contents) {
+        AtomicInteger index = new AtomicInteger(0);
+
+        return contents.stream()
+                .map(content -> new IndexedContentVO(index.getAndIncrement(), content))
+                .toList();
+    }
+
+    public static List<String> tokenize(String content, int tokenSize) {
+
+        List<String> contents = new ArrayList<>();
+
+        StringBuilder contentBuilder = new StringBuilder();
+        for (String line : content.lines().toList()) {
+            if (contentBuilder.length() + line.length() > tokenSize) {
+                contents.add(contentBuilder.toString().trim());
+                contentBuilder = new StringBuilder();
+            }
+            contentBuilder.append(line).append("\n");
+        }
+
+        if (!contentBuilder.toString().trim().isEmpty()) {
+            contents.add(contentBuilder.toString().trim());
+        }
+
+        return contents;
+    }
+}

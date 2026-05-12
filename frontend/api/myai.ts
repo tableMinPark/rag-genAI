@@ -1,8 +1,14 @@
-import { Project } from '@/types/domain'
+import { Project, PromptParameter } from '@/types/domain'
 import { client } from './client'
 import { ApiResponse, PageResponse } from '@/types/api'
 import { FetchEventSource, streamApi } from './stream'
 import { StreamEvent } from '@/types/streamEvent'
+
+export interface GetPromptRoleResponseDto extends PromptParameter {}
+
+export interface GetPromptToneResponseDto extends PromptParameter {}
+
+export interface GetPromptStyleResponseDto extends PromptParameter {}
 
 export interface GetProjectResponseDto extends Project {}
 
@@ -15,6 +21,35 @@ export interface GetProjectSources {
   fileOriginName: string
   ext: string
   fileSize: number
+}
+
+/**
+ * 프롬프트 역할 목록 조회
+ */
+export const getPromptRolesApi = async (): Promise<
+  ApiResponse<GetPromptRoleResponseDto[]>
+> => {
+  const response = await client.get(`/myai/role`)
+  return response.data
+}
+
+/**
+ * 프롬프트 톤 목록 조회
+ */
+export const getPromptTonesApi = async (): Promise<
+  ApiResponse<GetPromptToneResponseDto[]>
+> => {
+  const response = await client.get(`/myai/tone`)
+  return response.data
+}
+/**
+ * 프롬프트 스타일 목록 조회
+ */
+export const getPromptStylesApi = async (): Promise<
+  ApiResponse<GetPromptStyleResponseDto[]>
+> => {
+  const response = await client.get(`/myai/style`)
+  return response.data
 }
 
 /**

@@ -1,6 +1,6 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.core.constant.PromptConst;
+import com.genai.core.common.constant.PromptConst;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.PromptRepository;

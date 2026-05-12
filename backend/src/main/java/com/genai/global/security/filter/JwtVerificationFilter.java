@@ -1,11 +1,11 @@
 package com.genai.global.security.filter;
 
-import com.genai.global.security.service.MemberDetailsService;
-import com.genai.global.security.util.JwtUtil;
+import com.genai.global.security.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -19,7 +19,7 @@ import java.io.IOException;
 public class JwtVerificationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
-    private final MemberDetailsService memberDetailsService;
+    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -34,7 +34,7 @@ public class JwtVerificationFilter extends OncePerRequestFilter {
             }
 
             String userId = jwtUtil.getUserId(token);
-            UserDetails userDetails = memberDetailsService.loadUserByUsername(userId);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
 
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(

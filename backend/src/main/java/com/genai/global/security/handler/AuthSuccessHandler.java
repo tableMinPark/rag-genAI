@@ -1,8 +1,8 @@
 package com.genai.global.security.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.global.service.domain.Member;
-import com.genai.global.security.util.JwtUtil;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.security.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;

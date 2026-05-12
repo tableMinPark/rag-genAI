@@ -1,14 +1,15 @@
 package com.genai.core.service.module.impl;
 
-import com.genai.global.utils.StringUtil;
-import com.genai.global.vo.IndexedContentVO;
+import com.genai.core.common.enums.CoreLogMessage;
+import com.genai.global.common.utils.StringUtil;
+import com.genai.global.common.vo.IndexedContentVO;
 import com.genai.core.repository.ModelRepository;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.core.service.module.constant.SummaryModuleConst;
 import com.genai.core.service.module.vo.PartExportContextVO;
 import com.genai.core.service.module.vo.PartExportState;
-import com.genai.core.utils.ReactiveLogUtil;
+import com.genai.global.common.utils.ReactiveLogUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,7 +54,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                     });
                     return answerBuilder.toString().trim();
                 })
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.PART_EXPORT_MESSAGE, v -> new Object[]{
                         content, v
                 }))
                 .subscribeOn(Schedulers.boundedElastic());
@@ -70,7 +71,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
 
         Mono<List<String>> contentsMono = Mono.just(state.getContents())
                 .map(contents -> contents.stream().filter(content -> content != null && !content.trim().isBlank()).toList())
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.PART_EXPORT_RECURSIVE_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(CoreLogMessage.PART_EXPORT_RECURSIVE_MESSAGE, v -> new Object[]{
                         state.getRound(), state.getContentLength(), v.size()
                 }));
 
@@ -176,7 +177,7 @@ public class SummaryModuleServiceImpl implements SummaryModuleService {
                     return answerBuilder.toString().trim();
 
                 })
-                .doOnEach(ReactiveLogUtil.debug(ReactiveLogUtil.Message.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.debug(CoreLogMessage.PART_EXPORTS_SUMMARY_MESSAGE, v -> new Object[]{
                         contentMergeBuilder.toString().trim(), v
                 }))
                 .subscribeOn(Schedulers.boundedElastic());

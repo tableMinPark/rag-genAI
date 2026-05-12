@@ -1,7 +1,7 @@
 package com.genai.core.config.instance;
 
+import com.genai.core.common.enums.LlmPlatformType;
 import com.genai.core.config.properties.LlmInstanceProperty;
-import com.genai.core.type.LlmPlatformType;
 import lombok.Builder;
 import lombok.Getter;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -42,7 +42,7 @@ public class LlmInstance {
         }
 
         if (!sessionQueue.add(requestId)) {
-            sessionCount.release(); // 롤백
+            sessionCount.release();
             return Optional.empty();
         }
 

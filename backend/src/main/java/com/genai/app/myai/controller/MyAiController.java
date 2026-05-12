@@ -1,5 +1,6 @@
 package com.genai.app.myai.controller;
 
+import com.genai.app.common.enums.Response;
 import com.genai.app.myai.constant.MyAiConst;
 import com.genai.app.myai.controller.dto.request.CreateProjectRequestDto;
 import com.genai.app.myai.controller.dto.request.UpdateProjectSourcesRequestDto;
@@ -10,19 +11,23 @@ import com.genai.app.myai.service.vo.CreateProjectVO;
 import com.genai.app.myai.service.vo.DeleteProjectVO;
 import com.genai.app.myai.service.vo.ProjectVO;
 import com.genai.app.myai.service.vo.UpdateProjectVO;
-import com.genai.global.utils.StringUtil;
+import com.genai.app.myai.controller.dto.response.GetAnswerStyleResponseDto;
+import com.genai.app.myai.controller.dto.response.GetAnswerToneResponseDto;
+import com.genai.app.myai.controller.dto.response.GetRoleResponseDto;
+import com.genai.core.common.constant.PromptConst;
 import com.genai.core.service.business.EmbedCoreService;
-import com.genai.core.service.business.StreamCoreService;
-import com.genai.core.service.business.subscriber.StreamEvent;
 import com.genai.core.service.business.vo.EmbedVO;
 import com.genai.core.service.business.vo.FileDetailVO;
-import com.genai.core.service.business.vo.PrepareVO;
+import com.genai.core.service.module.CommonCodeModuleService;
+import com.genai.core.service.module.vo.CommonCodeVO;
+import com.genai.global.auth.service.domain.Member;
+import com.genai.global.common.dto.PageResponseDto;
+import com.genai.global.common.dto.ResponseDto;
 import com.genai.core.type.CollectionType;
-import com.genai.global.dto.PageResponseDto;
-import com.genai.global.service.domain.Member;
-import com.genai.global.dto.ResponseDto;
-import com.genai.global.enums.Response;
-import com.genai.global.wrapper.PageWrapper;
+import com.genai.global.common.utils.StringUtil;
+import com.genai.global.common.wrapper.PageWrapper;
+import com.genai.global.stream.service.StreamCoreService;
+import com.genai.global.stream.subscriber.StreamEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -53,6 +58,40 @@ public class MyAiController {
     private final MyAiService myAiService;
     private final EmbedCoreService embedCoreService;
     private final StreamCoreService streamCoreService;
+    private final CommonCodeModuleService commonCodeModuleService;
+
+    /**
+     * 역할 목록 조회
+     */
+    @GetMapping("/role")
+    public ResponseEntity<ResponseDto<List<GetRoleResponseDto>>> getRoles() {
+
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(PromptConst.PROMPT_ROLE_CODE_GROUP);
+
+        return ResponseEntity.ok().body(Response.PROMPT_GET_ROLES_SUCCESS.toResponseDto(GetRoleResponseDto.toList(categoryCodes)));
+    }
+
+    /**
+     * 답변 톤 목록 조회
+     */
+    @GetMapping("/tone")
+    public ResponseEntity<ResponseDto<List<GetAnswerToneResponseDto>>> getAnswerTones() {
+
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(PromptConst.PROMPT_TONE_CODE_GROUP);
+
+        return ResponseEntity.ok().body(Response.PROMPT_GET_TONES_SUCCESS.toResponseDto(GetAnswerToneResponseDto.toList(categoryCodes)));
+    }
+
+    /**
+     * 답변 스타일 목록 조회
+     */
+    @GetMapping("/style")
+    public ResponseEntity<ResponseDto<List<GetAnswerStyleResponseDto>>> getAnswerStyles() {
+
+        List<CommonCodeVO> categoryCodes = commonCodeModuleService.getCommonCodes(PromptConst.PROMPT_STYLE_CODE_GROUP);
+
+        return ResponseEntity.ok().body(Response.PROMPT_GET_STYLES_SUCCESS.toResponseDto(GetAnswerStyleResponseDto.toList(categoryCodes)));
+    }
 
     /**
      * 프로젝트 조회
@@ -123,10 +162,7 @@ public class MyAiController {
         Mono<Pair<StreamEvent, CreateProjectVO>> createProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
                     CreateProjectVO createProject = myAiService.createProject(userId, projectName, projectDesc, roleCode, toneCode, styleCode, multipartFiles);
 
-                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                            .progress(0.3f)
-                            .message("문서 힉습중")
-                            .build()), createProject);
+                    return Pair.of(StreamEvent.prepare(sessionId, 0.3f, "문서 힉습중"), createProject);
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .cache();
@@ -139,10 +175,7 @@ public class MyAiController {
                             createProject.getFileId(),
                             MyAiConst.categoryCode(createProject.getProject().getProjectId()));
 
-                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                            .progress(0.6f)
-                            .message("문서 힉습중")
-                            .build()), embed);
+                    return Pair.of(StreamEvent.prepare(sessionId, 0.6f, "문서 힉습중"), embed);
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .cache();
@@ -152,13 +185,7 @@ public class MyAiController {
                     EmbedVO embed = pair.getSecond();
                     return embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds())
                             .then(Mono.just(
-                                    StreamEvent.prepare(
-                                            StringUtil.generateRandomId(),
-                                            PrepareVO.builder()
-                                                    .progress(1)
-                                                    .message("문서 학습중")
-                                                    .build()
-                                    )
+                                    StreamEvent.prepare(sessionId, 1f, "문서 힉습중")
                             ));
                 })
                 .subscribeOn(Schedulers.boundedElastic());
@@ -228,10 +255,7 @@ public class MyAiController {
         Mono<Pair<StreamEvent, UpdateProjectVO>> updateProjectMono = Mono.just(sessionId).flatMap(o -> Mono.fromCallable(() -> {
                     UpdateProjectVO updateProject = myAiService.updateProjectSources(userId, projectId, multipartFiles, deleteFileDetailIds);
 
-                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                            .progress(0.3f)
-                            .message("문서 힉습중")
-                            .build()), updateProject);
+                    return Pair.of(StreamEvent.prepare(sessionId, 0.3f, "문서 힉습중"), updateProject);
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .cache();
@@ -244,10 +268,7 @@ public class MyAiController {
                             updateProject.getFileId(),
                             MyAiConst.categoryCode(updateProject.getProject().getProjectId()));
 
-                    return Pair.of(StreamEvent.prepare(sessionId, PrepareVO.builder()
-                            .progress(0.6f)
-                            .message("문서 힉습중")
-                            .build()), embed);
+                    return Pair.of(StreamEvent.prepare(sessionId, 0.6f, "문서 힉습중"), embed);
                 }))
                 .subscribeOn(Schedulers.boundedElastic())
                 .cache();
@@ -257,13 +278,7 @@ public class MyAiController {
                     EmbedVO embed = pair.getSecond();
                     return embedCoreService.syncEmbedSources(collectionType, embed.getDocumentEntities(), embed.getDeleteDocumentIds())
                             .then(Mono.just(
-                                    StreamEvent.prepare(
-                                            StringUtil.generateRandomId(),
-                                            PrepareVO.builder()
-                                                    .progress(1)
-                                                    .message("문서 학습중")
-                                                    .build()
-                                    )
+                                    StreamEvent.prepare(sessionId, 1f, "문서 힉습중")
                             ));
                 })
                 .subscribeOn(Schedulers.boundedElastic());

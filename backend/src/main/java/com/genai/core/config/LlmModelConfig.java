@@ -1,9 +1,9 @@
 package com.genai.core.config;
 
+import com.genai.core.common.enums.LlmPlatformType;
+import com.genai.core.common.enums.LlmType;
 import com.genai.core.config.instance.LlmInstance;
 import com.genai.core.config.properties.LlmInstanceProperty;
-import com.genai.core.type.LlmPlatformType;
-import com.genai.core.type.LlmType;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;

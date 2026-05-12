@@ -1,7 +1,6 @@
 package com.genai.core.service.module.vo;
 
-import com.genai.core.service.business.subscriber.StreamEvent;
-import com.genai.core.service.business.vo.PrepareVO;
+import com.genai.global.stream.subscriber.StreamEvent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,10 +25,7 @@ public class PartExportContextVO {
                 .index(index)
                 .isLast(isLast)
                 .partExport(partExport)
-                .streamEvent(StreamEvent.prepare(stateId, PrepareVO.builder()
-                                .progress(progress)
-                                .message("문서 전처리중")
-                        .build()))
+                .streamEvent(StreamEvent.prepare(stateId, progress, "문서 전처리중"))
                 .build();
     }
 }

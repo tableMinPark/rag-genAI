@@ -1,10 +1,6 @@
 package com.genai.core.service.business.impl;
 
-import com.genai.global.utils.ExtractUtil;
-import com.genai.global.utils.FileUtil;
-import com.genai.global.utils.HtmlUtil;
-import com.genai.global.utils.StringUtil;
-import com.genai.global.vo.UploadFileVO;
+import com.genai.core.common.enums.CoreLogMessage;
 import com.genai.core.exception.NotFoundException;
 import com.genai.core.repository.ChatDetailRepository;
 import com.genai.core.repository.ChatRepository;
@@ -15,14 +11,14 @@ import com.genai.core.repository.entity.ChatEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.business.ReportCoreService;
 import com.genai.core.service.business.constant.ReportCoreConst;
-import com.genai.core.service.business.subscriber.StreamEvent;
-import com.genai.core.service.business.vo.PrepareVO;
 import com.genai.core.service.business.vo.ReportVO;
 import com.genai.core.service.module.ChatHistoryModuleService;
 import com.genai.core.service.module.SummaryModuleService;
 import com.genai.core.service.module.vo.PartExportContextVO;
 import com.genai.core.service.module.vo.PartExportState;
-import com.genai.core.utils.ReactiveLogUtil;
+import com.genai.global.common.utils.*;
+import com.genai.global.common.vo.UploadFileVO;
+import com.genai.global.stream.subscriber.StreamEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -155,7 +151,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                     return partAccumulator.toString().trim();
                 })
                 .map(wholePartExport -> wholePartExport.substring(0, Math.min(wholePartExport.length(), ReportCoreConst.CHUNK_MAX_TOKEN_SIZE)))
-                .doOnEach(ReactiveLogUtil.info(ReactiveLogUtil.Message.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
+                .doOnEach(ReactiveLogUtil.info(CoreLogMessage.WHOLE_PART_EXPORT_MESSAGE, v -> new Object[]{
                         StringUtil.writeJson(contents), v
                 }))
                 .cache();
@@ -167,10 +163,7 @@ public class ReportCoreServiceImpl implements ReportCoreService {
                 .map(answerEntity -> StreamEvent.answer(answerEntity.getId(), answerEntity.getContent()));
 
         Flux<StreamEvent> partExportProgressFlux = Flux.concat(
-                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), PrepareVO.builder()
-                        .progress(0)
-                        .message("문서 전처리중")
-                        .build())),
+                Flux.just(StreamEvent.prepare(StringUtil.generateRandomId(), 0, "문서 전처리중")),
                 partExportFlux.map(PartExportContextVO::getStreamEvent)
         );
 

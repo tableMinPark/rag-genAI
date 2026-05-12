@@ -3,7 +3,7 @@ package com.genai.core.repository;
 import com.genai.core.repository.entity.AnswerEntity;
 import com.genai.core.repository.entity.PromptEntity;
 import com.genai.core.service.module.vo.ConversationVO;
-import com.genai.core.type.LlmType;
+import com.genai.core.common.enums.LlmType;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
