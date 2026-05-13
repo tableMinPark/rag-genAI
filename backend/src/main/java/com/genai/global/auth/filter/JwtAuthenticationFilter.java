@@ -1,4 +1,4 @@
-package com.genai.global.security.filter;
+package com.genai.global.auth.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;

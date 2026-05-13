@@ -1,6 +1,6 @@
-package com.genai.global.security.filter;
+package com.genai.global.auth.filter;
 
-import com.genai.global.security.utils.JwtUtil;
+import com.genai.global.auth.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;

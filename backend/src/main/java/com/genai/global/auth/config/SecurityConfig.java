@@ -1,13 +1,13 @@
-package com.genai.global.security;
+package com.genai.global.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.genai.global.security.filter.JwtAuthenticationFilter;
-import com.genai.global.security.filter.JwtVerificationFilter;
-import com.genai.global.security.filter.TokenReissueFilter;
-import com.genai.global.security.handler.AuthFailureHandler;
-import com.genai.global.security.handler.AuthSuccessHandler;
+import com.genai.global.auth.filter.JwtAuthenticationFilter;
+import com.genai.global.auth.filter.JwtVerificationFilter;
+import com.genai.global.auth.filter.TokenReissueFilter;
+import com.genai.global.auth.handler.AuthFailureHandler;
+import com.genai.global.auth.handler.AuthSuccessHandler;
 import com.genai.global.auth.service.impl.MemberServiceImpl;
-import com.genai.global.security.utils.JwtUtil;
+import com.genai.global.auth.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

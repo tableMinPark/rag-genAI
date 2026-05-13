@@ -1,4 +1,4 @@
-package com.genai.global.security.handler;
+package com.genai.global.auth.handler;
 
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;

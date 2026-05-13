@@ -1,8 +1,8 @@
-package com.genai.global.security.filter;
+package com.genai.global.auth.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.genai.global.auth.service.domain.Member;
-import com.genai.global.security.utils.JwtUtil;
+import com.genai.global.auth.utils.JwtUtil;
 import lombok.*;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;

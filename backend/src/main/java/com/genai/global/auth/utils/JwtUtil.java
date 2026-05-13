@@ -1,4 +1,4 @@
-package com.genai.global.security.utils;
+package com.genai.global.auth.utils;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
